@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.local-pg/
+*.log
+coverage/
+web/dist/
+test-results/
+playwright-report/
+e2e/shots/
+tools/

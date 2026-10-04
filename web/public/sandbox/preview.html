@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preview sandbox</title>
+<!--
+  AMONG BUGS live-preview sandbox.
+  Loaded inside <iframe sandbox="allow-scripts"> (no allow-same-origin): opaque origin,
+  no cookies, no storage, no access to the platform. Served with CSP connect-src 'none'.
+  The parent posts {type:'render', doc} and we write it; console output is relayed back.
+-->
+</head>
+<body style="margin:0;background:#fff">
+<script>
+(function () {
+  var MAX = 200, sent = 0;
+  function relay(level, args) {
+    if (sent++ > MAX) return;
+    try {
+      parent.postMessage({ __amongBugsPreview: true, type: 'console', level: level, text: Array.prototype.map.call(args, function (a) {
+        try { return typeof a === 'string' ? a : JSON.stringify(a); } catch (e) { return String(a); }
+      }).join(' ').slice(0, 2000) }, '*');
+    } catch (e) {}
+  }
+  window.addEventListener('message', function (ev) {
+    if (ev.source !== parent || !ev.data || ev.data.type !== 'render' || typeof ev.data.doc !== 'string') return;
+    sent = 0;
+    var hook = '<script>(function(){var r=' + relay.toString() + ';var MAX=200,sent=0;["log","info","warn","error"].forEach(function(l){var o=console[l];console[l]=function(){r(l,arguments);try{o.apply(console,arguments)}catch(e){}}});window.onerror=function(m,s,line,col){r("error",[m+" (line "+line+")"]);};window.addEventListener("unhandledrejection",function(e){r("error",["Unhandled promise rejection: "+(e.reason&&e.reason.message||e.reason)])});})();<\/script>';
+    var doc = ev.data.doc;
+    var i = doc.search(/<head[^>]*>/i);
+    doc = i >= 0 ? doc.replace(/<head[^>]*>/i, function (m) { return m + hook; }) : hook + doc;
+    document.open();
+    document.write(doc);
+    document.close();
+    parent.postMessage({ __amongBugsPreview: true, type: 'rendered' }, '*');
+  });
+  parent.postMessage({ __amongBugsPreview: true, type: 'ready' }, '*');
+})();
+</script>
+</body>
+</html>

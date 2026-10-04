@@ -1,0 +1,35 @@
+{
+  "name": "among-bugs",
+  "private": true,
+  "version": "1.0.0",
+  "description": "DEBUG + RUN / AMONG BUGS — competition platform (IDEALab.h, SGSITS Indore, AAROHAN 2026)",
+  "workspaces": [
+    "server",
+    "runner",
+    "web"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "db:local": "node scripts/local-db.mjs",
+    "build": "npm run build -w runner && npm run build -w server && npm run build -w web",
+    "migrate": "npm run migrate -w server",
+    "seed:demo": "npm run seed:demo -w server --",
+    "reset:demo": "npm run reset:demo -w server --",
+    "test": "npm test -w server",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w runner && npm run typecheck -w web",
+    "test:e2e": "playwright test",
+    "content:check": "npm run content:check -w server --",
+    "rehearsal:sim": "npm run rehearsal:sim -w server --",
+    "bootstrap": "npm run bootstrap -w server",
+    "live": "node scripts/dev.mjs --live"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "overrides": {
+    "dompurify": "3.4.16"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

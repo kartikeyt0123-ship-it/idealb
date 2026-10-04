@@ -1,0 +1,39 @@
+{
+  "name": "@among-bugs/server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "dev:worker": "tsx watch src/worker.ts",
+    "start": "node dist/index.js",
+    "start:worker": "node dist/worker.js",
+    "build": "tsc -p tsconfig.build.json && node -e \"require('fs').cpSync('src/migrations','dist/migrations',{recursive:true})\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrate": "tsx src/scripts/migrate.ts",
+    "seed:demo": "tsx src/scripts/seed-demo.ts",
+    "reset:demo": "tsx src/scripts/reset-demo.ts",
+    "bootstrap": "tsx src/scripts/bootstrap.ts",
+    "content:check": "tsx src/scripts/content-check.ts",
+    "rehearsal:sim": "tsx src/scripts/rehearsal-sim.ts",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "embedded-postgres": "^18.4.0-beta.17",
+    "socket.io-client": "^4.8.4",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/static": "^10.1.5",
+    "dotenv": "^16.6.1",
+    "fastify": "^5.12.5",
+    "pg": "^8.23.1",
+    "socket.io": "^4.8.4",
+    "zod": "^3.25.76"
+  }
+}

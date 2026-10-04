@@ -1,0 +1,236 @@
+/** Pure helpers for the task workspace (drafts, preview document, CSV, languages, errors). */
+import { ApiError, type TaskDetail, type TaskFile } from '../lib/api';
+
+// ---------------------------------------------------------------------------
+// Drafts (localStorage; best effort, never throws)
+// ---------------------------------------------------------------------------
+
+export interface DraftScope {
+  crewId: string;
+  targetType: 'TASK' | 'IMPOSTER';
+  targetId: string;
+  generation: number;
+}
+
+const PREFIX = 'amongbugs:draft:v1';
+export const draftKey = (s: DraftScope, name: string) => `${PREFIX}:${s.crewId}:${s.targetType}:${s.targetId}:g${s.generation}:${name}`;
+
+export function readDraft(s: DraftScope, name: string): string | null {
+  try {
+    return window.localStorage.getItem(draftKey(s, name));
+  } catch {
+    return null;
+  }
+}
+
+/** Returns false when storage is unavailable or full. */
+export function writeDraft(s: DraftScope, name: string, value: string | null): boolean {
+  try {
+    if (value === null) window.localStorage.removeItem(draftKey(s, name));
+    else window.localStorage.setItem(draftKey(s, name), value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function readPref(key: string): string | null {
+  try {
+    return window.localStorage.getItem(`amongbugs:pref:${key}`);
+  } catch {
+    return null;
+  }
+}
+export function writePref(key: string, value: string) {
+  try {
+    window.localStorage.setItem(`amongbugs:pref:${key}`, value);
+  } catch {
+    /* ignore */
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Languages
+// ---------------------------------------------------------------------------
+
+export function monacoLanguage(file: Pick<TaskFile, 'name' | 'language'>): string {
+  const l = (file.language || '').toLowerCase();
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  if (l === 'javascript' || l === 'js' || ext === 'js' || ext === 'mjs' || ext === 'cjs') return 'javascript';
+  if (l === 'python' || l === 'py' || ext === 'py') return 'python';
+  if (l === 'html' || ext === 'html' || ext === 'htm') return 'html';
+  if (l === 'css' || ext === 'css') return 'css';
+  return 'plaintext';
+}
+
+export const isCsv = (f: Pick<TaskFile, 'name' | 'language'>) => f.language?.toLowerCase() === 'csv' || /\.csv$/i.test(f.name);
+export const isHtml = (f: Pick<TaskFile, 'name'>) => /\.html?$/i.test(f.name);
+
+// ---------------------------------------------------------------------------
+// Workspace kind
+// ---------------------------------------------------------------------------
+
+export type RightKind = 'WEB' | 'DATA' | 'RUN' | 'EVIDENCE';
+
+export function rightKind(d: Pick<TaskDetail, 'workspace' | 'runLanguage' | 'files'>): RightKind {
+  const hasIndex = d.files.some((f) => f.name.toLowerCase() === 'index.html');
+  if (d.workspace === 'WEB' || (d.workspace === 'DESIGN' && hasIndex)) return 'WEB';
+  if (d.workspace === 'DATA') return 'DATA';
+  if (d.runLanguage) return 'RUN';
+  if (hasIndex) return 'WEB';
+  return 'EVIDENCE';
+}
+
+// ---------------------------------------------------------------------------
+// Live preview document
+// ---------------------------------------------------------------------------
+
+function attr(tag: string, name: string): string | null {
+  const m = new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(tag);
+  return m ? (m[1] ?? m[2] ?? m[3] ?? '') : null;
+}
+function normalizeRef(ref: string): string {
+  return ref.trim().replace(/[?#].*$/, '').replace(/^\.?\//, '');
+}
+
+/**
+ * Build the full HTML document for the sandbox: index.html with local
+ * <link rel=stylesheet>/<script src> (and local SVG image refs) replaced by the
+ * current editor contents, inlined. Remote URLs are left untouched (the
+ * sandbox's CSP blocks network anyway).
+ */
+export function buildPreviewDoc(files: TaskFile[], contents: Record<string, string>): string | null {
+  const index = files.find((f) => f.name.toLowerCase() === 'index.html') ?? files.find(isHtml);
+  if (!index) return null;
+  const byName = new Map<string, string>();
+  for (const f of files) byName.set(f.name.toLowerCase(), contents[f.name] ?? f.content);
+  const lookup = (ref: string | null) => (ref == null ? undefined : byName.get(normalizeRef(ref).toLowerCase()));
+
+  let html = byName.get(index.name.toLowerCase()) ?? '';
+  const deferred: string[] = [];
+
+  html = html.replace(/<link\b[^>]*>/gi, (tag) => {
+    const rel = (attr(tag, 'rel') ?? '').toLowerCase();
+    const css = lookup(attr(tag, 'href'));
+    if (!rel.split(/\s+/).includes('stylesheet') || css === undefined) return tag;
+    return `<style data-file="${normalizeRef(attr(tag, 'href') ?? '').replace(/"/g, '')}">\n${css.replace(/<\/style/gi, '<\\/style')}\n</style>`;
+  });
+
+  html = html.replace(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi, (whole, attrs: string) => {
+    const js = lookup(attr(`<script ${attrs}>`, 'src'));
+    if (js === undefined) return whole;
+    const keep = attrs.replace(/\s(?:src|defer|async)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/gi, '');
+    const inline = `<script${keep}>\n${js.replace(/<\/script/gi, '<\\/script')}\n</script>`;
+    if (/\bdefer\b/i.test(attrs) || /type\s*=\s*["']?module/i.test(attrs)) {
+      deferred.push(inline);
+      return '';
+    }
+    return inline;
+  });
+
+  // Local SVG images referenced via src="x.svg" become data URIs.
+  html = html.replace(/(<img\b[^>]*\bsrc\s*=\s*)(["'])([^"']+)\2/gi, (whole, pre: string, q: string, ref: string) => {
+    const svg = /\.svg$/i.test(normalizeRef(ref)) ? lookup(ref) : undefined;
+    return svg === undefined ? whole : `${pre}${q}data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}${q}`;
+  });
+
+  if (deferred.length) {
+    const tail = deferred.join('\n');
+    html = /<\/body\s*>/i.test(html) ? html.replace(/<\/body\s*>/i, () => `${tail}\n</body>`) : html + tail;
+  }
+  return html;
+}
+
+// ---------------------------------------------------------------------------
+// CSV
+// ---------------------------------------------------------------------------
+
+/** Small RFC-4180-ish parser (quoted fields, escaped quotes, CRLF). Caps rows. */
+export function parseCsv(text: string, maxRows = 2000): { rows: string[][]; truncated: boolean } {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else quoted = false;
+      } else field += c;
+      continue;
+    }
+    if (c === '"' && field === '') quoted = true;
+    else if (c === ',') {
+      row.push(field);
+      field = '';
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(field);
+      field = '';
+      rows.push(row);
+      row = [];
+      if (rows.length > maxRows) return { rows: rows.slice(0, maxRows + 1), truncated: true };
+    } else field += c;
+  }
+  if (field !== '' || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+  return { rows, truncated: false };
+}
+
+// ---------------------------------------------------------------------------
+// Statement (plain text + ``` fences)
+// ---------------------------------------------------------------------------
+
+export type StatementBlock = { kind: 'p'; text: string } | { kind: 'code'; text: string; lang: string };
+
+export function parseStatement(text: string): StatementBlock[] {
+  const out: StatementBlock[] = [];
+  const parts = (text ?? '').split('```');
+  parts.forEach((part, i) => {
+    if (i % 2 === 1) {
+      const nl = part.indexOf('\n');
+      const first = nl >= 0 ? part.slice(0, nl).trim() : '';
+      const isLang = nl >= 0 && /^[\w+#.-]{0,20}$/.test(first);
+      const body = (isLang ? part.slice(nl + 1) : part).replace(/\n$/, '');
+      out.push({ kind: 'code', text: body, lang: isLang ? first : '' });
+    } else {
+      for (const para of part.split(/\n\s*\n/)) {
+        const t = para.replace(/^\n+|\n+$/g, '');
+        if (t.trim()) out.push({ kind: 'p', text: t });
+      }
+    }
+  });
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Decoy text for the encrypted hint (generated client-side; NOT the hint)
+// ---------------------------------------------------------------------------
+
+const WORDS = 'lorem ipsum dolor sit amet reactor vent oxygen wiring shields navigation conduit relay sector calibrate flux module ping array index buffer loop node signal hull'.split(' ');
+export function decoyText(seed: string, words = 46): string {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  const out: string[] = [];
+  for (let i = 0; i < words; i++) {
+    h = Math.imul(h ^ (h >>> 15), 2246822507) ^ i;
+    out.push(WORDS[Math.abs(h) % WORDS.length]);
+  }
+  return out.join(' ') + '.';
+}
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
+export const errCode = (e: unknown) => (e instanceof ApiError ? e.code : 'UNKNOWN');
+export const errMessage = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong.');
+
+export const CLOSED_CODES = new Set(['SPRINT_CLOSED', 'TASK_WINDOW_CLOSED', 'IMPOSTER_WINDOW_CLOSED', 'SPRINT_NOT_RUNNING', 'TASK_DISABLED']);
+export const SOLVED_CODES = new Set(['TASK_ALREADY_SOLVED']);
+export const ELIMINATED_CODES = new Set(['TEAM_ELIMINATED', 'TEAM_DISQUALIFIED']);

@@ -1,0 +1,79 @@
+# AMONG BUGS — full local / venue stack.
+#   cp .env.example .env   (set secrets; keep DEMO_MODE=true only for the demo)
+#   docker compose up -d --build
+#   docker compose run --rm api node server/dist/scripts/seed-demo.js      # demo fixture (DEMO_MODE=true)
+# Open http://localhost:4000
+name: among-bugs
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: amongbugs
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-amongbugs-local}
+      POSTGRES_DB: among_bugs
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U amongbugs -d among_bugs"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  runner:
+    build: { context: ., dockerfile: runner/Dockerfile }
+    environment:
+      RUNNER_TOKEN: ${RUNNER_TOKEN:?set RUNNER_TOKEN in .env}
+      RUNNER_MAX_CONCURRENCY: ${RUNNER_MAX_CONCURRENCY:-4}
+    # Hardening: non-root (image), read-only root fs, small tmpfs, no capabilities,
+    # process / memory / CPU caps, and an internal-only network (no internet egress).
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    mem_limit: 768m
+    cpus: 2.0
+    networks: [sandbox]
+    restart: unless-stopped
+
+  api:
+    build: { context: ., dockerfile: Dockerfile }
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://amongbugs:${POSTGRES_PASSWORD:-amongbugs-local}@db:5432/among_bugs
+      RUNNER_URL: http://runner:4100
+      HOST: 0.0.0.0
+      PORT: 4000
+      WEB_DIST_DIR: /app/web/dist
+      NODE_ENV: ${NODE_ENV:-production}
+      UV_THREADPOOL_SIZE: 8
+    depends_on:
+      db: { condition: service_healthy }
+      runner: { condition: service_started }
+    ports:
+      - "4000:4000"
+    networks: [default, sandbox]
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., dockerfile: Dockerfile }
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://amongbugs:${POSTGRES_PASSWORD:-amongbugs-local}@db:5432/among_bugs
+      RUNNER_URL: http://runner:4100
+      NODE_ENV: ${NODE_ENV:-production}
+    command: ["node", "server/dist/worker.js"]
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [default]
+    restart: unless-stopped
+
+networks:
+  sandbox:
+    internal: true
+
+volumes:
+  pgdata:

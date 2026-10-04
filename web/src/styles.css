@@ -1,0 +1,125 @@
+@import 'tailwindcss';
+
+/* Design tokens recovered from the published Figma Make site (silk-bird-25541875.figma.site). */
+@theme {
+  --color-primary: #8ae4cf;
+  --color-muted: #a2b2c1;
+  --color-ink: #0a121b;
+  --color-cream: #f2f0e7;
+  --color-line: #405262;
+  --color-amber: #e5cf8f;
+  --color-danger: #ee9582;
+  --font-sans: 'Outfit', sans-serif;
+  --font-display: 'Chakra Petch', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+:root {
+  --background: #0a121b;
+  --foreground: #f2f0e7;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Outfit', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.starfield {
+  background-image: radial-gradient(circle at 10% 24%, #aabfdc80 1px, #0000 1.4px), radial-gradient(circle at 66% 70%, #8aabc355 1px, #0000 1.4px),
+    radial-gradient(circle at 80% 10%, #c2d9f044 1px, #0000 1.4px);
+  background-size: 127px 139px, 181px 163px, 211px 197px;
+  animation: 60s linear infinite drift;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-9px) rotate(2deg); }
+}
+@keyframes drift {
+  0% { background-position: 0 0; }
+  to { background-position: 120px 60px; }
+}
+@keyframes eject {
+  0% { transform: translate(0) rotate(0); }
+  to { transform: translate(90px, -50px) rotate(35deg) scale(0.6); }
+}
+@keyframes eject-fly {
+  0% { transform: translateX(-40vw) rotate(0deg); opacity: 1; }
+  100% { transform: translateX(60vw) rotate(720deg); opacity: 0.85; }
+}
+@keyframes warning {
+  50% { box-shadow: inset 0 0 70px #f0525230; }
+}
+@keyframes coin {
+  to { opacity: 0; transform: translateY(-65px); }
+}
+@keyframes crew-walk {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-7px) rotate(3deg); }
+}
+@keyframes monitor {
+  50% { opacity: 0.65; }
+}
+@keyframes steam {
+  0% { opacity: 0; transform: translateY(0); }
+  50% { opacity: 0.2; }
+  to { opacity: 0; transform: translateY(-55px); }
+}
+@keyframes scan {
+  0% { transform: translateY(0); }
+  to { transform: translateY(140px); }
+}
+@keyframes boot {
+  0% { opacity: 0; filter: brightness(0); }
+  to { opacity: 1; filter: brightness(1); }
+}
+@keyframes alarm {
+  0%, 100% { background-color: #ab565600; }
+  50% { background-color: #ab565633; }
+}
+
+/* Thin themed scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3c5c69 transparent;
+}
+
+/* Keyboard focus is always visible */
+:focus-visible {
+  outline: 2px solid #8ae4cf;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation: none !important;
+  }
+}
+
+.input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 2px solid #344c5b;
+  background: #101e2a;
+  padding: 0.7rem 0.75rem;
+  font-size: 0.875rem;
+  color: #e4eee8;
+  outline: none;
+}
+.input:focus {
+  border-color: #8ae4cf;
+}
+.input[aria-invalid='true'] {
+  border-color: #ce7869;
+}
