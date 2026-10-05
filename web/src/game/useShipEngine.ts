@@ -202,8 +202,10 @@ export function useShipEngine(o: EngineOptions) {
       if (Math.abs(vel.current.x) > 20) facing.current = vel.current.x > 0 ? 1 : -1;
       if (moving !== walking) {
         walking = moving;
-        const g = walkingRef.current?.firstElementChild as SVGGElement | null;
-        if (g) g.style.animation = moving ? 'crew-walk .32s ease-in-out infinite' : 'float 4s ease-in-out infinite';
+        const body = walkingRef.current?.querySelector<SVGGElement>('[data-body]');
+        const shadow = playerRef.current?.querySelector<SVGEllipseElement>('[data-shadow]');
+        if (body) body.style.animation = moving ? 'crew-walk .32s ease-in-out infinite' : 'float 4s ease-in-out infinite';
+        if (shadow) shadow.style.animation = moving ? 'shadow-walk .32s ease-in-out infinite' : 'shadow-float 4s ease-in-out infinite';
       }
       if (moving && now - lastStep > 340) {
         lastStep = now;

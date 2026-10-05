@@ -47,9 +47,10 @@ browsers / projectors ──HTTPS──▶ reverse proxy (TLS) ──▶ api (Fa
 
 | Step | Action |
 |---|---|
-| Doors open | Crews sign in; check-in is visible per crew. Unassigned / disabled crews see why they cannot play. |
-| Start | Slots → *Slot n* → **Start sprint 1**. Preflight must have no blockers. Read the warnings: unconfirmed rules (demo only), crews without credentials, comparability, manual deviations. The initial set is released at start. |
-| During | Bonuses release automatically at their active-time offsets. Reserves: **Release now** when stations run dry (part of the plan; no reason needed). |
+| Roll call | Crews → **Slot rosters** → tick **Present** for each crew that reports in (or **All present** per slot). Attendance is what enables a crew's login; absent crews get "attendance has not been marked". |
+| Doors open (kick-in) | Slots → *Slot n* → **Open slot (kick-in)**. Present crews sign in, board and roam the ship. Nothing is visible or solvable yet. (**Close boarding** undoes it before Sprint 1.) |
+| Start | Slots → *Slot n* → **Start sprint 1** when you approve. Preflight must have no blockers (it blocks until the slot is open). Read the warnings: unconfirmed rules (demo only), absent / no-credential crews, comparability, manual deviations. The 60 initial questions (10 per domain) are released at start. |
+| During | **Refill** (Releases tab or the slot card) when stations run dry: it releases reserve questions from the slot's 20-question pool into the domains with the biggest gap (or one domain you pick). **Release bonus** sends the next of the 10 bonus questions (IMPOSTER DETECTED, first correct wins) whenever you like. Neither needs a reason; both are part of the plan. |
 | Emergency (power, network, broken question) | **Pause**: the deadline and every scheduled release stop and shift on Resume. Announce, fix, resume. |
 | Early release of a scheduled batch / manual override | Allowed with a written reason; it is shown as a **fairness deviation** in the plan, preflight and audit log. |
 | Device / account problems | Crews → sessions (revoke), disable / enable, **Send credentials (RESET)** for a new temporary password. |

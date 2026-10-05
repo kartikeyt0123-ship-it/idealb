@@ -26,6 +26,10 @@ export const rulesSchema = z.object({
   /** GROSS_EARNED: hints reduce the spendable wallet only. NET_COINS: hints also reduce score. */
   rankingMetric: z.enum(['GROSS_EARNED', 'NET_COINS']),
   bonusPolicy: z.enum(['OPEN_FIRST_CORRECT']),
+  /** MANUAL: a per-slot pool of bonus questions the organizer releases one at a time. SCHEDULED: blueprint offsets. */
+  bonusMode: z.enum(['MANUAL', 'SCHEDULED']).default('MANUAL'),
+  /** Marking a crew present (attendance) is what enables its login. */
+  attendanceGatesLogin: z.boolean().default(true),
   elimination: z.object({ enabled: z.boolean(), counts: z.array(z.number().int().min(0)).length(4) }),
   tiePolicy: z.enum(['SHARED_RANK_PUBLISHED_TIEBREAK']),
   sessionLimit: z.number().int().min(1).max(20),
@@ -55,6 +59,8 @@ export const DEFAULT_RULES: Rules = {
   startingWallet: 0,
   rankingMetric: 'GROSS_EARNED',
   bonusPolicy: 'OPEN_FIRST_CORRECT',
+  bonusMode: 'MANUAL',
+  attendanceGatesLogin: true,
   elimination: { enabled: false, counts: [0, 0, 0, 0] },
   tiePolicy: 'SHARED_RANK_PUBLISHED_TIEBREAK',
   sessionLimit: 4,
@@ -77,16 +83,17 @@ export const REHEARSAL_SECONDS = 120;
 export const RULE_CATALOGUE: { key: string; title: string; describe: (r: Rules) => string; fairness: boolean }[] = [
   { key: 'questionScope', title: 'Initial question scope', fairness: true, describe: (r) => r.questionScope === 'FRESH_PER_SPRINT' ? `Fresh release each sprint: ${sum(r.initialPerDomain) * 6} questions (${sum(r.initialPerDomain)} per domain), expiring at sprint end` : `One slot pool of ${sum(r.initialPerDomain) * 6} questions carried across all four sprints; solves count for the sprint in which they are accepted` },
   { key: 'initialPerDomain', title: 'Difficulty distribution', fairness: true, describe: (r) => `Per domain: ${r.initialPerDomain.EASY} easy, ${r.initialPerDomain.MEDIUM} medium, ${r.initialPerDomain.HARD} hard (six domains = ${r.initialPerDomain.EASY * 6}/${r.initialPerDomain.MEDIUM * 6}/${r.initialPerDomain.HARD * 6})` },
-  { key: 'extraPools', title: 'Reserve and bonus pools', fairness: true, describe: (r) => `${r.reservesPerSlot} reserves + ${r.bonusesPerSlot} bonus questions ${r.extraScope === 'PER_SLOT' ? 'per slot' : 'per sprint'}, separate from initial questions` },
+  { key: 'extraPools', title: 'Reserve and bonus pools', fairness: true, describe: (r) => `${r.reservesPerSlot} reserve questions per slot (mixed domains) refill the domains depleted by solves when the organizer presses Refill; ${r.bonusesPerSlot} bonus questions per slot (mixed domains) ${r.bonusMode === 'MANUAL' ? 'released by the organizer from time to time' : 'released automatically at the blueprint offsets'}. Released extras expire with their sprint.` },
   { key: 'rewards', title: 'Rewards', fairness: true, describe: (r) => `Easy ${r.rewards.EASY}, medium ${r.rewards.MEDIUM}, hard ${r.rewards.HARD}, bonus ${r.rewards.BONUS} IdeaCoins` },
   { key: 'hintCosts', title: 'Hint costs', fairness: true, describe: (r) => `${r.hintCosts.EASY}/${r.hintCosts.MEDIUM}/${r.hintCosts.HARD} (easy/medium/hard), bonus ${r.hintCosts.BONUS}; starting wallet ${r.startingWallet}` },
   { key: 'rankingMetric', title: 'Ranking basis', fairness: true, describe: (r) => r.rankingMetric === 'GROSS_EARNED' ? 'GROSS_EARNED: score = coins earned; hints reduce the spendable wallet only' : 'NET_COINS: score = earned − spent; hints reduce score' },
   { key: 'bonusPolicy', title: 'Bonus solve policy', fairness: true, describe: () => 'Open to every active crew in the slot; first correct verified solution wins. No click-to-reserve.' },
   { key: 'elimination', title: 'Elimination', fairness: true, describe: (r) => r.elimination.enabled ? `Enabled: bottom ${r.elimination.counts.join(' / ')} crews after sprints 1-4 (frozen standings, ties need a decision)` : 'Disabled (latest format does not restate elimination)' },
   { key: 'tiePolicy', title: 'Ties', fairness: true, describe: () => 'Shared rank. Final top-score ties require a published tiebreak or a joint-winner decision. Never by team ID.' },
+  { key: 'attendance', title: 'Attendance gates login', fairness: false, describe: (r) => r.attendanceGatesLogin ? 'A crew can sign in only after an organizer marks it present (attendance). Unmarking signs its devices out.' : 'Attendance is informational; enabled crews can always sign in.' },
   { key: 'sessions', title: 'Devices per crew', fairness: false, describe: (r) => `Up to ${r.sessionLimit} concurrent sessions per crew, one shared wallet (${r.sessionLimitPolicy === 'EVICT_OLDEST' ? 'oldest device is signed out' : 'extra sign-ins are rejected'})` },
   { key: 'recycling', title: 'Question recycling', fairness: true, describe: () => 'Disabled: solved or expired questions never reopen automatically' },
-  { key: 'schedule', title: 'Sprint schedule & release blueprint', fairness: true, describe: (r) => `4 sprints × ${r.sprintMinutes} active minutes (${r.preset}). Reserves per sprint ${r.blueprint.reservesPerSprint.join('/')}, bonuses ${r.blueprint.bonusesPerSprint.join('/')} at active minutes ${r.blueprint.bonusOffsetsMinutes.map((o) => `[${o.join(',')}]`).join(' ')}` },
+  { key: 'schedule', title: 'Sprint schedule & release blueprint', fairness: true, describe: (r) => `4 sprints × ${r.sprintMinutes} active minutes (${r.preset}), each started by an organizer after the slot is opened. Initial set released at sprint start; ${r.reservesPerSlot} reserves held in a slot pool for refills; ${r.bonusMode === 'SCHEDULED' ? `bonuses ${r.blueprint.bonusesPerSprint.join('/')} at active minutes ${r.blueprint.bonusOffsetsMinutes.map((o) => `[${o.join(',')}]`).join(' ')}` : `${r.bonusesPerSlot} bonuses released manually from the slot pool`}` },
   { key: 'singleRunningSlot', title: 'Concurrent slots', fairness: false, describe: (r) => r.singleRunningSlot ? 'Only one slot may run at a time' : 'Several slots may run at once' },
 ];
 

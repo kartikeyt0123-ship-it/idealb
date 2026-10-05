@@ -101,6 +101,8 @@ export interface SlotDto {
   capacity: number;
   scheduledStartAt: string | null;
   finalizedAt: string | null;
+  /** Set once an organizer opens (kicks in) the slot; its crews can board only after this. */
+  openedAt: string | null;
   version: number;
   date: string | null;
   dayLabel: string | null;
@@ -206,7 +208,7 @@ export interface CrewIdentity {
   role: 'CREW';
   team: { id: string; crewId: string; name: string; email: string; color: string; mustChangePassword: boolean };
   members: { name: string; institution: string; is_captain: boolean }[];
-  /** state: ASSIGNED, or the reason the crew cannot play (SLOT_UNASSIGNED, ACCOUNT_DISABLED, TEAM_DISQUALIFIED, TEAM_ARCHIVED). */
+  /** state: ASSIGNED, or the reason the crew cannot play (SLOT_NOT_OPEN, ATTENDANCE_REQUIRED, SLOT_UNASSIGNED, ACCOUNT_DISABLED, TEAM_DISQUALIFIED, TEAM_ARCHIVED). */
   access: { state: string; message: string; slot?: { id: string; number: number; name: string; phase: SlotPhase; date: string; dayLabel: string; scheduledStartAt: string | null } };
 }
 

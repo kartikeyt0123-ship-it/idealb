@@ -194,7 +194,8 @@ export class Realtime {
     }
     // Membership changes first, so a crew that just lost eligibility misses the private game events.
     if (ev.topic === 'eligibility.changed' || ev.topic === 'teams.changed' || ev.topic === 'event.changed') {
-      const teamRooms = ev.topic === 'teams.changed' ? (typeof ev.payload.teamId === 'string' ? [Rooms.team(ev.payload.teamId)] : [...this.io.sockets.adapter.rooms.keys()].filter((r) => r.startsWith('team:'))) : ev.rooms.filter((r) => r.startsWith('team:'));
+      const broad = ev.topic === 'eligibility.changed' && ev.rooms.some((r) => !r.startsWith('team:') && r !== Rooms.organizers);
+      const teamRooms = broad ? [...this.io.sockets.adapter.rooms.keys()].filter((r) => r.startsWith('team:')) : ev.topic === 'teams.changed' ? (typeof ev.payload.teamId === 'string' ? [Rooms.team(ev.payload.teamId)] : [...this.io.sockets.adapter.rooms.keys()].filter((r) => r.startsWith('team:'))) : ev.rooms.filter((r) => r.startsWith('team:'));
       const targets = ev.topic === 'event.changed' ? [...this.io.sockets.sockets.values()] : teamRooms.length ? await this.io.in(teamRooms).fetchSockets() : [];
       for (const s of targets) {
         const sock = this.io.sockets.sockets.get(s.id);

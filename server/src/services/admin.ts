@@ -28,7 +28,7 @@ export async function overview(q: Queryable) {
     const next = s.current_sprint < 4 && ['CONFIGURING', 'READY', 'WAITING'].includes(s.phase) ? s.current_sprint + 1 : null;
     const counts = await one<Record<string, number>>(
       q,
-      `SELECT count(*)::int AS crews, count(*) FILTER (WHERE t.account_enabled)::int AS enabled, count(*) FILTER (WHERE t.checked_in_at IS NOT NULL)::int AS checked_in,
+      `SELECT count(*)::int AS crews, count(*) FILTER (WHERE t.account_enabled)::int AS enabled, count(*) FILTER (WHERE t.checked_in_at IS NOT NULL)::int AS checked_in, count(*) FILTER (WHERE t.checked_in_at IS NULL AND t.account_enabled)::int AS absent,
               (SELECT count(*)::int FROM session x WHERE x.team_id IN (SELECT team_id FROM slot_enrollment WHERE slot_id=$1) AND x.revoked_at IS NULL AND x.expires_at > now()) AS sessions
          FROM slot_enrollment se JOIN team t ON t.id=se.team_id WHERE se.slot_id=$1`,
       [s.id],

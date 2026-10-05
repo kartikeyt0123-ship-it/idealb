@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, CalendarDays, KeyRound, LoaderCircle, LogOut, RefreshCw } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError, FALLBACK_EVENT_NAME, V1, type CrewIdentity } from '../lib/api';
 import { AccessCard, Button, Crewmate, Field, IdeaLabMark, Label } from '../components/ui';
 import { formatSlotDate, formatTime, useEventMeta } from '../game/format';
@@ -83,6 +83,18 @@ export function Cinematic({ onDone }: { onDone: () => void }) {
 }
 
 const STATUS_COPY: Record<string, { label: string; title: string; hint: string; tone: 'wait' | 'bad' }> = {
+  SLOT_NOT_OPEN: {
+    label: 'CREW STATUS / BOARDING NOT OPEN',
+    title: 'Your slot has not opened yet.',
+    hint: 'Stay on this screen. Boarding starts the moment the organizers open your slot — this page checks automatically.',
+    tone: 'wait',
+  },
+  ATTENDANCE_REQUIRED: {
+    label: 'CREW STATUS / ATTENDANCE',
+    title: 'Attendance not marked.',
+    hint: 'Report to the organizer desk. Your crew can board as soon as you are marked present.',
+    tone: 'wait',
+  },
   SLOT_UNASSIGNED: {
     label: 'CREW STATUS / AWAITING SLOT',
     title: 'Not yet assigned to a slot.',
@@ -100,6 +112,13 @@ export function StatusScreen({ me, onRefresh, onLogout, busy }: { me: CrewIdenti
   const st = me.access.state;
   const copy = STATUS_COPY[st] ?? { label: 'CREW STATUS / BOARDING UNAVAILABLE', title: 'Boarding unavailable.', hint: 'Contact the organizer desk.', tone: 'bad' as const };
   const wait = copy.tone === 'wait';
+  // Waiting states re-check automatically (slot opening / attendance / assignment).
+  useEffect(() => {
+    if (!wait) return;
+    const t = setInterval(onRefresh, 8000);
+    return () => clearInterval(t);
+  }, [wait, onRefresh]);
+  const slot = me.access.slot;
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="starfield absolute inset-0 z-40 overflow-y-auto bg-[#071722]/85 p-4 sm:p-5">
       <div className="mx-auto flex min-h-full max-w-[760px] flex-col justify-center py-8">
@@ -117,6 +136,13 @@ export function StatusScreen({ me, onRefresh, onLogout, busy }: { me: CrewIdenti
               <p className="mt-2 text-xs text-muted">{copy.hint}</p>
             </div>
           </div>
+          {slot && (
+            <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#3b6270] bg-[#112e3a] p-4 text-sm">
+              <CalendarDays size={16} className="text-primary" />
+              <span className="font-display font-bold">{slot.name}</span>
+              <span className="text-muted">{slot.dayLabel} · {formatSlotDate(slot.date)}{slot.scheduledStartAt ? ` · ${formatTime(slot.scheduledStartAt)}` : ''}</span>
+            </div>
+          )}
           <div className="mt-6 rounded-xl border-2 border-[#3b6270] bg-[#112e3a] p-4">
             <Label>CREW</Label>
             <div className="mt-2 font-display text-lg font-bold">{me.team.name}</div>

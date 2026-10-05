@@ -20,7 +20,7 @@ export function sprintDto(s: SprintRow | undefined, nowMs = Date.now()) {
 }
 
 export function slotDto(s: SlotRow & { date?: string; day_label?: string }) {
-  return { id: s.id, number: s.number, name: s.name, phase: s.phase, currentSprint: s.current_sprint, capacity: s.capacity, scheduledStartAt: s.scheduled_start_at, finalizedAt: s.finalized_at, version: s.version, date: s.date ?? null, dayLabel: s.day_label ?? null };
+  return { id: s.id, number: s.number, name: s.name, phase: s.phase, currentSprint: s.current_sprint, capacity: s.capacity, scheduledStartAt: s.scheduled_start_at, finalizedAt: s.finalized_at, openedAt: s.opened_at ?? null, version: s.version, date: s.date ?? null, dayLabel: s.day_label ?? null };
 }
 
 interface Shared {

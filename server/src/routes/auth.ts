@@ -32,6 +32,13 @@ async function crewIdentity(deps: Deps, teamId: string) {
   } catch (err) {
     const e = err as AppError;
     access = { state: e.code ?? 'ERROR', message: e.message };
+    // Waiting for the slot to open: still show which slot / when.
+    const slot = await one<{ id: string; number: number; name: string; phase: string; date: string; label: string; scheduled_start_at: Date | null }>(
+      deps.db,
+      `SELECT s.id, s.number, s.name, s.phase, to_char(d.date,'YYYY-MM-DD') AS date, d.label, s.scheduled_start_at FROM slot_enrollment se JOIN slot s ON s.id=se.slot_id JOIN event_day d ON d.id=s.day_id WHERE se.team_id=$1`,
+      [teamId],
+    );
+    if (slot && e.code === 'SLOT_NOT_OPEN') access.slot = { id: slot.id, number: slot.number, name: slot.name, phase: slot.phase, date: slot.date, dayLabel: slot.label, scheduledStartAt: slot.scheduled_start_at };
   }
   return {
     role: 'CREW' as const,
@@ -60,9 +67,9 @@ export async function authRoutes(app: FastifyInstance, deps: Deps) {
     deps.limiters.loginByIp.enforce(`ip:${clientIp(req)}`, 'Too many sign-in attempts from this network. Wait a moment.');
     deps.limiters.loginByIdentifier.enforce(`crew:${ident.toLowerCase()}`, 'Too many attempts for this account. Wait a minute and try again.');
     const isCrewId = /^crw-\d{3,}$/i.test(ident);
-    const team = await one<{ id: string; password_hash: string | null; status: string; account_enabled: boolean }>(
+    const team = await one<{ id: string; password_hash: string | null; status: string; account_enabled: boolean; checked_in_at: Date | null }>(
       deps.db,
-      `SELECT id, password_hash, status, account_enabled FROM team WHERE ${isCrewId ? 'crew_id=$1' : 'email_normalized=$1'}`,
+      `SELECT id, password_hash, status, account_enabled, checked_in_at FROM team WHERE ${isCrewId ? 'crew_id=$1' : 'email_normalized=$1'}`,
       [isCrewId ? ident.toUpperCase() : normalizeEmail(ident)],
     );
     // Constant-ish work whether or not the crew exists / has credentials yet.
@@ -70,6 +77,10 @@ export async function authRoutes(app: FastifyInstance, deps: Deps) {
     if (!team || !team.password_hash || !ok) throw new AppError('INVALID_CREDENTIALS', 'Crew credentials not recognised. Use the captain email (or CRW id) and the password from your credential mail.');
     if (team.status === 'ARCHIVED') throw new AppError('TEAM_ARCHIVED', 'This crew has been archived by the organizers.');
     if (!team.account_enabled) throw new AppError('ACCOUNT_DISABLED', 'This crew account is disabled. Ask the organizer desk.');
+    // Attendance is what enables a crew's login (rule attendanceGatesLogin).
+    if ((await getEvent(deps.db)).rules.attendanceGatesLogin && !team.checked_in_at) {
+      throw new AppError('ATTENDANCE_REQUIRED', 'Your attendance has not been marked yet. Report to the organizer desk — your login opens as soon as you are marked present.');
+    }
     const s = await createSession(deps.db, deps.cfg, { type: 'TEAM', teamId: team.id }, meta(req));
     await audit(deps.db, { type: 'TEAM', id: team.id }, 'team.login', { type: 'team', id: team.id }, { ip: clientIp(req), evicted: s.evicted.length });
     setSessionCookie(deps, reply, s.token);

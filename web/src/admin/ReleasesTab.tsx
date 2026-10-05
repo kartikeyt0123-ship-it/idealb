@@ -10,6 +10,7 @@ import { Badge, Button, Field, Label } from '../components/ui';
 import {
   CARD, Check, DataTable, Empty, Loadable, Notice, SMALL, SUBCARD, SectionHead, Select, SlotPicker, TD, TR, fmtOffset, fmtTime, useAdminData, useConsole, useRun, useSlotPick,
 } from './kit';
+import { PoolControls } from './PoolControls';
 import type { BankResponse, OverviewSlot, ReleaseRow } from './types';
 
 export function ReleasesTab() {
@@ -20,6 +21,13 @@ export function ReleasesTab() {
   return (
     <div className="space-y-6">
       <SlotPicker value={slotId} onChange={setSlotId} />
+      <div className={CARD}>
+        <SectionHead label="LIVE STOCK" title={`${slot.name} · refill domains & release bonuses`} />
+        <p className="mb-3 text-[11px] leading-5 text-muted">
+          Each sprint opens with 60 questions (10 per domain). Solved questions leave a domain short; <b>Refill</b> releases reserve questions from the slot’s 20-question pool into the most depleted domains. <b>Release bonus</b> sends the next of the 10 bonus questions (IMPOSTER DETECTED, open to everyone, first correct wins).
+        </p>
+        <PoolControls key={slot.id} slotId={slot.id} />
+      </div>
       <Plan slot={slot} />
       <ManualRelease slot={slot} />
       <Instances slotId={slot.id} />

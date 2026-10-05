@@ -36,6 +36,8 @@ carry `details.fields`.
 | `ORGANIZER_CLEARANCE_REQUIRED` | 403 | A crew session hit an organizer endpoint |
 | `FORBIDDEN` | 403 | Organizer role lacks the permission, or CSRF header / origin missing |
 | `ACCOUNT_DISABLED`, `SLOT_UNASSIGNED`, `WRONG_SLOT` | 403 | Crew cannot act (disabled / no slot / not its slot) |
+| `ATTENDANCE_REQUIRED` | 403 | Crew not marked present; login (and crew APIs) refused until the roll call |
+| `SLOT_NOT_OPEN` | 403 | The crew's slot has not been opened (kick-in) yet; it waits |
 | `TEAM_ELIMINATED`, `TEAM_DISQUALIFIED`, `TEAM_ARCHIVED` | 403 | Crew can no longer act |
 | `NOT_FOUND`, `QUESTION_NOT_RELEASED` | 404 | Unknown, unreleased or other-slot (indistinguishable on purpose) |
 | `CONFLICT`, `DUPLICATE_EMAIL`, `DUPLICATE_TEAM_NAME` | 409 | Uniqueness conflicts |
@@ -49,6 +51,7 @@ carry `details.fields`.
 | `QUESTION_ALREADY_SOLVED` | 409 | "This problem has already been solved by another crew. Move on to the next task." |
 | `QUESTION_EXPIRED`, `QUESTION_DISABLED`, `STALE_QUESTION` | 409 | Question closed with its sprint / disabled / reset |
 | `INSUFFICIENT_FUNDS`, `HINT_UNAVAILABLE` | 409 | Hint purchase rejected (no charge) |
+| `POOL_EMPTY` | 409 | No reserve (or bonus) questions left in the slot pool |
 | `SLOT_CHANGE_BLOCKED` | 409 | Crew already scored; slot changes are audited corrections |
 | `MAIL_NOT_CONFIGURED` | 409 | No mail transport; nothing was sent |
 | `IDEMPOTENCY_MISMATCH` | 409 | Key reused with different data |
@@ -197,8 +200,11 @@ Generated from the route registry (`server/src/routes/*.ts`). Auth `crew` / `org
 | POST | `/api/v1/admin/question-releases` | organizer (releases.manage) | Manual override release (recorded as a fairness deviation) — body `{ slotId, sprintNumber, type, versionIds, offsetSeconds, expiresAtSprintEnd, announcement?, reason, releaseImmediately }` |
 | POST | `/api/v1/admin/question-releases/:id/cancel` | organizer (releases.manage) | Cancel an unreleased release — body `{ reason }` |
 | POST | `/api/v1/admin/question-releases/:id/release` | organizer (releases.manage) | Release now (idempotent). Early release of a scheduled batch needs a reason — body `{ reason? }` |
+| POST | `/api/v1/admin/slots/:slotId/bonus/next` | organizer (releases.manage) | Release the next bonus question from the slot pool |
 | POST | `/api/v1/admin/slots/:slotId/plan` | organizer (releases.manage) | Build / rebuild the slot release plan from the blueprint (before start only) |
+| GET | `/api/v1/admin/slots/:slotId/pools` | organizer (teams.read) | Per-domain stock (available / solved / deficit) and reserve + bonus pools left |
 | GET | `/api/v1/admin/slots/:slotId/question-instances` | organizer (teams.read) | Every instance in the slot plan with solver and status |
+| POST | `/api/v1/admin/slots/:slotId/refill` | organizer (releases.manage) | Release reserve questions into the most depleted domains (count, optional domain) — body `{ count?, domain? }` |
 
 ### results
 
@@ -223,6 +229,8 @@ Generated from the route registry (`server/src/routes/*.ts`). Auth `crew` / `org
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | PATCH | `/api/v1/admin/slots/:slotId` | organizer (slots.control) | Edit slot name, capacity, informational start time, readiness |
+| POST | `/api/v1/admin/slots/:slotId/close-boarding` | organizer (slots.control) | Undo an accidental kick-in (before Sprint 1 only) — body `{ reason }` |
+| POST | `/api/v1/admin/slots/:slotId/open` | organizer (slots.control) | Open (kick in) the slot: its crews may board and roam; no sprint starts |
 | POST | `/api/v1/admin/slots/:slotId/sprints/:n/close` | organizer (slots.control) | Close the sprint early (reason required); standings freeze — body `{ note }` |
 | GET | `/api/v1/admin/slots/:slotId/sprints/:n/elimination-review` | organizer (slots.control) | Optional elimination preview for a closed sprint |
 | POST | `/api/v1/admin/slots/:slotId/sprints/:n/finalize` | organizer (slots.control) | Finalize a closed sprint (applies optional elimination) — body `{ resolution? }` |
@@ -242,4 +250,5 @@ Generated from the route registry (`server/src/routes/*.ts`). Auth `crew` / `org
 | PATCH | `/api/v1/admin/teams/:id` | organizer (teams.write) | Edit crew, enable/disable, check-in, slot (blocked after scoring) — body `TeamPatch` |
 | POST | `/api/v1/admin/teams/:id/disqualify` | organizer (disqualify) | Disqualify a crew (reason required) — body `{ reason }` |
 | GET | `/api/v1/admin/teams/:id/sessions` | organizer (teams.read) | Active devices of a crew |
+| POST | `/api/v1/admin/teams/attendance` | organizer (teams.write) | Roll call: mark crews present (enables login) or absent (signs them out) — body `{ teamIds, present }` |
 | POST | `/api/v1/admin/teams/bulk-assign` | organizer (teams.write) | Assign many crews to a slot (preview unless apply=true) — body `{ teamIds, slot, apply }` |

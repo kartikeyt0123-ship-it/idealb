@@ -208,32 +208,43 @@ export async function buildSlotPlan(tx: Tx, actor: Actor, slotId: string, take?:
       }
     }
   }
-  // Reserves: manual batches per sprint (organizer releases them when stations run dry)
-  let rn = 0;
-  for (const sp of sprints) {
-    const count = rules.blueprint.reservesPerSprint[sp.number - 1];
-    if (!count) continue;
-    const rid = await addRelease({ sprintId: sp.id, type: 'RESERVE', label: `Sprint ${sp.number} reserve batch`, status: 'PENDING', offset: null, expires: rules.questionScope === 'FRESH_PER_SPRINT', key: `reserve-s${sp.number}` });
-    for (let k = 0; k < count; k++) {
-      rn++;
-      const d = domains[(rn - 1) % domains.length];
-      await addInstance(rid, 'RESERVE', pick('REGULAR', d.id, RESERVE_PATTERN[k % RESERVE_PATTERN.length]), `RSV-${String(rn).padStart(2, '0')}`, null);
-    }
+  // Reserves: one slot pool of single-question releases across mixed domains. The organizer
+  // releases them with Refill, which tops up the domains depleted by solves (see refillSlot).
+  // Unused reserves carry over to later sprints; released ones expire with their sprint.
+  const fresh = rules.questionScope === 'FRESH_PER_SPRINT';
+  for (let k = 0; k < rules.reservesPerSlot; k++) {
+    const d = domains[k % domains.length];
+    const diff = RESERVE_PATTERN[Math.floor(k / domains.length) % RESERVE_PATTERN.length];
+    const n = String(k + 1).padStart(2, '0');
+    const rid = await addRelease({ sprintId: null, type: 'RESERVE', label: `Reserve ${n} · ${d.slug}`, status: 'PENDING', offset: null, expires: fresh, key: `reserve-${n}` });
+    await addInstance(rid, 'RESERVE', pick('REGULAR', d.id, diff), `RSV-${n}`, null);
   }
-  // Bonuses: scheduled at blueprint active-time offsets, one per release
-  let bn = 0;
-  for (const sp of sprints) {
-    const offsets = rules.blueprint.bonusOffsetsMinutes[sp.number - 1];
-    for (let k = 0; k < offsets.length; k++) {
-      bn++;
+  // Bonuses: MANUAL (default) = a slot pool released by the organizer from time to time;
+  // SCHEDULED = released automatically at the blueprint's active-minute offsets.
+  if (rules.bonusMode === 'MANUAL') {
+    for (let k = 0; k < rules.bonusesPerSlot; k++) {
+      const n = String(k + 1).padStart(2, '0');
       const rid = await addRelease({
-        sprintId: sp.id, type: 'BONUS', label: `Bonus ${bn} (sprint ${sp.number}, +${offsets[k]} min)`, status: 'SCHEDULED', offset: scaledOffsetSeconds(rules, offsets[k]),
-        expires: true, key: `bonus-s${sp.number}-${k + 1}`, announcement: 'IMPOSTER DETECTED — an emergency bonus problem is live!',
+        sprintId: null, type: 'BONUS', label: `Bonus ${n}`, status: 'PENDING', offset: null, expires: true, key: `bonus-pool-${n}`,
+        announcement: 'IMPOSTER DETECTED — an emergency bonus problem is live!',
       });
-      await addInstance(rid, 'BONUS', pick('BONUS', null, null), `BONUS-${String(bn).padStart(2, '0')}`, null);
+      await addInstance(rid, 'BONUS', pick('BONUS', null, null), `BONUS-${n}`, null);
+    }
+  } else {
+    let bn = 0;
+    for (const sp of sprints) {
+      const offsets = rules.blueprint.bonusOffsetsMinutes[sp.number - 1];
+      for (let k = 0; k < offsets.length; k++) {
+        bn++;
+        const rid = await addRelease({
+          sprintId: sp.id, type: 'BONUS', label: `Bonus ${bn} (sprint ${sp.number}, +${offsets[k]} min)`, status: 'SCHEDULED', offset: scaledOffsetSeconds(rules, offsets[k]),
+          expires: true, key: `bonus-s${sp.number}-${k + 1}`, announcement: 'IMPOSTER DETECTED — an emergency bonus problem is live!',
+        });
+        await addInstance(rid, 'BONUS', pick('BONUS', null, null), `BONUS-${String(bn).padStart(2, '0')}`, null);
+      }
     }
   }
-  await audit(tx, actor, 'slot.plan_built', { type: 'slot', id: slotId }, { instances: created, scope: rules.questionScope });
+  await audit(tx, actor, 'slot.plan_built', { type: 'slot', id: slotId }, { instances: created, scope: rules.questionScope, bonusMode: rules.bonusMode });
   return { instances: created };
 }
 
@@ -286,4 +297,122 @@ export async function createManualRelease(
   await audit(tx, actor, 'release.created_manual', { type: 'release', id: rid }, { slot: slot.number, type: args.type, count: k, fairnessDeviation: true }, args.reason);
   if (args.releaseImmediately) await releaseNow(tx, actor, rid, { reason: args.reason });
   return { releaseId: rid };
+}
+
+// ---------------------------------------------------------------------------
+// Organizer pools: refill depleted domains from the reserve pool, release bonuses one at a time
+// ---------------------------------------------------------------------------
+
+export interface DomainStock {
+  domainId: string;
+  slug: string;
+  name: string;
+  /** Released, unsolved, unexpired regular questions open to crews right now. */
+  available: number;
+  /** Solved in the current sprint. */
+  solved: number;
+  /** Target = the initial per-domain count; deficit = target − available. */
+  target: number;
+  deficit: number;
+  /** Unreleased reserve questions of this domain still in the slot pool. */
+  pool: number;
+}
+
+async function currentSprintRow(q: Queryable, slotId: string) {
+  const slot = await one<SlotRow>(q, 'SELECT * FROM slot WHERE id=$1', [slotId]);
+  if (!slot) throw new AppError('NOT_FOUND', 'Slot not found.');
+  const sprint = slot.current_sprint ? await one<SprintRow>(q, 'SELECT * FROM sprint WHERE slot_id=$1 AND number=$2', [slotId, slot.current_sprint]) : undefined;
+  return { slot, sprint };
+}
+
+/** Per-domain stock for the slot's current sprint, plus what is left in the reserve and bonus pools. */
+export async function poolStatus(q: Queryable, slotId: string) {
+  const ev = await getEvent(q);
+  const { slot, sprint } = await currentSprintRow(q, slotId);
+  const target = ev.rules.initialPerDomain.EASY + ev.rules.initialPerDomain.MEDIUM + ev.rules.initialPerDomain.HARD;
+  const rows = await many<{ id: string; slug: string; name: string; available: number; solved: number; pool: number }>(
+    q,
+    `SELECT d.id, d.slug, d.name,
+            count(qi.id) FILTER (WHERE r.status='RELEASED' AND qi.status='AVAILABLE' AND qi.kind<>'BONUS' AND (qi.expires_with_sprint_id IS NULL OR qi.expires_with_sprint_id=$2))::int AS available,
+            count(qi.id) FILTER (WHERE qi.status='SOLVED' AND qi.kind<>'BONUS' AND qi.solved_sprint_id=$2)::int AS solved,
+            count(qi.id) FILTER (WHERE r.type='RESERVE' AND r.status='PENDING')::int AS pool
+       FROM domain d
+       LEFT JOIN question_instance qi ON qi.domain_id=d.id AND qi.slot_id=$1
+       LEFT JOIN release r ON r.id=qi.release_id
+      GROUP BY d.id ORDER BY d.sort`,
+    [slotId, sprint?.id ?? null],
+  );
+  const domains: DomainStock[] = rows.map((r) => ({ domainId: r.id, slug: r.slug, name: r.name, available: r.available, solved: r.solved, target, deficit: Math.max(0, target - r.available), pool: r.pool }));
+  const bonus = await one<{ pending: number; released: number }>(
+    q,
+    `SELECT count(*) FILTER (WHERE status='PENDING' AND (sprint_id IS NULL OR sprint_id=$2))::int AS pending, count(*) FILTER (WHERE status='RELEASED')::int AS released
+       FROM release WHERE slot_id=$1 AND type='BONUS'`,
+    [slotId, sprint?.id ?? null],
+  );
+  return {
+    slotId,
+    sprint: sprint ? { number: sprint.number, status: sprint.status } : null,
+    running: slot.phase === 'RUNNING' && sprint?.status === 'RUNNING',
+    domains,
+    reservesLeft: domains.reduce((a, d) => a + d.pool, 0),
+    totalDeficit: domains.reduce((a, d) => a + d.deficit, 0),
+    bonusesLeft: bonus?.pending ?? 0,
+    bonusesReleased: bonus?.released ?? 0,
+    bonusMode: ev.rules.bonusMode,
+  };
+}
+
+/**
+ * Releases up to `count` reserve questions, one at a time, each into the domain
+ * with the largest deficit (target − available) that still has reserves —
+ * compensating for questions that disappeared through solves. `domain`
+ * restricts the refill to one domain. Part of the plan: no fairness reason needed.
+ */
+export async function refillSlot(tx: Tx, actor: Actor, slotId: string, opts: { count?: number; domain?: string } = {}) {
+  await tx.query('SELECT id FROM slot WHERE id=$1 FOR UPDATE', [slotId]);
+  const status = await poolStatus(tx, slotId);
+  if (!status.running) throw new AppError('SPRINT_NOT_RUNNING', 'Refill releases questions into a running sprint. Start (or resume) the sprint first.');
+  const want = Math.min(Math.max(1, Math.floor(opts.count ?? (status.totalDeficit || 1))), 50);
+  const stock = new Map(status.domains.map((d) => [d.slug, { ...d }]));
+  if (opts.domain && !stock.has(opts.domain)) throw new AppError('VALIDATION_FAILED', 'Unknown domain.');
+  const released: { label: string; domain: string; release: string }[] = [];
+  for (let i = 0; i < want; i++) {
+    const candidates = [...stock.values()].filter((d) => d.pool > 0 && (!opts.domain || d.slug === opts.domain));
+    if (!candidates.length) break;
+    // Largest deficit first; ties → most solved this sprint → domain order.
+    candidates.sort((a, b) => b.target - b.available - (a.target - a.available) || b.solved - a.solved);
+    const d = candidates[0];
+    const r = await one<{ id: string; label: string }>(
+      tx,
+      `SELECT r.id, qi.label FROM release r JOIN question_instance qi ON qi.release_id=r.id
+        WHERE r.slot_id=$1 AND r.type='RESERVE' AND r.status='PENDING' AND qi.domain_id=$2 ORDER BY r.blueprint_key LIMIT 1`,
+      [slotId, d.domainId],
+    );
+    if (!r) {
+      d.pool = 0;
+      i--;
+      continue;
+    }
+    await releaseNow(tx, actor, r.id);
+    released.push({ label: r.label, domain: d.slug, release: r.id });
+    d.pool--;
+    d.available++;
+  }
+  if (!released.length) throw new AppError('POOL_EMPTY', opts.domain ? `No reserve questions left for ${opts.domain} in this slot.` : 'The reserve pool of this slot is empty.');
+  await audit(tx, actor, 'release.refill', { type: 'slot', id: slotId }, { requested: want, released: released.map((r) => `${r.label}:${r.domain}`) });
+  return { released, status: await poolStatus(tx, slotId) };
+}
+
+/** Releases the next bonus question of the slot's pool (MANUAL bonus mode). Open to every crew; first correct wins. */
+export async function releaseNextBonus(tx: Tx, actor: Actor, slotId: string) {
+  await tx.query('SELECT id FROM slot WHERE id=$1 FOR UPDATE', [slotId]);
+  const { sprint } = await currentSprintRow(tx, slotId);
+  const r = await one<{ id: string }>(
+    tx,
+    `SELECT id FROM release WHERE slot_id=$1 AND type='BONUS' AND status='PENDING' AND (sprint_id IS NULL OR sprint_id=$2) ORDER BY blueprint_key LIMIT 1`,
+    [slotId, sprint?.id ?? null],
+  );
+  if (!r) throw new AppError('POOL_EMPTY', 'No bonus questions left in this slot’s pool.');
+  const out = await releaseNow(tx, actor, r.id);
+  return { release: out.release, status: await poolStatus(tx, slotId) };
 }

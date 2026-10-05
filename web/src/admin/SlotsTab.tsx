@@ -3,13 +3,14 @@
  * control with preflight, elimination review, slot / event finalization with
  * tie decisions, release-plan build and announcements.
  */
-import { ArrowDown, ArrowUp, Flag, Hammer, Megaphone, Pause, Play, Rocket, Square, Trophy } from 'lucide-react';
+import { ArrowDown, ArrowUp, DoorClosed, DoorOpen, Flag, Hammer, Megaphone, Pause, Play, Rocket, Square, Trophy } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { V1, api, type SprintDto } from '../lib/api';
 import { Badge, Button, Field, Label, StatePanel, useToast } from '../components/ui';
 import {
   CARD, Check, Countdown, Empty, Modal, Notice, NumInput, SMALL, SUBCARD, SectionHead, Select, errText, fmtDate, fmtDuration, fmtTime, toApiError, useConsole, useRun,
 } from './kit';
+import { PoolControls } from './PoolControls';
 import type { OverviewSlot, Preflight, ReviewRow, TopConflict } from './types';
 
 export function SlotsTab() {
@@ -151,7 +152,7 @@ function SlotCard({ slot, onFinalize, onElimination }: { slot: OverviewSlot; onF
       confirmLabel: pf.ok ? `Start sprint ${n} now` : 'Blocked by preflight',
       ack: pf.ok ? 'I reviewed the preflight. Start the sprint now (rules freeze on the first start).' : undefined,
       body: <PreflightView pf={pf} />,
-      effects: pf.ok ? [`Sprint ${n} starts immediately; the timer runs on server time.`, 'The initial question set is released to every crew in this slot.', 'Bonus releases follow their active-minute offsets.'] : undefined,
+      effects: pf.ok ? [`Sprint ${n} starts immediately; the timer runs on server time.`, 'The initial question set (60 questions, 10 per domain) is released to every crew in this slot.', overview.rules.bonusMode === 'SCHEDULED' ? 'Bonus releases follow their active-minute offsets.' : 'Reserves (Refill) and bonuses are released by you from the slot pools.'] : undefined,
     });
     if (!ok) return;
     await run('start', async () => {
@@ -184,7 +185,7 @@ function SlotCard({ slot, onFinalize, onElimination }: { slot: OverviewSlot; onF
       title: `Build release plan · ${slot.name}`,
       tone: 'warning',
       effects: [
-        'Creates the slot plan from the blueprint: initial sets, reserve batches and scheduled bonuses.',
+        'Creates the slot plan: 4 × 60 initial questions (one fresh set per sprint), a 20-question reserve pool for refills and a 10-question bonus pool.',
         existing ? `Replaces the existing unreleased plan (${existing} release(s)).` : 'No plan exists yet.',
         'Picks unused PUBLISHED questions only (never auto-publishes).',
       ],
@@ -192,6 +193,32 @@ function SlotCard({ slot, onFinalize, onElimination }: { slot: OverviewSlot; onF
     });
     if (!ok) return;
     await run('plan', () => api.post<{ instances: number }>(`${base}/plan`, {}), (r) => `Plan built: ${r.instances} question instance(s).`);
+  };
+
+  const openSlot = async () => {
+    const ok = await confirm({
+      title: `Open ${slot.name} (kick-in)`,
+      tone: 'primary',
+      effects: [
+        `Crews of ${slot.name} that are marked present can sign in, board the ship and roam.`,
+        `${slot.counts.checked_in} of ${slot.counts.crews} crews are marked present${slot.counts.absent ? ` — ${slot.counts.absent} still absent (they cannot sign in until marked present)` : ''}.`,
+        'No sprint starts and no question is visible until you start Sprint 1.',
+      ],
+      confirmLabel: 'Open slot',
+    });
+    if (!ok) return;
+    await run('open', () => api.post(`${base}/open`, {}), `${slot.name} is open — crews can board.`);
+  };
+  const closeBoarding = async () => {
+    const r = await confirm({
+      title: `Close boarding · ${slot.name}`,
+      tone: 'warning',
+      effects: ['Signed-in crews of this slot return to the waiting screen.', 'Only possible before Sprint 1 starts.'],
+      reason: { label: 'REASON', min: 4 },
+      confirmLabel: 'Close boarding',
+    });
+    if (!r) return;
+    await run('closeBoarding', () => api.post(`${base}/close-boarding`, { reason: r.reason }), 'Boarding closed.');
   };
 
   const elimOn = overview.rules.elimination.enabled;
@@ -206,6 +233,7 @@ function SlotCard({ slot, onFinalize, onElimination }: { slot: OverviewSlot; onF
           {slot.scheduledStartAt && <div className="text-[11px] text-muted">Scheduled (informational): {fmtTime(slot.scheduledStartAt)}</div>}
         </div>
         <div className="flex flex-wrap gap-2">
+          <Badge>{slot.openedAt ? 'BOARDING OPEN' : 'NOT OPEN'}</Badge>
           <Badge>{slot.phase}</Badge>
           {slot.currentSprint > 0 && <Badge>{`SPRINT ${slot.currentSprint}/4`}</Badge>}
         </div>
@@ -213,20 +241,37 @@ function SlotCard({ slot, onFinalize, onElimination }: { slot: OverviewSlot; onF
       <div className="mb-3 grid grid-cols-4 gap-2 text-center">
         <Stat k="CREWS" v={`${slot.counts.crews}/${slot.capacity}`} />
         <Stat k="ENABLED" v={slot.counts.enabled} />
-        <Stat k="CHECKED IN" v={slot.counts.checked_in} />
+        <Stat k="PRESENT" v={`${slot.counts.checked_in}/${slot.counts.crews}`} />
         <Stat k="SESSIONS" v={slot.counts.sessions} />
       </div>
       <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {slot.sprints.map((sp) => <SprintChip key={sp.id} sp={sp} current={sp.number === slot.currentSprint} />)}
       </div>
-      {slot.releases.length === 0 && PRE_START.includes(slot.phase) && <div className="mb-3"><Notice tone="warn">No release plan yet. Build it before starting sprint 1.</Notice></div>}
+      {slot.releases.length === 0 && PRE_START.includes(slot.phase) && <div className="mb-3"><Notice tone="warn">No release plan yet. Build it before opening the slot.</Notice></div>}
+      {!slot.openedAt && slot.releases.length > 0 && slot.phase !== 'COMPLETED' && (
+        <div className="mb-3">
+          <Notice tone="info">
+            Step 1 · mark attendance (CREWS → roster) · Step 2 · <b>Open slot</b> so present crews can board and roam · Step 3 · start Sprint 1 when you approve.
+          </Notice>
+        </div>
+      )}
       {slot.preflight && !slot.preflight.ok && slot.nextSprint && (
         <div className="mb-3"><Notice tone="danger">Sprint {slot.nextSprint} blocked: {slot.preflight.blockers.join(' ')}</Notice></div>
       )}
 
       <div className="flex flex-wrap gap-2">
+        {can('slots.control') && !slot.openedAt && slot.phase !== 'COMPLETED' && (
+          <Button className={SMALL} disabled={!!busy || slot.releases.length === 0} onClick={() => void openSlot()}>
+            <DoorOpen size={12} /> Open slot (kick-in)
+          </Button>
+        )}
+        {can('slots.control') && slot.openedAt && slot.currentSprint === 0 && (
+          <Button secondary className={SMALL} disabled={!!busy} onClick={() => void closeBoarding()}>
+            <DoorClosed size={12} /> Close boarding
+          </Button>
+        )}
         {can('slots.control') && slot.nextSprint && (
-          <Button className={SMALL} disabled={!!busy} onClick={() => void start(slot.nextSprint!)}>
+          <Button className={SMALL} disabled={!!busy || !slot.openedAt} title={slot.openedAt ? undefined : 'Open the slot first'} onClick={() => void start(slot.nextSprint!)}>
             <Rocket size={12} /> Start sprint {slot.nextSprint}
           </Button>
         )}
@@ -250,6 +295,11 @@ function SlotCard({ slot, onFinalize, onElimination }: { slot: OverviewSlot; onF
         )}
       </div>
 
+      {slot.openedAt && slot.currentSprint > 0 && slot.phase !== 'COMPLETED' && (
+        <div className="mt-4">
+          <PoolControls slotId={slot.id} compact />
+        </div>
+      )}
       {slot.result && (
         <div className={`${SUBCARD} mt-4`}>
           <Label className="mb-2">SLOT RESULT · FINAL · {fmtTime(slot.result.confirmed_at)}</Label>

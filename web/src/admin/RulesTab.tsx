@@ -159,6 +159,10 @@ function RuleEditor({ data, reload }: { data: RulesResponse; reload: () => Promi
             <Select ariaLabel="Session policy" value={r.sessionLimitPolicy} onChange={(v) => set('sessionLimitPolicy', v)} options={[{ value: 'EVICT_OLDEST', label: 'EVICT_OLDEST' }, { value: 'REJECT', label: 'REJECT' }]} />
           </Field>
           <div className="pt-6"><Check checked={r.singleRunningSlot} onChange={(v) => set('singleRunningSlot', v)} label="Only one slot may run at a time" /></div>
+          <Field label="BONUS RELEASE" hint="MANUAL = you release the 10 bonus questions from time to time">
+            <Select ariaLabel="Bonus release mode" value={r.bonusMode ?? 'MANUAL'} onChange={(v) => set('bonusMode', v)} options={[{ value: 'MANUAL', label: 'MANUAL (organizer)' }, { value: 'SCHEDULED', label: 'SCHEDULED (blueprint offsets)' }]} />
+          </Field>
+          <div className="pt-6"><Check checked={r.attendanceGatesLogin ?? true} onChange={(v) => set('attendanceGatesLogin', v)} label="Attendance enables login (crews must be marked present)" /></div>
         </div>
         <div className={SUBCARD}>
           <Check checked={r.elimination.enabled} onChange={(v) => set('elimination', { ...r.elimination, enabled: v })} label="Elimination enabled (bottom N crews after each sprint, frozen standings)" />

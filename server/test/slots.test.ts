@@ -41,7 +41,7 @@ describe('demo structure', () => {
     expect(nexora).toEqual({ crew_id: 'CRW-001', number: 1 });
   });
 
-  it('per slot: 60 initial per sprint (10/domain, 5E/3M/2H), 20 reserves, 10 bonuses at the blueprint offsets', async () => {
+  it('per slot: 60 initial per sprint (10/domain, 5E/3M/2H); a 20-question reserve pool and a 10-question bonus pool, mixed domains', async () => {
     const sid = await slotId(env, 1);
     const per = await many<{ sprint: number; type: string; n: number; e: number; m: number; h: number }>(
       env.db,
@@ -49,13 +49,15 @@ describe('demo structure', () => {
          FROM question_instance qi JOIN release r ON r.id=qi.release_id JOIN sprint sp ON sp.id=r.sprint_id WHERE qi.slot_id=$1 GROUP BY sp.number, r.type ORDER BY 1, 2`,
       [sid],
     );
-    for (let s = 1; s <= 4; s++) {
-      expect(per.find((p) => p.sprint === s && p.type === 'INITIAL')).toMatchObject({ n: 60, e: 30, m: 18, h: 12 });
-      expect(per.find((p) => p.sprint === s && p.type === 'RESERVE')!.n).toBe(5);
-    }
-    expect(per.filter((p) => p.type === 'BONUS').map((p) => p.n)).toEqual([3, 3, 2, 2]);
-    const offsets = await many<{ o: number }>(env.db, `SELECT offset_seconds AS o FROM release r JOIN sprint sp ON sp.id=r.sprint_id WHERE r.slot_id=$1 AND r.type='BONUS' ORDER BY sp.number, offset_seconds`, [sid]);
-    expect(offsets.map((x) => x.o / 60)).toEqual([8, 16, 24, 8, 16, 24, 10, 20, 10, 20]);
+    for (let s = 1; s <= 4; s++) expect(per.find((p) => p.sprint === s && p.type === 'INITIAL')).toMatchObject({ n: 60, e: 30, m: 18, h: 12 });
+    expect(per.filter((p) => p.type !== 'INITIAL')).toEqual([]);
+    const pools = await many<{ type: string; n: number; domains: number; pending: number }>(
+      env.db,
+      `SELECT r.type, count(*)::int AS n, count(DISTINCT qi.domain_id)::int AS domains, count(*) FILTER (WHERE r.status='PENDING')::int AS pending
+         FROM release r JOIN question_instance qi ON qi.release_id=r.id WHERE r.slot_id=$1 AND r.sprint_id IS NULL GROUP BY r.type ORDER BY r.type`,
+      [sid],
+    );
+    expect(pools).toEqual([{ type: 'BONUS', n: 10, domains: 4, pending: 10 }, { type: 'RESERVE', n: 20, domains: 6, pending: 20 }]);
     // No question version is shared between slots.
     const shared = await one<{ n: number }>(env.db, `SELECT count(*)::int AS n FROM (SELECT question_version_id FROM question_instance GROUP BY 1 HAVING count(DISTINCT slot_id) > 1) x`);
     expect(shared!.n).toBe(0);

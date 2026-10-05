@@ -1,9 +1,11 @@
 /**
- * Crews: searchable table, edit / create, sessions, disqualification, ledger
- * adjustments, bulk slot assignment and credential delivery.
+ * Crews: slot rosters (Unassigned + one list per slot, roll call, move, add a
+ * crew straight into a slot), the searchable table, edit / create, sessions,
+ * disqualification, ledger adjustments, bulk slot assignment, attendance and
+ * credential delivery. Attendance (present) is what enables a crew's login.
  */
-import { Coins, KeyRound, MonitorSmartphone, Pencil, Plus, ShieldAlert, ShieldCheck, Users } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { Coins, KeyRound, LayoutGrid, List, MonitorSmartphone, Pencil, Plus, ShieldAlert, ShieldCheck, UserCheck, UserX, Users } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { V1, api } from '../lib/api';
 import { Badge, Button, Field, Label, StatePanel, useToast } from '../components/ui';
 import {
@@ -19,7 +21,14 @@ export function CrewsTab() {
   const [slotF, setSlotF] = useState('ALL');
   const [credF, setCredF] = useState('ALL');
   const [sel, setSel] = useState<string[]>([]);
-  const [edit, setEdit] = useState<TeamRow | 'new' | null>(null);
+  const [edit, setEdit] = useState<TeamRow | { newInSlot: number | null } | null>(null);
+  const [view, setView] = useState<'rosters' | 'table'>('rosters');
+  const { run: runAtt } = useRun();
+  const attendance = async (ids: string[], present: boolean) => {
+    const r = await runAtt('att', () => api.post<{ changed: string[] }>(`${V1}/admin/teams/attendance`, { teamIds: ids, present }), (x) =>
+      x.changed.length ? `${x.changed.length} crew(s) marked ${present ? 'present — login enabled' : 'absent — signed out'}.` : 'No change.');
+    if (r) void st.reload();
+  };
   const [sessions, setSessions] = useState<TeamRow | null>(null);
   const [adjust, setAdjust] = useState<TeamRow | null>(null);
   const [bulk, setBulk] = useState<'assign' | 'creds' | null>(null);
@@ -37,8 +46,15 @@ export function CrewsTab() {
     <div className="space-y-4">
       <div className={CARD}>
         <SectionHead label="CREW MANIFEST" title={`Crews (${st.data?.length ?? '…'})`}>
-          {can('teams.write') && <Button className={SMALL} onClick={() => setEdit('new')}><Plus size={12} /> New crew</Button>}
+          <div className="flex flex-wrap gap-2">
+            <Button secondary={view !== 'rosters'} className={SMALL} onClick={() => setView('rosters')}><LayoutGrid size={12} /> Slot rosters</Button>
+            <Button secondary={view !== 'table'} className={SMALL} onClick={() => setView('table')}><List size={12} /> Table</Button>
+            {can('teams.write') && <Button className={SMALL} onClick={() => setEdit({ newInSlot: null })}><Plus size={12} /> New crew</Button>}
+          </div>
         </SectionHead>
+        {overview.rules.attendanceGatesLogin && (
+          <p className="mb-3 text-[11px] text-muted">Tick <b>Present</b> to mark attendance — that is what enables a crew’s login. Unticking signs the crew out. Import crews from CSV/XLSX in the IMPORT tab.</p>
+        )}
         <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
           <input className="input !py-2" placeholder="Search crew ID, team, email, captain…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search crews" />
           <Select ariaLabel="Filter by slot" value={slotF} onChange={setSlotF} options={[{ value: 'ALL', label: 'All slots' }, { value: 'NONE', label: 'Unassigned' }, ...overview.slots.map((s) => ({ value: String(s.number), label: `${s.name} · ${fmtDate(s.date)}` }))]} />
@@ -48,18 +64,33 @@ export function CrewsTab() {
           <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#3b6270] bg-[#112e3a] px-3 py-2 text-xs">
             <span>{sel.length} selected</span>
             {can('teams.write') && <Button secondary className={SMALL} onClick={() => setBulk('assign')}><Users size={11} /> Assign slot</Button>}
+            {can('teams.write') && <Button secondary className={SMALL} onClick={() => void attendance(sel, true)}><UserCheck size={11} /> Mark present</Button>}
+            {can('teams.write') && <Button secondary className={SMALL} onClick={() => void attendance(sel, false)}><UserX size={11} /> Mark absent</Button>}
             {can('credentials.send') && <Button secondary className={SMALL} onClick={() => setBulk('creds')}><KeyRound size={11} /> Send credentials</Button>}
             <Button secondary className={SMALL} onClick={() => setSel([])}>Clear</Button>
           </div>
         )}
       </div>
-      <Loadable state={st} title="Crews" empty={(d) => d.length === 0}>
+      {view === 'rosters' && (
+        <Loadable state={st} title="Crews">
+          {(all) => (
+            <RosterBoard
+              teams={all.filter((t) => t.status !== 'ARCHIVED' && (!q || `${t.crew_id} ${t.name} ${t.email} ${t.captain_name}`.toLowerCase().includes(q.toLowerCase())))}
+              onAttendance={attendance}
+              onEdit={(t) => setEdit(t)}
+              onAdd={(slot) => setEdit({ newInSlot: slot })}
+              reload={st.reload}
+            />
+          )}
+        </Loadable>
+      )}
+      {view === 'table' && <Loadable state={st} title="Crews" empty={(d) => d.length === 0}>
         {() => (
           <DataTable
             label="Crews"
             head={[
               <input key="all" type="checkbox" aria-label="Select all shown" className="accent-[#8ae4cf]" checked={allSel} onChange={(e) => setSel(e.target.checked ? [...new Set([...sel, ...rows.map((r) => r.id)])] : sel.filter((id) => !rows.some((r) => r.id === id)))} />,
-              'CREW', 'TEAM', 'CAPTAIN EMAIL', 'SLOT', 'ENABLED', 'CHECKED IN', 'CREDENTIALS', 'SESSIONS', 'CUMULATIVE', 'STATUS', 'ACTIONS',
+              'CREW', 'TEAM', 'CAPTAIN EMAIL', 'SLOT', 'ENABLED', 'PRESENT', 'CREDENTIALS', 'SESSIONS', 'CUMULATIVE', 'STATUS', 'ACTIONS',
             ]}
           >
             {rows.map((t) => {
@@ -72,7 +103,9 @@ export function CrewsTab() {
                   <td className={TD}>{t.email}</td>
                   <td className={TD}>{t.slot_number ? <>{t.slot_name}<div className="text-[10px] text-muted">{fmtDate(t.slot_date)}</div></> : <span className="text-[#ebd68c]">unassigned</span>}</td>
                   <td className={TD}><Badge>{t.account_enabled ? 'ENABLED' : 'DISABLED'}</Badge></td>
-                  <td className={TD}>{t.checked_in_at ? <span title={fmtTime(t.checked_in_at)}>✓</span> : '—'}</td>
+                  <td className={TD}>
+                    <input type="checkbox" className="h-4 w-4 accent-[#8ae4cf]" aria-label={`${t.crew_id} present`} title={t.checked_in_at ? `Present since ${fmtTime(t.checked_in_at)}` : 'Mark present (enables login)'} disabled={!can('teams.write')} checked={!!t.checked_in_at} onChange={(e) => void attendance([t.id], e.target.checked)} />
+                  </td>
                   <td className={TD}><Badge>{t.credential_status}</Badge>{t.last_credential_at && <div className="text-[10px] text-muted">{fmtTime(t.last_credential_at)}</div>}</td>
                   <td className={`${TD} font-mono`}>{t.sessions}</td>
                   <td className={`${TD} font-mono text-[#e8cf8e]`}>{t.standing ? `${t.standing.cumulative}${t.standing.rank ? ` · #${t.standing.rank}` : ''}` : '—'}</td>
@@ -91,8 +124,8 @@ export function CrewsTab() {
             })}
           </DataTable>
         )}
-      </Loadable>
-      {edit && <TeamForm team={edit === 'new' ? null : edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); void st.reload(); }} />}
+      </Loadable>}
+      {edit && <TeamForm team={'newInSlot' in edit ? null : edit} defaultSlot={'newInSlot' in edit ? edit.newInSlot : null} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); void st.reload(); }} />}
       {sessions && <SessionsDialog team={sessions} onClose={() => { setSessions(null); void st.reload(); }} />}
       {adjust && <AdjustDialog team={adjust} onClose={() => { setAdjust(null); void st.reload(); }} />}
       {bulk === 'assign' && <BulkAssign teamIds={sel} onClose={() => { setBulk(null); void st.reload(); }} />}
@@ -142,7 +175,7 @@ function RevokeDq({ dqId, crew, reload }: { dqId: string; crew: string; reload: 
 
 const blankMember = (): TeamMember => ({ name: '', institution: '', year: '', branch: '', studentId: '' });
 
-function TeamForm({ team, onClose, onSaved }: { team: TeamRow | null; onClose: () => void; onSaved: () => void }) {
+function TeamForm({ team, defaultSlot = null, onClose, onSaved }: { team: TeamRow | null; defaultSlot?: number | null; onClose: () => void; onSaved: () => void }) {
   const { overview } = useConsole();
   const toast = useToast();
   const [name, setName] = useState(team?.name ?? '');
@@ -155,7 +188,7 @@ function TeamForm({ team, onClose, onSaved }: { team: TeamRow | null; onClose: (
   });
   const [enabled, setEnabled] = useState(team?.account_enabled ?? true);
   const [checked, setChecked] = useState(!!team?.checked_in_at);
-  const [slot, setSlot] = useState(team?.slot_number ? String(team.slot_number) : 'none');
+  const [slot, setSlot] = useState(team?.slot_number ? String(team.slot_number) : defaultSlot ? String(defaultSlot) : 'none');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<{ msg: string; code: string } | null>(null);
 
@@ -216,7 +249,7 @@ function TeamForm({ team, onClose, onSaved }: { team: TeamRow | null; onClose: (
       </div>
       <div className="mb-4 flex flex-wrap gap-6">
         <Check checked={enabled} onChange={setEnabled} label="Account enabled" />
-        <Check checked={checked} onChange={setChecked} label="Checked in" />
+        <Check checked={checked} onChange={setChecked} label="Present (attendance — enables login)" />
       </div>
       <Label className="mb-2">MEMBERS (3–4, FIRST IS CAPTAIN)</Label>
       <div className="space-y-2">
@@ -364,3 +397,129 @@ function BulkAssign({ teamIds, onClose }: { teamIds: string[]; onClose: () => vo
   );
 }
 
+
+// ---------------------------------------------------------------------------
+// Slot rosters: Unassigned + one list per slot. Roll call, move, add into a slot.
+// ---------------------------------------------------------------------------
+
+function RosterBoard({ teams, onAttendance, onEdit, onAdd, reload }: {
+  teams: TeamRow[];
+  onAttendance: (ids: string[], present: boolean) => Promise<void>;
+  onEdit: (t: TeamRow) => void;
+  onAdd: (slot: number | null) => void;
+  reload: () => Promise<void>;
+}) {
+  const { overview, can } = useConsole();
+  const { run, busy } = useRun();
+  const write = can('teams.write');
+  // Optimistic roll call: the tick shows at once; the server value takes over on reload.
+  const [pending, setPending] = useState<Record<string, boolean>>({});
+  // Clear optimistic ticks only when the server's attendance actually changes (not on every re-render).
+  const serverKey = teams.map((t) => `${t.id}:${t.checked_in_at ? 1 : 0}`).join(',');
+  useEffect(() => setPending({}), [serverKey]);
+  const isPresent = (t: TeamRow) => pending[t.id] ?? !!t.checked_in_at;
+  const mark = (ids: string[], present: boolean) => {
+    setPending((p) => ({ ...p, ...Object.fromEntries(ids.map((id) => [id, present])) }));
+    void onAttendance(ids, present).finally(() => setPending((p) => Object.fromEntries(Object.entries(p).filter(([k]) => !ids.includes(k)))));
+  };
+  const move = async (t: TeamRow, to: string) => {
+    const slot = to === 'none' ? null : Number(to);
+    const r = await run('move', () => api.patch(`${V1}/admin/teams/${t.id}`, { slot }), `${t.crew_id} → ${slot ? `Slot ${slot}` : 'unassigned'}.`);
+    if (r) void reload();
+  };
+  const columns: { key: string; title: string; sub: string; slot: number | null; capacity: number | null; opened: boolean; teams: TeamRow[] }[] = [
+    { key: 'none', title: 'Unassigned', sub: 'imported or created without a slot', slot: null, capacity: null, opened: false, teams: teams.filter((t) => t.slot_number === null) },
+    ...overview.slots.map((s) => ({
+      key: s.id, title: s.name, sub: `${s.dayLabel ?? ''} · ${fmtDate(s.date)}`, slot: s.number, capacity: s.capacity, opened: !!s.openedAt,
+      teams: teams.filter((t) => t.slot_number === s.number),
+    })),
+  ];
+  const slotOptions = [{ value: 'none', label: 'Unassigned' }, ...overview.slots.map((s) => ({ value: String(s.number), label: `→ ${s.name}` }))];
+  return (
+    <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-5">
+      {columns.map((c) => {
+        const present = c.teams.filter(isPresent).length;
+        return (
+          <section key={c.key} className={CARD} aria-label={`${c.title} roster`}>
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <div>
+                <h3 className="font-display text-base font-bold">{c.title}</h3>
+                <div className="font-mono text-[9px] tracking-wider text-muted">{c.sub}</div>
+              </div>
+              <div className="text-right font-mono text-[10px]">
+                <div className="text-[#e8cf8e]">{c.teams.length}{c.capacity ? `/${c.capacity}` : ''} crews</div>
+                <div className="text-muted">{present} present</div>
+                {c.slot !== null && <div className={c.opened ? 'text-[#8ae4cf]' : 'text-muted'}>{c.opened ? 'boarding open' : 'not open'}</div>}
+              </div>
+            </div>
+            {write && (
+              <div className="mb-3 flex flex-wrap gap-1">
+                <Button className={SMALL} onClick={() => onAdd(c.slot)}><Plus size={11} /> Add crew</Button>
+                {c.teams.length > 0 && (
+                  <Button secondary className={SMALL} disabled={!!busy || present === c.teams.length} onClick={() => mark(c.teams.map((t) => t.id), true)}>
+                    <UserCheck size={11} /> All present
+                  </Button>
+                )}
+                {present > 0 && (
+                  <Button secondary className={SMALL} disabled={!!busy} onClick={() => mark(c.teams.filter(isPresent).map((t) => t.id), false)}>
+                    <UserX size={11} /> Clear
+                  </Button>
+                )}
+              </div>
+            )}
+            {c.teams.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-[#3b5664] p-4 text-center text-[11px] text-muted">No crews{c.slot !== null ? ' in this slot yet' : ''}.</p>
+            ) : (
+              <ul className="space-y-2">
+                {c.teams.map((t) => {
+                  const scored = !!t.standing && (t.standing.solves > 0 || t.standing.cumulative !== 0);
+                  return (
+                    <li key={t.id} className={`rounded-lg border p-2 ${isPresent(t) ? 'border-[#4f8f7f] bg-[#173a3c]' : 'border-[#344d5b] bg-[#112a35]'}`}>
+                      <div className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[#8ae4cf]"
+                          aria-label={`${t.crew_id} present`}
+                          title={t.checked_in_at ? `Present since ${fmtTime(t.checked_in_at)} — login enabled` : 'Mark present (enables login)'}
+                          disabled={!write}
+                          checked={isPresent(t)}
+                          onChange={(e) => mark([t.id], e.target.checked)}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: t.color }} />
+                            <span className="font-mono text-[10px] text-muted">{t.crew_id}</span>
+                            <span className="truncate text-xs font-bold">{t.name}</span>
+                          </div>
+                          <div className="mt-0.5 truncate text-[10px] text-muted">
+                            {t.captain_name} · {t.members?.length ?? 0} members · creds {t.credential_status}{!t.account_enabled ? ' · DISABLED' : ''}
+                          </div>
+                        </div>
+                      </div>
+                      {write && (
+                        <div className="mt-2 flex items-center gap-1">
+                          <Select
+                            ariaLabel={`Move ${t.crew_id}`}
+                            className="!py-1 !text-[10px]"
+                            value={t.slot_number ? String(t.slot_number) : 'none'}
+                            disabled={!!busy || scored}
+                            onChange={(v) => void move(t, v)}
+                            options={slotOptions}
+                          />
+                          <button type="button" className="shrink-0 rounded-md border border-[#52717e] bg-[#2d4654] px-2 py-1 font-mono text-[9px]" onClick={() => onEdit(t)}>
+                            <Pencil size={10} className="inline" /> Edit
+                          </button>
+                        </div>
+                      )}
+                      {scored && <div className="mt-1 text-[9px] text-muted">Has scored — slot changes are audited corrections.</div>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+}

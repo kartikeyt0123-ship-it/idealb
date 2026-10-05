@@ -23,9 +23,12 @@ describe('rules review', () => {
     expect(rv.rules.hintCosts).toEqual({ EASY: 30, MEDIUM: 80, HARD: 140, BONUS: 100 });
     expect((await org.post(`${V}/admin/rules/rewards/confirmation`, { confirmed: true })).status).toBe(200);
     expect((await org.post(`${V}/admin/rules/rankingMetric/confirmation`, { confirmed: true })).status).toBe(200);
-    const upd = await org.patch(`${V}/admin/rules`, { preset: 'REHEARSAL' });
+    // This suite exercises the automatic bonus schedule (the default is the manual bonus pool).
+    const upd = await org.patch(`${V}/admin/rules`, { preset: 'REHEARSAL', bonusMode: 'SCHEDULED' });
     expect(upd.status).toBe(200);
     expect(upd.body.changed).toContain('schedule');
+    expect(upd.body.notes.join(' ')).toMatch(/rebuild each slot plan/);
+    expect((await org.post(`${V}/admin/slots/${await slotId(env, 1)}/plan`, {})).body.instances).toBe(270);
     const after = (await org.get(`${V}/admin/rules`)).body;
     expect(after.review.find((r: { key: string }) => r.key === 'rewards').confirmed).not.toBeNull();
     expect(after.review.find((r: { key: string }) => r.key === 'schedule').confirmed).toBeNull();
@@ -152,7 +155,7 @@ describe('releases and the scheduler', () => {
   it('reserves release on demand (no reason), early scheduled releases need a reason and are recorded as deviations', async () => {
     const sid = await slotId(env, 1);
     const rels = await many<{ id: string; type: string; status: string }>(env.db, `SELECT r.id, r.type, r.status FROM release r JOIN sprint sp ON sp.id=r.sprint_id WHERE r.slot_id=$1 AND sp.number=1 ORDER BY r.type, r.offset_seconds`, [sid]);
-    const reserve = rels.find((r) => r.type === 'RESERVE')!;
+    const reserve = (await one<{ id: string }>(env.db, `SELECT id FROM release WHERE slot_id=$1 AND type='RESERVE' AND status='PENDING' ORDER BY blueprint_key LIMIT 1`, [sid]))!;
     const r1 = await org.post(`${V}/admin/question-releases/${reserve.id}/release`, {});
     expect(r1.body.released).toBe(true);
     expect((await org.post(`${V}/admin/question-releases/${reserve.id}/release`, {})).body.released).toBe(false);

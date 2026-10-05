@@ -9,7 +9,7 @@ import { getEvent, getSprints } from '../services/context.js';
 import { createDisplayLink, listDisplayLinks, revokeDisplayLink } from '../services/display.js';
 import * as life from '../services/lifecycle.js';
 import { emit, Rooms } from '../services/outbox.js';
-import { buildSlotPlan, cancelRelease, createManualRelease, releaseNow } from '../services/releases.js';
+import { buildSlotPlan, cancelRelease, createManualRelease, poolStatus, refillSlot, releaseNextBonus, releaseNow } from '../services/releases.js';
 import { RULE_CATALOGUE } from '../services/rules.js';
 import { toXlsx } from '../services/spreadsheet.js';
 import * as teams from '../services/teams.js';
@@ -83,6 +83,37 @@ export async function adminRoutes(app: FastifyInstance, deps: Deps) {
       return out;
     });
     return res;
+  });
+
+  r.post('/admin/slots/:slotId/open', { summary: 'Open (kick in) the slot: its crews may board and roam; no sprint starts', tag: 'slots', auth: O, permission: 'slots.control' }, async (req) => {
+    const { slotId } = slotParam.parse(req.params);
+    const { actor } = await requireOrganizer(deps, req, 'slots.control');
+    return withTx(db, (tx) => life.openSlot(tx, actor, slotId, { expectedVersion: expectedVersion(req) }));
+  });
+
+  r.post('/admin/slots/:slotId/close-boarding', { summary: 'Undo an accidental kick-in (before Sprint 1 only)', tag: 'slots', auth: O, permission: 'slots.control', body: '{ reason }' }, async (req) => {
+    const { slotId } = slotParam.parse(req.params);
+    const { actor } = await requireOrganizer(deps, req, 'slots.control');
+    return withTx(db, (tx) => life.closeBoarding(tx, actor, slotId, reasonBody.parse(req.body ?? {}).reason));
+  });
+
+  r.get('/admin/slots/:slotId/pools', { summary: 'Per-domain stock (available / solved / deficit) and reserve + bonus pools left', tag: 'releases', auth: O, permission: 'teams.read' }, async (req) => {
+    const { slotId } = slotParam.parse(req.params);
+    await requireOrganizer(deps, req, 'teams.read');
+    return poolStatus(db, slotId);
+  });
+
+  r.post('/admin/slots/:slotId/refill', { summary: 'Release reserve questions into the most depleted domains (count, optional domain)', tag: 'releases', auth: O, permission: 'releases.manage', body: '{ count?, domain? }' }, async (req) => {
+    const { slotId } = slotParam.parse(req.params);
+    const { actor } = await requireOrganizer(deps, req, 'releases.manage');
+    const body = z.object({ count: z.number().int().min(1).max(50).optional(), domain: z.string().max(20).optional() }).parse(req.body ?? {});
+    return withTx(db, (tx) => refillSlot(tx, actor, slotId, body));
+  });
+
+  r.post('/admin/slots/:slotId/bonus/next', { summary: 'Release the next bonus question from the slot pool', tag: 'releases', auth: O, permission: 'releases.manage' }, async (req) => {
+    const { slotId } = slotParam.parse(req.params);
+    const { actor } = await requireOrganizer(deps, req, 'releases.manage');
+    return withTx(db, (tx) => releaseNextBonus(tx, actor, slotId));
   });
 
   r.get('/admin/slots/:slotId/sprints/:n/preflight', { summary: 'Start checklist for a sprint', tag: 'slots', auth: O, permission: 'slots.control' }, async (req) => {
@@ -220,6 +251,12 @@ export async function adminRoutes(app: FastifyInstance, deps: Deps) {
     const { actor } = await requireOrganizer(deps, req, 'teams.write');
     const body = z.object({ teamIds: z.array(uuid).min(1).max(500), slot: z.number().int().min(1).max(8).nullable(), apply: z.boolean().default(false) }).parse(req.body);
     return teams.bulkAssign(db, actor, body);
+  });
+
+  r.post('/admin/teams/attendance', { summary: 'Roll call: mark crews present (enables login) or absent (signs them out)', tag: 'teams', auth: O, permission: 'teams.write', body: '{ teamIds, present }' }, async (req) => {
+    const { actor } = await requireOrganizer(deps, req, 'teams.write');
+    const body = z.object({ teamIds: z.array(uuid).min(1).max(500), present: z.boolean() }).parse(req.body);
+    return teams.setAttendance(db, actor, body.teamIds, body.present);
   });
 
   r.get('/admin/teams/import-template', { summary: 'Download the team import template', tag: 'import', auth: O, permission: 'teams.write', query: 'format=csv|xlsx' }, async (req, reply) => {

@@ -61,7 +61,9 @@ Keep it current when behaviour changes.
   - Metric: GROSS_EARNED (default) or NET_COINS, in `services/ranking.ts`. It is the ONE scoring
     rule used everywhere.
 - **Lifecycle (organizer-driven, `services/lifecycle.ts`):**
-  - `preflight` → `startSprint` (releases INITIAL, freezes rules).
+  - Roll call: attendance (`team.checked_in_at`) enables crew login (rule `attendanceGatesLogin`).
+  - `openSlot` (kick-in, `slot.opened_at`): crews of that slot may board and roam; nothing is solvable yet.
+  - `preflight` (blocks until the slot is open) → `startSprint` (releases INITIAL, freezes rules).
   - The worker closes at the DB deadline (`closeSprint`: expires fresh questions, cancels
     unreleased releases, freezes a snapshot).
   - Then the next `startSprint` → … → `finalizeSlot` → `finalizeEvent`.
@@ -69,6 +71,10 @@ Keep it current when behaviour changes.
 - **Releases (`services/releases.ts`):** a single idempotent `releaseNow` is used by the worker
   scheduler and by organizers. Organizer early or manual releases need a reason and are fairness
   deviations.
+  - Per slot: 4 × 60 INITIAL (one set per sprint); a 20-question RESERVE pool (`sprint_id` NULL,
+    single-question releases) released by `refillSlot` into the domains with the largest deficit;
+    a 10-question BONUS pool released one at a time by `releaseNextBonus` (`bonusMode` MANUAL,
+    default; SCHEDULED uses blueprint offsets). `poolStatus` reports per-domain stock.
 - **People:**
   - Crews come only from CSV/XLSX import (`services/teams.ts`: preview → commit, stable `CRW-NNN`,
     never resets passwords).
@@ -154,7 +160,11 @@ The demo contains:
 - 1,080 planned instances (960 initial + 120 reserves / bonuses);
 - every rule **UNCONFIRMED**.
 
-Nothing runs until an organizer starts a sprint.
+Nothing runs until an organizer acts:
+- Only Nexora is marked present; other crews can sign in once ticked **Present** in Crews → Slot
+  rosters.
+- No slot is open; crews wait until **Open slot (kick-in)**.
+- Sprints start only when you press Start.
 
 ## Live link (public URL from your laptop)
 
@@ -207,7 +217,8 @@ For real delivery, set `MAIL_MODE=smtp`, `SMTP_URL=<provider>` and `MAIL_SINK=fa
 | Reset demo DB (destructive) | `npm run reset:demo -- --yes` |
 | Production bootstrap | `npm run bootstrap` with `ADMIN_BOOTSTRAP_*`, `EVENT_DAY1/2` |
 | Integration tests (real PostgreSQL + runner) | `npm test` |
-| UI e2e (needs `npm run dev`) | `npm run test:e2e` |
+| UI e2e (needs `npm run dev` on a fresh seed) | `npm run test:e2e` |
+| UI e2e on an isolated stack (leaves your dev / live stack alone) | `powershell -File e2e/tools/isolated-stack.ps1 reset`, then start the API on :4300 with `DATABASE_URL=…/among_bugs_e2e PORT=4300 WEB_DIST_DIR=../web/dist` (+ worker), then `E2E_BASE=http://127.0.0.1:4300 npm run test:e2e` |
 | Content self-check | `npm run content:check` (options `--domain`, `--seeds 0-63`, `--distinct 64`) |
 | Load / rehearsal simulator (opt-in) | `npm run rehearsal:sim -- --yes --slot 1 --sessions 4 --duration 120 --all --start` |
 | API contract | `GET /api/v1/openapi.json` · [`docs/API.md`](docs/API.md) |
@@ -216,21 +227,24 @@ For real delivery, set `MAIL_MODE=smtp`, `SMTP_URL=<provider>` and `MAIL_SINK=fa
 
 1. **Setup:**
    - Rules review: confirm every rule (production cannot start otherwise).
+   - **Roll call:** Crews → Slot rosters → tick **Present** (attendance enables login).
    - Question bank: import → verify → publish.
    - **Build release plan** per slot.
    - **Import crews** (preview → commit), assign slots, **Send credentials** (preview first).
-2. **Slot n, Sprint 1:**
+2. **Slot n:** **Open slot (kick-in)** → present crews board and roam the ship (nothing solvable yet).
+3. **Sprint 1:**
    - The organizer presses Start after the preflight.
    - Crews see 60 fresh questions (10 per domain). The first correct answer in the slot wins each.
-   - Bonuses (IMPOSTER DETECTED, 900 coins, open to all) release at their offsets; reserves are
-     released on demand.
+   - **Refill** releases reserves (20-question pool) into the domains emptied by solves.
+   - **Release bonus** sends the next of 10 bonus questions (IMPOSTER DETECTED, 900 coins, open to
+     all, first correct wins).
    - HUD: sprint score, cumulative, wallet, sprint rank, slot rank, timer.
-3. **The deadline passes:** the worker closes the sprint, unsolved questions expire and boards
+4. **The deadline passes:** the worker closes the sprint, unsolved questions expire and boards
    freeze. The sprint board restarts at zero next sprint.
-4. **Sprints 2–4:** each started explicitly. After sprint 4, **Finalize slot** (top-3 ties need a
+5. **Sprints 2–4:** each started explicitly. After sprint 4, **Finalize slot** (top-3 ties need a
    published decision).
-5. **Repeat** for Slots 2–4. Only one slot runs at a time.
-6. **Finalize overall results.** Projectors switch from PROVISIONAL to FINAL. Export standings,
+6. **Repeat** for Slots 2–4. Only one slot runs at a time.
+7. **Finalize overall results.** Projectors switch from PROVISIONAL to FINAL. Export standings,
    ledger and audit.
 
 Projector routes: `/display/overall`, `/display/slots/:slotId`, `/display/slots/:slotId/sprints/:sprintId`
@@ -238,12 +252,12 @@ Projector routes: `/display/overall`, `/display/slots/:slotId`, `/display/slots/
 
 ## Verified in this build (actually run)
 
-Run on 5 Oct 2026, on Windows 11 with Node 24.12, real PostgreSQL (embedded-postgres) and the real runner:
+Last run on 5 Oct 2026 (after the kick-in / attendance / refill update), on Windows 11 with Node 24.12, real PostgreSQL (embedded-postgres) and the real runner:
 
 | Check | Result |
 |---|---|
-| `npm test`: integration tests in 4 files (auth, import, slots, competition) | **42 / 42 pass** |
-| `npm run test:e2e`: Chromium against `npm run dev` on a fresh demo seed | **7 / 7 pass** |
+| `npm test`: integration tests in 5 files (auth, import, slots, competition, controls) | **49 / 49 pass** |
+| `npm run test:e2e`: Chromium against a fresh demo seed (isolated stack on :4300) | **9 / 9 pass** |
 | `npm run content:check` (runner proof for seeds 0–5, structural pass over 64 seeds per template) | **204 variants runner-checked, 0 problems** |
 | `npm run typecheck`, `npm run build` (runner, server, web) | **pass** |
 | `npm audit` | **0 vulnerabilities** |
@@ -304,11 +318,25 @@ What the integration tests cover:
     as deviations.
   - Close cancels unreleased releases, which are never replayed.
   - An answer after the DB deadline is rejected before the worker runs.
+- **Organizer controls (controls.test.ts):**
+  - An absent crew cannot sign in; the roll call enables login; unmarking signs it out; a re-import
+    without `checked_in` keeps attendance.
+  - Crews of an unopened slot wait; Sprint 1 is blocked until **Open slot**; after opening, crews
+    roam but see no questions until the start; close boarding works only before Sprint 1.
+  - **Refill** sends reserves to the domain emptied by solves (3 solved misc → 3 misc reserves),
+    and reports `POOL_EMPTY` when that domain's reserves are gone.
+  - **Release bonus** releases one at a time (10 → 0, then `POOL_EMPTY`); unreleased bonuses
+    carry over to the next sprint.
 - **Restart:** a rebuilt server keeps sessions and standings; the worker closes an overdue sprint
   at its stored deadline, exactly once.
 
 The e2e tests cover:
 - the landing shows only Crew / Organizer login (no registration, no credentials, no old branding);
+- an absent crew is refused; ticking **Present** in the slot roster enables its login; it then
+  waits for the slot to open;
+- **Open slot (kick-in)** before Sprint 1 can start;
+- **Refill** and **Release bonus** in the Releases tab, seen by the crew (reserve in the depleted
+  domain, IMPOSTER DETECTED);
 - the console's ten sections, and starting Slot 1 · Sprint 1 through the preflight
   acknowledgement;
 - Nexora's HUD, 60 questions, and the Sprint / Slot / Overall rankings;

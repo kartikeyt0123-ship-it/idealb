@@ -105,6 +105,9 @@ describe('credentials (explicit, demo capture)', () => {
     const pw = /Password:\s+(\S+)/.exec(msg.body)?.[1];
     expect(pw).toBeTruthy();
     // The captured temporary password works and forces a password change.
+    // Imported crews are not present yet: attendance is what enables the login.
+    expect((await new Client(env).post(`${V}/auth/crew-login`, { identifier: 'orbit.breakers@example.test', password: pw })).body.error).toBe('ATTENDANCE_REQUIRED');
+    await org.post(`${V}/admin/teams/attendance`, { teamIds: [ids[0]], present: true });
     const c = await crewLogin(env, 'orbit.breakers@example.test', pw!);
     const me = await c.get(`${V}/me`);
     expect(me.body.team.mustChangePassword).toBe(true);

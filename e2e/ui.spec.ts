@@ -2,7 +2,8 @@
  * UI release gates through a real browser against the live stack.
  * Requires `npm run dev` (DEMO_MODE=true) on a FRESH demo database:
  *   npm run reset:demo -- --yes && npm run dev     # then: npm run test:e2e
- * The suite starts Slot 1 · Sprint 1 through the console, so it runs once per reset.
+ * The suite opens Slot 1 and starts its Sprint 1 through the console, so it runs once per reset.
+ * Isolated run (no dev server): E2E_BASE=http://127.0.0.1:4300 against an API serving web/dist.
  */
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
@@ -20,6 +21,19 @@ async function boardShip(page: Page) {
   await page.getByRole('button', { name: /Enter ship/ }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click({ timeout: 5_000 }).catch(() => undefined);
   await expect(page.getByLabel('Ship orientation map')).toBeVisible({ timeout: 20_000 });
+}
+
+/** Organizer API call from a signed-in console page (same-origin, CSRF header). */
+async function orgApi(page: Page, method: 'GET' | 'POST', path: string, data?: unknown) {
+  const origin = new URL(page.url()).origin;
+  const r = method === 'GET'
+    ? await page.request.get(path)
+    : await page.request.post(path, { data: data ?? {}, headers: { 'x-requested-with': 'amongbugs', origin } });
+  return r.json();
+}
+async function teamIdOf(page: Page, crewId: string): Promise<string> {
+  const teams = (await orgApi(page, 'GET', '/api/v1/admin/teams')) as { id: string; crew_id: string }[];
+  return teams.find((t) => t.crew_id === crewId)!.id;
 }
 
 async function organizerPage(browser: Browser) {
@@ -40,14 +54,36 @@ test('landing offers only Crew Login and Organizer Login — no registration, no
   expect(text).not.toMatch(/DEBUG \+ RUN/);
 });
 
-test('organizer console: all ten sections; starts Slot 1 · Sprint 1 after the preflight', async ({ browser }) => {
+test('an absent crew cannot sign in; ticking Present in the slot roster enables its login; the crew waits until the slot opens', async ({ browser }) => {
+  const crewPage = await (await browser.newContext()).newPage();
+  await signIn(crewPage, 'CREW', 'CRW-002', 'Crew-002-Demo!');
+  await expect(crewPage.getByRole('alert')).toContainText(/attendance has not been marked/i);
+
+  const org = await organizerPage(browser);
+  await org.getByText('CREWS', { exact: true }).first().click();
+  const box = org.getByLabel('CRW-002 present').first();
+  await expect(box).toBeVisible();
+  await expect(box).not.toBeChecked();
+  await box.check();
+  await expect(box).toBeChecked({ timeout: 10_000 });
+
+  await signIn(crewPage, 'CREW', 'CRW-002', 'Crew-002-Demo!');
+  await expect(crewPage.getByText(/Your slot has not opened yet/)).toBeVisible();
+});
+
+test('organizer console: all ten sections; opens Slot 1 (kick-in), then starts Sprint 1 after the preflight', async ({ browser }) => {
   const page = await organizerPage(browser);
   for (const t of ['SLOTS & SPRINTS', 'RELEASES', 'CREWS', 'IMPORT', 'CREDENTIALS', 'RULES REVIEW', 'LEADERBOARDS & EXPORTS', 'DISPLAYS', 'QUESTION BANK', 'LEDGER · AUDIT · HEALTH']) {
     await expect(page.getByText(t, { exact: true }).first(), t).toBeVisible();
   }
   await expect(page.getByText(/UNCONFIRMED/i).first()).toBeVisible();
   await expect(page.getByText(/08 Oct 2026|2026-10-08|8 Oct 2026/).first()).toBeVisible();
-  await page.getByRole('button', { name: /Start sprint 1/ }).first().click();
+  const slot1 = page.getByRole('article', { name: 'Slot 1' });
+  await expect(slot1.getByRole('button', { name: /Start sprint 1/ })).toBeDisabled();
+  await slot1.getByRole('button', { name: /Open slot \(kick-in\)/ }).click();
+  await page.getByRole('button', { name: 'Open slot', exact: true }).click();
+  await expect(slot1.getByText('BOARDING OPEN')).toBeVisible({ timeout: 15_000 });
+  await slot1.getByRole('button', { name: /Start sprint 1/ }).click();
   await expect(page.getByText(/I reviewed the preflight/)).toBeVisible();
   await page.getByText(/I reviewed the preflight/).click();
   await page.getByRole('button', { name: 'Start sprint 1 now' }).click();
@@ -58,6 +94,7 @@ test('Nexora boards, sees the HUD, 60 questions in Slot 1 and the Sprint / Slot 
   await signIn(page, 'CREW', 'nexora@example.test', 'CrewDemo123!');
   await expect(page.getByText(/Slot 1/).first()).toBeVisible({ timeout: 15_000 });
   await boardShip(page);
+  await expect(page.getByText(/S1\s*\/\s*4/).first()).toBeVisible(); // first snapshot loaded
   const hud = await page.locator('body').innerText();
   expect(hud).toMatch(/S1\s*\/\s*4|SPRINT\s*1/i);
   expect(hud).toMatch(/WALLET|IdeaCoins/i);
@@ -70,7 +107,11 @@ test('Nexora boards, sees the HUD, 60 questions in Slot 1 and the Sprint / Slot 
   expect((await st.json()).questions.length).toBe(60);
 });
 
-test('a crew of another slot is waiting and cannot see Slot 1', async ({ page }) => {
+test('a crew of another slot is waiting and cannot see Slot 1', async ({ page, browser }) => {
+  const org = await organizerPage(browser);
+  await orgApi(org, 'POST', '/api/v1/admin/teams/attendance', { teamIds: [await teamIdOf(org, 'CRW-011')], present: true });
+  const slot2 = ((await orgApi(org, 'GET', '/api/v1/admin/overview')) as { slots: { id: string; number: number }[] }).slots.find((s) => s.number === 2)!;
+  await orgApi(org, 'POST', `/api/v1/admin/slots/${slot2.id}/open`);
   await signIn(page, 'CREW', 'CRW-011', 'Crew-011-Demo!');
   await boardShip(page);
   await expect(page.getByText(/Waiting for the organizer/i).first()).toBeVisible({ timeout: 15_000 });
@@ -80,7 +121,7 @@ test('a crew of another slot is waiting and cannot see Slot 1', async ({ page })
 });
 
 test('a crew session at /command is denied', async ({ page }) => {
-  await signIn(page, 'CREW', 'CRW-002', 'Crew-002-Demo!');
+  await signIn(page, 'CREW', 'CRW-002', 'Crew-002-Demo!'); // marked present earlier; Slot 1 is open now
   await expect(page.getByRole('button', { name: /Enter ship/ })).toBeVisible({ timeout: 15_000 });
   await page.goto('/command');
   await expect(page.getByText(/ACCESS DENIED/)).toBeVisible();
@@ -127,4 +168,34 @@ test('Nexora repairs a question in the workspace: server-verified, wallet and sp
   const after = (await (await page.request.get('/api/v1/slots/mine/state')).json()).me;
   expect(after.wallet).toBe(before.wallet + q.reward);
   expect(after.cumulative).toBe(before.cumulative + q.reward);
+});
+
+test('Releases tab: Refill tops up the depleted domain from the reserve pool; Release bonus sends an IMPOSTER bonus', async ({ browser }) => {
+  const org = await organizerPage(browser);
+  const slot1 = ((await orgApi(org, 'GET', '/api/v1/admin/overview')) as { slots: { id: string; number: number }[] }).slots.find((s) => s.number === 1)!;
+  const pools = async () => (await orgApi(org, 'GET', `/api/v1/admin/slots/${slot1.id}/pools`)) as { reservesLeft: number; bonusesLeft: number; domains: { slug: string; deficit: number }[] };
+  const before = await pools();
+  const depleted = [...before.domains].sort((a, b) => b.deficit - a.deficit)[0];
+  expect(depleted.deficit).toBeGreaterThan(0); // the repair test solved a misc question
+
+  await org.getByText('RELEASES', { exact: true }).first().click();
+  await org.getByRole('button', { name: /^SLOT 1 ·/ }).first().click().catch(() => undefined);
+  await expect(org.getByText(`reserves left ${before.reservesLeft} · bonuses left ${before.bonusesLeft}`).first()).toBeVisible();
+  await org.getByRole('button', { name: /^Refill/ }).first().click();
+  await org.getByRole('button', { name: 'Release refill' }).click();
+  await expect(org.getByText(`reserves left ${before.reservesLeft - depleted.deficit}`, { exact: false }).first()).toBeVisible({ timeout: 15_000 });
+  await org.getByRole('button', { name: `Release bonus (${before.bonusesLeft} left)` }).first().click();
+  await org.getByRole('button', { name: 'Release bonus', exact: true }).click();
+  await expect(org.getByText(`bonuses left ${before.bonusesLeft - 1}`, { exact: false }).first()).toBeVisible({ timeout: 15_000 });
+  const after = await pools();
+  expect(after.reservesLeft).toBe(before.reservesLeft - depleted.deficit);
+  expect(after.domains.find((d) => d.slug === depleted.slug)!.deficit).toBe(0);
+
+  const crewPage = await (await browser.newContext()).newPage();
+  await signIn(crewPage, 'CREW', 'nexora@example.test', 'CrewDemo123!');
+  await boardShip(crewPage);
+  const st = await (await crewPage.request.get('/api/v1/slots/mine/state')).json();
+  expect(st.bonuses.filter((b: { state: string }) => b.state === 'AVAILABLE').length).toBeGreaterThan(0);
+  expect(st.questions.some((q: { kind: string; domain: string }) => q.kind === 'RESERVE' && q.domain === depleted.slug)).toBe(true);
+  await expect(crewPage.getByText(/IMPOSTER DETECTED/).first()).toBeVisible({ timeout: 15_000 });
 });

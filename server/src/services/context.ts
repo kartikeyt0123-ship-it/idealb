@@ -33,6 +33,8 @@ export interface SlotRow {
   phase: SlotPhase;
   current_sprint: number;
   finalized_at: Date | null;
+  /** Set when an organizer opens (kicks in) the slot; its crews may board only after this. */
+  opened_at: Date | null;
   version: number;
 }
 
@@ -78,6 +80,7 @@ export interface TeamRow {
   account_enabled: boolean;
   status: 'ACTIVE' | 'ARCHIVED';
   must_change_password: boolean;
+  checked_in_at: Date | null;
 }
 
 export async function getEvent(q: Queryable): Promise<EventRow> {
@@ -129,7 +132,7 @@ export interface CrewContext {
  */
 export async function resolveCrew(q: Queryable, teamId: string): Promise<CrewContext> {
   const event = await getEvent(q);
-  const team = await one<TeamRow>(q, 'SELECT id, crew_id, name, email, captain_name, color, account_enabled, status, must_change_password FROM team WHERE id=$1', [teamId]);
+  const team = await one<TeamRow>(q, 'SELECT id, crew_id, name, email, captain_name, color, account_enabled, status, must_change_password, checked_in_at FROM team WHERE id=$1', [teamId]);
   if (!team) throw new AppError('UNAUTHENTICATED', 'Crew not found.');
   if (team.status === 'ARCHIVED') throw new AppError('TEAM_ARCHIVED', 'This crew has been archived by the organizers.');
   if (!team.account_enabled) throw new AppError('ACCOUNT_DISABLED', 'Your crew account is disabled. Contact the organizers.');
@@ -137,7 +140,12 @@ export async function resolveCrew(q: Queryable, teamId: string): Promise<CrewCon
   if (dq) throw new AppError('TEAM_DISQUALIFIED', 'Your crew has been disqualified. Contact the organizers.', { reason: dq.reason });
   const enrollment = await one<EnrollmentRow>(q, 'SELECT * FROM slot_enrollment WHERE team_id=$1', [teamId]);
   if (!enrollment) throw new AppError('SLOT_UNASSIGNED', 'Your crew has not been assigned to a slot yet. Contact the organizers.');
+  if (event.rules.attendanceGatesLogin && !team.checked_in_at) throw new AppError('ATTENDANCE_REQUIRED', 'Your attendance has not been marked yet. Report to the organizer desk — your login opens once you are marked present.');
   const slot = (await one<SlotRow>(q, 'SELECT * FROM slot WHERE id=$1', [enrollment.slot_id]))!;
+  if (!slot.opened_at) {
+    const when = slot.scheduled_start_at ? ` (scheduled ${new Date(slot.scheduled_start_at).toLocaleString('en-IN', { timeZone: event.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })})` : '';
+    throw new AppError('SLOT_NOT_OPEN', `${slot.name}${when} has not opened yet. Stay on this screen — boarding starts when the organizers open your slot.`, { slot: slot.number });
+  }
   return { event, team, slot, enrollment };
 }
 

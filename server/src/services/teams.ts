@@ -88,7 +88,8 @@ export const teamInputSchema = z.object({
   members: z.array(memberSchema).min(3, 'A crew needs 3 or 4 members (captain included).').max(4, 'A crew needs 3 or 4 members (captain included).'),
   slot: z.number().int().min(1).max(99).nullable(),
   accountEnabled: z.boolean(),
-  checkedIn: z.boolean(),
+  /** Attendance. Undefined (blank cell) keeps the current value of an existing crew. */
+  checkedIn: z.boolean().optional(),
   color: z.string().optional(),
 });
 export type TeamInput = z.infer<typeof teamInputSchema>;
@@ -114,14 +115,15 @@ function rowToInput(cells: string[], m: Record<TeamColumn, number>): { input?: T
   const slotRaw = get('slot');
   const slotNum = slotRaw ? Number(slotRaw.replace(/[^0-9]/g, '')) : null;
   const enabled = boolish(get('account_enabled'), true);
-  const checked = boolish(get('checked_in'), false);
+  const checkedRaw = get('checked_in');
+  const checked = checkedRaw ? boolish(checkedRaw, false) : undefined;
   const errors: string[] = [];
   if (enabled === null) errors.push('account_enabled must be true/false.');
   if (checked === null) errors.push('checked_in must be true/false.');
   if (slotRaw && (!slotNum || Number.isNaN(slotNum))) errors.push(`Unknown slot "${slotRaw}".`);
   const parsed = teamInputSchema.safeParse({
     teamName: get('team_name'), crewId: get('crew_id') || undefined, captainEmail: get('captain_email'), members,
-    slot: slotNum, accountEnabled: enabled ?? true, checkedIn: checked ?? false,
+    slot: slotNum, accountEnabled: enabled ?? true, checkedIn: checked ?? undefined,
   });
   if (!parsed.success) errors.push(...Object.entries(zodFieldErrors(parsed.error)).map(([k, v]) => `${k}: ${v}`));
   return errors.length ? { errors } : { input: parsed.data!, errors };
@@ -175,7 +177,7 @@ async function planRows(q: Queryable, rows: { row: number; cells: string[] }[], 
         const oldRoster = match.members.map((x) => [x.name, x.institution, x.year, x.branch, x.student_id ?? ''].join('|')).join(';');
         if (roster !== oldRoster) changes.push('roster');
         if (match.account_enabled !== input.accountEnabled) changes.push(input.accountEnabled ? 'enable account' : 'DISABLE account');
-        if (!!match.checked_in_at !== input.checkedIn) changes.push(input.checkedIn ? 'check in' : 'clear check-in');
+        if (input.checkedIn !== undefined && !!match.checked_in_at !== input.checkedIn) changes.push(input.checkedIn ? 'mark present' : 'CLEAR attendance (signs the crew out)');
         if (input.slot !== null && input.slot !== match.slot_number) {
           if (match.scored) p.errors.push(`Slot change blocked: ${match.crew_id} has already scored in slot ${match.slot_number}. Handle as an audited correction, not a re-import.`);
           else changes.push(`slot ${match.slot_number ?? 'unassigned'} → ${input.slot}`);
@@ -276,6 +278,31 @@ async function assignSlot(tx: Tx, actor: Actor, teamId: string, slotNumber: numb
   await emit(tx, 'eligibility.changed', [Rooms.team(teamId), Rooms.organizers], { teamId, slot: slotNumber });
 }
 
+/** Unmarking attendance signs the crew out when attendance gates login. */
+async function attendanceRemoved(tx: Tx, teamId: string) {
+  const ev = await getEvent(tx);
+  if (ev.rules.attendanceGatesLogin) await revokeAllTeamSessions(tx, teamId, 'ATTENDANCE_UNMARKED');
+}
+
+/** Bulk attendance (the roll call). Marking a crew present enables its login; unmarking signs it out. */
+export async function setAttendance(db: Db, actor: Actor, teamIds: string[], present: boolean) {
+  if (!teamIds.length || teamIds.length > 500) throw new AppError('VALIDATION_FAILED', 'Select 1-500 crews.');
+  return withTx(db, async (tx) => {
+    const rows = await many<{ id: string; crew_id: string; checked_in_at: Date | null }>(tx, 'SELECT id, crew_id, checked_in_at FROM team WHERE id = ANY($1) ORDER BY crew_id FOR UPDATE', [teamIds]);
+    const changed = rows.filter((r) => !!r.checked_in_at !== present);
+    for (const r of changed) {
+      await tx.query(`UPDATE team SET checked_in_at=${present ? 'now()' : 'NULL'}, version=version+1, updated_at=now() WHERE id=$1`, [r.id]);
+      if (!present) await attendanceRemoved(tx, r.id);
+      await emit(tx, 'eligibility.changed', [Rooms.team(r.id)], { teamId: r.id, present });
+    }
+    if (changed.length) {
+      await audit(tx, actor, present ? 'teams.marked_present' : 'teams.marked_absent', { type: 'team', id: null }, { crewIds: changed.map((r) => r.crew_id) });
+      await emit(tx, 'teams.changed', [Rooms.organizers], { change: 'ATTENDANCE' });
+    }
+    return { present, changed: changed.map((r) => r.crew_id), unchanged: rows.length - changed.length };
+  });
+}
+
 async function writeTeam(tx: Tx, actor: Actor, input: TeamInput, teamId: string | undefined, via: 'IMPORT' | 'ADMIN' | 'SEED') {
   const ev = await getEvent(tx);
   const name = input.teamName.trim().replace(/\s+/g, ' ');
@@ -299,14 +326,16 @@ async function writeTeam(tx: Tx, actor: Actor, input: TeamInput, teamId: string 
       [ev.id, crewId, name, normalizeTeamName(name), input.captainEmail.trim(), normalizeEmail(input.captainEmail), input.members[0].name, color, input.accountEnabled, input.checkedIn ? new Date() : null, via],
     ).catch(onUnique))!.id;
   } else {
-    const before = (await one<{ crew_id: string; account_enabled: boolean }>(tx, 'SELECT crew_id, account_enabled FROM team WHERE id=$1 FOR UPDATE', [id]))!;
+    const before = (await one<{ crew_id: string; account_enabled: boolean; checked_in_at: Date | null }>(tx, 'SELECT crew_id, account_enabled, checked_in_at FROM team WHERE id=$1 FOR UPDATE', [id]))!;
     crewId = before.crew_id;
     await tx.query(
       `UPDATE team SET name=$2, name_normalized=$3, email=$4, email_normalized=$5, captain_name=$6, account_enabled=$7,
-              checked_in_at=CASE WHEN $8 THEN COALESCE(checked_in_at, now()) ELSE NULL END, version=version+1, updated_at=now() WHERE id=$1`,
-      [id, name, normalizeTeamName(name), input.captainEmail.trim(), normalizeEmail(input.captainEmail), input.members[0].name, input.accountEnabled, input.checkedIn],
+              checked_in_at=CASE WHEN $8::boolean IS NULL THEN checked_in_at WHEN $8 THEN COALESCE(checked_in_at, now()) ELSE NULL END, version=version+1, updated_at=now() WHERE id=$1`,
+      [id, name, normalizeTeamName(name), input.captainEmail.trim(), normalizeEmail(input.captainEmail), input.members[0].name, input.accountEnabled, input.checkedIn ?? null],
     ).catch(onUnique);
     if (before.account_enabled && !input.accountEnabled) await revokeAllTeamSessions(tx, id, 'ACCOUNT_DISABLED');
+    if (before.checked_in_at && input.checkedIn === false) await attendanceRemoved(tx, id);
+    if (!!before.checked_in_at !== !!input.checkedIn && input.checkedIn !== undefined) await emit(tx, 'eligibility.changed', [Rooms.team(id), Rooms.organizers], { teamId: id, present: input.checkedIn });
   }
   await tx.query('DELETE FROM team_member WHERE team_id=$1', [id]);
   for (let i = 0; i < input.members.length; i++) {

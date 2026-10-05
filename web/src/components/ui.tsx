@@ -8,7 +8,13 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 
 export type CrewState = 'idle' | 'still' | 'celebrating' | 'warning' | 'ejected' | 'thinking' | 'working';
 
-export function Crewmate({ color = '#51cfdf', size = 48, state = 'idle', accessory = false, className = '' }: { color?: string; size?: number; state?: CrewState; accessory?: boolean; className?: string }) {
+/**
+ * The crewmate sprite. The ground shadow stays on the floor while only the body
+ * floats (idle); it shrinks as the body rises. `shadow={false}` when the caller
+ * draws its own ground shadow (the playable character in the ship).
+ */
+export function Crewmate({ color = '#51cfdf', size = 48, state = 'idle', accessory = false, shadow = true, className = '' }: { color?: string; size?: number; state?: CrewState; accessory?: boolean; shadow?: boolean; className?: string }) {
+  const floating = state === 'idle';
   return (
     <svg
       width={size}
@@ -17,9 +23,13 @@ export function Crewmate({ color = '#51cfdf', size = 48, state = 'idle', accesso
       fill="none"
       role="img"
       aria-label={`${state} crewmate`}
-      className={`${state === 'ejected' ? 'animate-[eject_6s_ease-in-out_infinite_alternate]' : state === 'idle' ? 'animate-[float_5s_ease-in-out_infinite]' : ''} ${className}`}
+      overflow="visible"
+      className={`${state === 'ejected' ? 'animate-[eject_6s_ease-in-out_infinite_alternate]' : ''} ${className}`}
     >
-      <ellipse cx="49" cy="109" rx="32" ry="4" fill="#000" opacity=".25" />
+      {shadow && state !== 'ejected' && (
+        <ellipse cx="50" cy="108" rx="30" ry="5" fill="#000" opacity=".28" className={floating ? 'crew-shadow-float' : ''} />
+      )}
+      <g className={floating ? 'crew-body-float' : ''}>
       <rect x="9" y="44" width="24" height="46" rx="10" fill={color} stroke="#111724" strokeWidth="5" />
       <path d="M28 43C28 23 40 14 57 14C76 14 87 25 87 46V98C87 104 82 106 76 106H65V87H51V106H35C29 106 26 102 26 97V49" fill={color} stroke="#111724" strokeWidth="5" strokeLinejoin="round" />
       <path d="M72 22C79 28 82 35 82 49V97H69V85C69 80 65 78 61 78H33V69C56 79 76 64 72 22Z" fill="#000" opacity=".13" />
@@ -40,6 +50,7 @@ export function Crewmate({ color = '#51cfdf', size = 48, state = 'idle', accesso
           <path d="M84 6L87 13" stroke="#ef6473" strokeWidth="3" />
         </>
       )}
+      </g>
     </svg>
   );
 }

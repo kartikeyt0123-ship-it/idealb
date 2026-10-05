@@ -43,7 +43,7 @@ export interface ReleaseRow {
 export interface OverviewSlot extends SlotDto {
   dayNumber: number;
   sprints: SprintDto[];
-  counts: { crews: number; enabled: number; checked_in: number; sessions: number };
+  counts: { crews: number; enabled: number; checked_in: number; absent: number; sessions: number };
   releases: ReleaseRow[];
   nextSprint: number | null;
   preflight: Preflight | null;
@@ -71,6 +71,8 @@ export interface Rules {
   startingWallet: number;
   rankingMetric: 'GROSS_EARNED' | 'NET_COINS';
   bonusPolicy: string;
+  bonusMode: 'MANUAL' | 'SCHEDULED';
+  attendanceGatesLogin: boolean;
   elimination: { enabled: boolean; counts: number[] };
   tiePolicy: string;
   sessionLimit: number;

@@ -5,7 +5,8 @@
  *
  *  - organizer admin@crm.local / idealab (hashed; demo bootstrap only, never a
  *    hardcoded comparison, never returned to a browser)
- *  - 40 crews CRW-001…CRW-040, 10 per slot. Nexora = CRW-001, Slot 1.
+ *  - 40 crews CRW-001…CRW-040, 10 per slot. Nexora = CRW-001, Slot 1. Only Nexora is marked
+ *    present (attendance enables login); no slot is opened (kick-in) yet.
  *  - 4 slots on 8 and 9 October 2026 (Asia/Kolkata), 4 sprints each
  *  - question bank generated from deterministic seedable templates, PUBLISHED
  *    as demo content, then each slot plan is built from the blueprint:
@@ -110,9 +111,10 @@ export async function seedDemo(db: Db, cfg: AppConfig, log: (m: string) => void 
       const ms = members(i);
       const t = (await one<{ id: string }>(
         tx,
-        `INSERT INTO team(event_id, crew_id, name, name_normalized, email, email_normalized, captain_name, password_hash, credential_status, must_change_password, color, account_enabled, created_via)
-         VALUES ($1,$2,$3,lower($3),$4,lower($4),$5,$6,'ISSUED',false,$7,true,'SEED') RETURNING id`,
-        [eventId, crewId, name, email, ms[0].name, crewHashes[i], CREW_COLORS[i % CREW_COLORS.length][1]],
+        `INSERT INTO team(event_id, crew_id, name, name_normalized, email, email_normalized, captain_name, password_hash, credential_status, must_change_password, color, account_enabled, checked_in_at, created_via)
+         VALUES ($1,$2,$3,lower($3),$4,lower($4),$5,$6,'ISSUED',false,$7,true,$8,'SEED') RETURNING id`,
+        // Attendance enables login: only the public demo crew (Nexora) starts marked present.
+        [eventId, crewId, name, email, ms[0].name, crewHashes[i], CREW_COLORS[i % CREW_COLORS.length][1], i === 0 ? new Date() : null],
       ))!;
       for (const [j, m] of ms.entries()) {
         await tx.query('INSERT INTO team_member(team_id, position, name, institution, year, branch, student_id, is_captain) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)', [t.id, j + 1, m.name, m.institution, m.year, m.branch, m.studentId, j === 0]);

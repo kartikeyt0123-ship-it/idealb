@@ -69,6 +69,7 @@ export async function preflight(q: Queryable, slotId: string, sprintNumber: numb
     if (!prev || !['CLOSED', 'FINALIZED'].includes(prev.status)) blockers.push(`Sprint ${sprintNumber - 1} has not been closed.`);
   }
   if (['REVIEW', 'COMPLETED'].includes(slot.phase)) blockers.push(`Slot is ${slot.phase}.`);
+  if (!slot.opened_at) blockers.push(`Open ${slot.name} (kick-in) first: its crews board the ship only after the slot is opened.`);
   if (ev.rules.singleRunningSlot) {
     const other = await one<{ name: string }>(q, `SELECT s.name FROM slot s JOIN sprint sp ON sp.slot_id=s.id AND sp.number=s.current_sprint
                                                    WHERE s.event_id=$1 AND s.id<>$2 AND sp.status IN ('RUNNING','PAUSED')`, [ev.id, slotId]);
@@ -118,6 +119,40 @@ export async function preflight(q: Queryable, slotId: string, sprintNumber: numb
   } else summary.push('Elimination disabled.');
   summary.push(`Ranking basis: ${ev.rules.rankingMetric}.`);
   return { ok: blockers.length === 0, blockers, warnings, summary, unconfirmedRules: unconfirmed };
+}
+
+// ---------------------------------------------------------------------------
+// Slot kick-in: crews of a slot can board (and roam the ship) only once it is opened.
+// Opening never starts a sprint; every sprint still needs its own explicit start.
+// ---------------------------------------------------------------------------
+
+export async function openSlot(tx: Tx, actor: Actor, slotId: string, opts: { expectedVersion?: number } = {}) {
+  const slot = await lockSlot(tx, slotId);
+  checkVersion(slot, opts.expectedVersion);
+  if (slot.opened_at) return { slot, opened: false };
+  if (['REVIEW', 'COMPLETED'].includes(slot.phase)) throw new AppError('INVALID_TRANSITION', `${slot.name} is already ${slot.phase}.`);
+  const plan = await one<{ n: number }>(tx, 'SELECT count(*)::int AS n FROM question_instance WHERE slot_id=$1', [slotId]);
+  if (!plan?.n) throw new AppError('INVALID_TRANSITION', 'Build the release plan for this slot before opening it.');
+  const updated = await bumpSlot(tx, slotId, { opened_at: new Date(), opened_by: actor.id, phase: slot.phase === 'CONFIGURING' || slot.phase === 'READY' ? 'WAITING' : slot.phase });
+  await audit(tx, actor, 'slot.opened', { type: 'slot', id: slotId }, { slot: slot.number });
+  await emit(tx, 'slot.updated', [Rooms.organizers, Rooms.display], { slotId, opened: true });
+  // Crews of this slot (on the waiting screen or reconnecting) re-evaluate their access.
+  await emit(tx, 'eligibility.changed', [Rooms.all], { slotId, opened: true });
+  return { slot: updated, opened: true };
+}
+
+/** Undo an accidental kick-in, only before Sprint 1 has started. Signed-in crews return to the waiting screen. */
+export async function closeBoarding(tx: Tx, actor: Actor, slotId: string, reason: string) {
+  const slot = await lockSlot(tx, slotId);
+  if (!slot.opened_at) return { slot, closed: false };
+  if (slot.current_sprint > 0) throw new AppError('INVALID_TRANSITION', 'Sprint 1 has started; boarding cannot be closed. Pause the sprint instead.');
+  if (!reason || reason.trim().length < 4) throw new AppError('VALIDATION_FAILED', 'Give a reason for closing boarding.');
+  const updated = await bumpSlot(tx, slotId, { opened_at: null, opened_by: null, phase: 'READY' });
+  await audit(tx, actor, 'slot.boarding_closed', { type: 'slot', id: slotId }, { slot: slot.number }, reason);
+  await emit(tx, 'slot.updated', [Rooms.organizers, Rooms.display], { slotId, opened: false });
+  const teams = await many<{ team_id: string }>(tx, 'SELECT team_id FROM slot_enrollment WHERE slot_id=$1', [slotId]);
+  if (teams.length) await emit(tx, 'eligibility.changed', teams.map((t) => Rooms.team(t.team_id)), { slotId, opened: false });
+  return { slot: updated, closed: true };
 }
 
 // ---------------------------------------------------------------------------

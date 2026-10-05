@@ -471,10 +471,14 @@ export const ShipWorld = memo(
             <Door key={i} x={i * p.roomWidth} open={p.doorOpen.includes(i)} label={['', 'BRIDGE / LOBBY', 'TASK DECK', 'CREW RANKINGS'][i]} />
           ))}
           <g ref={p.playerRef} data-testid="player">
-            <ellipse cx="0" cy="0" rx="38" ry="11" fill="#03101a" opacity=".4" />
+            {/* Ground shadow sits exactly under the feet (sprite feet ≈ y -9) and breathes with the body. */}
+            <ellipse data-shadow cx="0" cy="-8" rx="30" ry="8" fill="#03101a" opacity=".42" className="crew-ground-shadow" />
             <g ref={p.walkingRef}>
-              <g transform="translate(-44 -103)">
-                <Crewmate color={p.identity.color} size={88} state="still" />
+              {/* Animated wrapper: CSS transforms here never replace the sprite's positioning transform below. */}
+              <g data-body className="crew-body-anchor">
+                <g transform="translate(-44 -103)">
+                  <Crewmate color={p.identity.color} size={88} state="still" shadow={false} />
+                </g>
               </g>
             </g>
             <path d="M-5 -122L0 -116L5 -122" fill="#b3efd8" />

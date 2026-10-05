@@ -14,12 +14,20 @@ export interface Env {
 }
 
 /** Fresh schema + demo seed + app, against the suite's real PostgreSQL and runner. */
-export async function freshEnv(opts: { listen?: boolean; overrides?: Partial<AppConfig> } = {}): Promise<Env> {
+/**
+ * `ready` (default true) opens every slot and marks every crew present, so suites that are not
+ * about kick-in / attendance can sign in and start sprints directly. controls.test.ts uses ready:false.
+ */
+export async function freshEnv(opts: { listen?: boolean; overrides?: Partial<AppConfig>; ready?: boolean } = {}): Promise<Env> {
   const cfg = loadConfig({ logLevel: 'silent', nodeEnv: 'test', demoMode: true, allowedOrigins: ['http://localhost:5173'], ...opts.overrides });
   const db = createPool(cfg.databaseUrl, 30);
   await dropAll(db);
   await migrate(db, () => undefined);
   await seedDemo(db, cfg, () => undefined);
+  if (opts.ready !== false) {
+    await db.query('UPDATE team SET checked_in_at=now() WHERE checked_in_at IS NULL');
+    await db.query(`UPDATE slot SET opened_at=now(), phase=CASE WHEN phase IN ('CONFIGURING','READY') THEN 'WAITING' ELSE phase END`);
+  }
   const built = await buildApp(cfg, { db });
   if (opts.listen) await built.app.listen({ port: 0, host: '127.0.0.1' });
   return {
