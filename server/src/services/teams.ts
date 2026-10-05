@@ -1,52 +1,24 @@
+import { randomInt } from 'node:crypto';
 import { z } from 'zod';
+import type { AppConfig } from '../config.js';
 import { many, one, withTx, type Db, type Queryable, type Tx } from '../db.js';
 import { AppError } from '../errors.js';
-import { checkTeamPasswordPolicy, hashPassword, randomToken, sha256 } from '../security/crypto.js';
+import { hashPassword } from '../security/crypto.js';
 import { audit, type Actor } from './audit.js';
-import { getEvent, listDays } from './context.js';
-import { claimIdempotency } from './idempotency.js';
+import { getEvent, listSlots } from './context.js';
+import { credentialMail, mailChannel, sendSmtp } from './mail.js';
 import { emit, Rooms } from './outbox.js';
 import { revokeAllTeamSessions } from './sessions.js';
+import { normHeader, readUpload } from './spreadsheet.js';
 import { applyLedger } from './wallet.js';
 
 export const CREW_COLORS: [string, string][] = [
   ['Cyan', '#51cfdf'], ['Red', '#f37983'], ['Green', '#86cd97'], ['Yellow', '#edd478'], ['Purple', '#b298e7'],
   ['Orange', '#efae77'], ['Pink', '#d693b9'], ['Blue', '#7dace9'], ['Lime', '#b3d77c'], ['White', '#dfe7ea'],
 ];
-const COLOR_SET = new Set(CREW_COLORS.map(([, c]) => c));
 
-const text = (min: number, max: number, label: string) =>
-  z.string({ required_error: `${label} is required.` }).trim().min(min, `${label} is required.`).max(max, `${label} must be at most ${max} characters.`);
-
-export const memberSchema = z.object({
-  name: text(1, 80, 'Name'),
-  institution: text(1, 120, 'Institution'),
-  year: text(1, 20, 'Year'),
-  branch: text(1, 80, 'Branch'),
-  studentId: z.string().trim().max(40, 'Student ID must be at most 40 characters.').optional().or(z.literal('')),
-});
-
-export const registrationSchema = z
-  .object({
-    teamName: text(2, 32, 'Team name').regex(/^[\p{L}\p{N} ._&-]+$/u, 'Team name may use letters, numbers, spaces and . _ & -'),
-    captainEmail: z.string().trim().max(254).email('Enter a valid email address.'),
-    password: z.string().max(128),
-    confirmPassword: z.string().max(128),
-    members: z.array(memberSchema).min(3, 'A crew needs 3 or 4 members (including the captain).').max(4, 'A crew needs 3 or 4 members (including the captain).'),
-    requestedDays: z.enum(['DAY1', 'DAY2', 'BOTH'], { errorMap: () => ({ message: 'Choose Day 1, Day 2 or Both.' }) }),
-    color: z.string().refine((c) => COLOR_SET.has(c), 'Choose a crewmate color from the palette.'),
-    rulesAccepted: z.literal(true, { errorMap: () => ({ message: 'You must confirm the competition rules.' }) }),
-  })
-  .strict();
-
-export type RegistrationInput = z.infer<typeof registrationSchema>;
-
-export function normalizeEmail(e: string) {
-  return e.trim().toLowerCase();
-}
-export function normalizeTeamName(n: string) {
-  return n.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
-}
+export const normalizeEmail = (e: string) => e.trim().toLowerCase();
+export const normalizeTeamName = (n: string) => n.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
 
 export function zodFieldErrors(err: z.ZodError): Record<string, string> {
   const out: Record<string, string> = {};
@@ -57,219 +29,489 @@ export function zodFieldErrors(err: z.ZodError): Record<string, string> {
   return out;
 }
 
-function mapUniqueViolation(err: unknown): never {
-  const e = err as { code?: string; constraint?: string };
-  if (e.code === '23505') {
-    if (e.constraint?.includes('email')) throw new AppError('DUPLICATE_EMAIL', 'A crew with this captain email is already registered.', { fields: { captainEmail: 'This email is already registered.' } });
-    if (e.constraint?.includes('name')) throw new AppError('DUPLICATE_TEAM_NAME', 'That team name is taken.', { fields: { teamName: 'This team name is already taken.' } });
-  }
-  throw err;
+// ---------------------------------------------------------------------------
+// Import format
+// ---------------------------------------------------------------------------
+
+/** Canonical import columns. Headers are matched case/space-insensitively, with aliases, or via an explicit mapping. */
+export const TEAM_IMPORT_COLUMNS = [
+  'team_name', 'crew_id', 'captain_email',
+  'member1_name', 'member1_institution', 'member1_year', 'member1_branch', 'member1_student_id',
+  'member2_name', 'member2_institution', 'member2_year', 'member2_branch', 'member2_student_id',
+  'member3_name', 'member3_institution', 'member3_year', 'member3_branch', 'member3_student_id',
+  'member4_name', 'member4_institution', 'member4_year', 'member4_branch', 'member4_student_id',
+  'slot', 'account_enabled', 'checked_in',
+] as const;
+export type TeamColumn = (typeof TEAM_IMPORT_COLUMNS)[number];
+
+const ALIASES: Record<string, TeamColumn> = {
+  team: 'team_name', teamname: 'team_name', crew: 'team_name', crewname: 'team_name',
+  crewid: 'crew_id', teamid: 'crew_id', id: 'crew_id',
+  email: 'captain_email', captainemail: 'captain_email', leaderemail: 'captain_email',
+  captain: 'member1_name', captainname: 'member1_name', leader: 'member1_name',
+  slot: 'slot', slotnumber: 'slot', assignedslot: 'slot',
+  enabled: 'account_enabled', accountenabled: 'account_enabled', active: 'account_enabled',
+  checkedin: 'checked_in', checkin: 'checked_in',
+};
+for (const c of TEAM_IMPORT_COLUMNS) ALIASES[normHeader(c)] = c;
+
+export const TEAM_TEMPLATE_HEADER = [...TEAM_IMPORT_COLUMNS];
+
+function autoMapping(header: string[]): Record<TeamColumn, number> {
+  const m = {} as Record<TeamColumn, number>;
+  header.forEach((h, i) => {
+    const c = ALIASES[normHeader(h)];
+    if (c && m[c] === undefined) m[c] = i;
+  });
+  return m;
 }
 
-async function nextCrewId(tx: Tx): Promise<string> {
+const boolish = (v: string, dflt: boolean) => {
+  const t = v.trim().toLowerCase();
+  if (!t) return dflt;
+  if (['1', 'true', 'yes', 'y', 'enabled', 'checked', 'checked-in', 'x'].includes(t)) return true;
+  if (['0', 'false', 'no', 'n', 'disabled', 'unchecked'].includes(t)) return false;
+  return null;
+};
+
+const memberSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required.').max(80),
+  institution: z.string().trim().max(120).default(''),
+  year: z.string().trim().max(20).default(''),
+  branch: z.string().trim().max(80).default(''),
+  studentId: z.string().trim().max(40).optional(),
+});
+export const teamInputSchema = z.object({
+  teamName: z.string().trim().min(2, 'Team name is required.').max(40).regex(/^[\p{L}\p{N} ._&'-]+$/u, 'Team name may use letters, numbers, spaces and . _ & \' -'),
+  crewId: z.string().trim().regex(/^CRW-\d{3,}$/i, 'Crew ID looks like CRW-001.').optional(),
+  captainEmail: z.string().trim().max(254).email('Invalid captain email.'),
+  members: z.array(memberSchema).min(3, 'A crew needs 3 or 4 members (captain included).').max(4, 'A crew needs 3 or 4 members (captain included).'),
+  slot: z.number().int().min(1).max(99).nullable(),
+  accountEnabled: z.boolean(),
+  checkedIn: z.boolean(),
+  color: z.string().optional(),
+});
+export type TeamInput = z.infer<typeof teamInputSchema>;
+
+interface PlannedRow {
+  row: number;
+  action: 'CREATE' | 'UPDATE' | 'UNCHANGED' | 'ERROR';
+  input?: TeamInput;
+  teamId?: string;
+  crewId?: string;
+  changes?: string[];
+  errors: string[];
+}
+
+function rowToInput(cells: string[], m: Record<TeamColumn, number>): { input?: TeamInput; errors: string[] } {
+  const get = (c: TeamColumn) => (m[c] === undefined ? '' : (cells[m[c]] ?? '').trim());
+  const members = [1, 2, 3, 4]
+    .map((k) => ({
+      name: get(`member${k}_name` as TeamColumn), institution: get(`member${k}_institution` as TeamColumn), year: get(`member${k}_year` as TeamColumn),
+      branch: get(`member${k}_branch` as TeamColumn), studentId: get(`member${k}_student_id` as TeamColumn) || undefined,
+    }))
+    .filter((x) => x.name);
+  const slotRaw = get('slot');
+  const slotNum = slotRaw ? Number(slotRaw.replace(/[^0-9]/g, '')) : null;
+  const enabled = boolish(get('account_enabled'), true);
+  const checked = boolish(get('checked_in'), false);
+  const errors: string[] = [];
+  if (enabled === null) errors.push('account_enabled must be true/false.');
+  if (checked === null) errors.push('checked_in must be true/false.');
+  if (slotRaw && (!slotNum || Number.isNaN(slotNum))) errors.push(`Unknown slot "${slotRaw}".`);
+  const parsed = teamInputSchema.safeParse({
+    teamName: get('team_name'), crewId: get('crew_id') || undefined, captainEmail: get('captain_email'), members,
+    slot: slotNum, accountEnabled: enabled ?? true, checkedIn: checked ?? false,
+  });
+  if (!parsed.success) errors.push(...Object.entries(zodFieldErrors(parsed.error)).map(([k, v]) => `${k}: ${v}`));
+  return errors.length ? { errors } : { input: parsed.data!, errors };
+}
+
+async function planRows(q: Queryable, rows: { row: number; cells: string[] }[], m: Record<TeamColumn, number>, eventId: string) {
+  const slots = await listSlots(q, eventId);
+  const existing = await many<{ id: string; crew_id: string; name: string; email: string; name_normalized: string; email_normalized: string; account_enabled: boolean; checked_in_at: Date | null; slot_number: number | null; scored: boolean; members: { name: string; institution: string; year: string; branch: string; student_id: string | null }[] }>(
+    q,
+    `SELECT t.id, t.crew_id, t.name, t.email, t.name_normalized, t.email_normalized, t.account_enabled, t.checked_in_at, s.number AS slot_number,
+            EXISTS (SELECT 1 FROM coin_ledger l WHERE l.enrollment_id=se.id) AS scored,
+            COALESCE((SELECT json_agg(json_build_object('name', m.name, 'institution', m.institution, 'year', m.year, 'branch', m.branch, 'student_id', m.student_id) ORDER BY m.position) FROM team_member m WHERE m.team_id=t.id), '[]') AS members
+       FROM team t LEFT JOIN slot_enrollment se ON se.team_id=t.id LEFT JOIN slot s ON s.id=se.slot_id WHERE t.event_id=$1`,
+    [eventId],
+  );
+  const byCrew = new Map(existing.map((e) => [e.crew_id, e]));
+  const byEmail = new Map(existing.map((e) => [e.email_normalized, e]));
+  const byName = new Map(existing.map((e) => [e.name_normalized, e]));
+  const seenEmail = new Map<string, number>();
+  const seenName = new Map<string, number>();
+  const seenCrew = new Map<string, number>();
+  const planned: PlannedRow[] = [];
+  for (const r of rows) {
+    const { input, errors } = rowToInput(r.cells, m);
+    const p: PlannedRow = { row: r.row, action: 'ERROR', errors: [...errors], input };
+    if (input) {
+      const em = normalizeEmail(input.captainEmail);
+      const nm = normalizeTeamName(input.teamName);
+      const cid = input.crewId?.toUpperCase();
+      if (seenEmail.has(em)) p.errors.push(`Duplicate captain email (also row ${seenEmail.get(em)}).`);
+      if (seenName.has(nm)) p.errors.push(`Duplicate team name (also row ${seenName.get(nm)}).`);
+      if (cid && seenCrew.has(cid)) p.errors.push(`Duplicate crew ID (also row ${seenCrew.get(cid)}).`);
+      seenEmail.set(em, r.row);
+      seenName.set(nm, r.row);
+      if (cid) seenCrew.set(cid, r.row);
+      if (input.slot && !slots.find((s) => s.number === input.slot)) p.errors.push(`Slot ${input.slot} does not exist.`);
+      // Identity: crew ID first, then captain email.
+      const match = (cid && byCrew.get(cid)) || byEmail.get(em);
+      if (cid && !byCrew.get(cid) && byEmail.get(em)) p.errors.push(`Email belongs to ${byEmail.get(em)!.crew_id}, not ${cid}.`);
+      if (match) {
+        p.teamId = match.id;
+        p.crewId = match.crew_id;
+        const other = byName.get(nm);
+        if (other && other.id !== match.id) p.errors.push(`Team name already used by ${other.crew_id}.`);
+        const otherEmail = byEmail.get(em);
+        if (otherEmail && otherEmail.id !== match.id) p.errors.push(`Captain email already used by ${otherEmail.crew_id}.`);
+        const changes: string[] = [];
+        if (match.name !== input.teamName.trim().replace(/\s+/g, ' ')) changes.push('team name');
+        if (match.email_normalized !== em) changes.push('captain email');
+        const roster = input.members.map((x) => [x.name, x.institution, x.year, x.branch, x.studentId ?? ''].join('|')).join(';');
+        const oldRoster = match.members.map((x) => [x.name, x.institution, x.year, x.branch, x.student_id ?? ''].join('|')).join(';');
+        if (roster !== oldRoster) changes.push('roster');
+        if (match.account_enabled !== input.accountEnabled) changes.push(input.accountEnabled ? 'enable account' : 'DISABLE account');
+        if (!!match.checked_in_at !== input.checkedIn) changes.push(input.checkedIn ? 'check in' : 'clear check-in');
+        if (input.slot !== null && input.slot !== match.slot_number) {
+          if (match.scored) p.errors.push(`Slot change blocked: ${match.crew_id} has already scored in slot ${match.slot_number}. Handle as an audited correction, not a re-import.`);
+          else changes.push(`slot ${match.slot_number ?? 'unassigned'} → ${input.slot}`);
+        }
+        p.changes = changes;
+        p.action = p.errors.length ? 'ERROR' : changes.length ? 'UPDATE' : 'UNCHANGED';
+      } else {
+        if (byName.get(nm)) p.errors.push(`Team name already used by ${byName.get(nm)!.crew_id}.`);
+        if (cid && byCrew.get(cid)) p.errors.push(`Crew ID ${cid} already exists.`);
+        p.crewId = cid;
+        p.action = p.errors.length ? 'ERROR' : 'CREATE';
+      }
+    }
+    planned.push(p);
+  }
+  // Capacity per slot after this import
+  const load = new Map<number, number>();
+  for (const e of existing) if (e.slot_number) load.set(e.slot_number, (load.get(e.slot_number) ?? 0) + 1);
+  for (const p of planned) {
+    if (p.action === 'ERROR' || !p.input?.slot) continue;
+    const prev = p.teamId ? existing.find((e) => e.id === p.teamId)?.slot_number : null;
+    if (prev !== p.input.slot) {
+      load.set(p.input.slot, (load.get(p.input.slot) ?? 0) + 1);
+      if (prev) load.set(prev, (load.get(prev) ?? 1) - 1);
+    }
+  }
+  const capacity = slots.map((s) => ({ slot: s.number, name: s.name, capacity: s.capacity, after: load.get(s.number) ?? 0 }));
+  return { planned, capacity };
+}
+
+/** Parses and validates an upload. Writes only an import_batch row (no team data is touched). */
+export async function previewTeamImport(db: Db, actor: Actor, args: { fileName: string; contentBase64: string; mapping?: Partial<Record<TeamColumn, string>> }) {
+  const ev = await getEvent(db);
+  const table = await readUpload(args.fileName, args.contentBase64);
+  if (table.length < 2) throw new AppError('IMPORT_INVALID', 'The file needs a header row and at least one team.');
+  const header = table[0];
+  const m = autoMapping(header);
+  for (const [col, h] of Object.entries(args.mapping ?? {})) {
+    const idx = header.findIndex((x) => x.trim() === h);
+    if (idx < 0) throw new AppError('IMPORT_INVALID', `Mapped column "${h}" is not in the file.`);
+    m[col as TeamColumn] = idx;
+  }
+  const missing = (['team_name', 'captain_email', 'member1_name'] as TeamColumn[]).filter((c) => m[c] === undefined);
+  const rows = table.slice(1).map((cells, i) => ({ row: i + 2, cells }));
+  const { planned, capacity } = missing.length ? { planned: [] as PlannedRow[], capacity: [] } : await planRows(db, rows, m, ev.id);
+  const summary = {
+    rows: rows.length,
+    create: planned.filter((p) => p.action === 'CREATE').length,
+    update: planned.filter((p) => p.action === 'UPDATE').length,
+    unchanged: planned.filter((p) => p.action === 'UNCHANGED').length,
+    errors: planned.filter((p) => p.action === 'ERROR').length,
+    unassigned: planned.filter((p) => p.action !== 'ERROR' && !p.input?.slot).length,
+    missingColumns: missing,
+    columnIndex: m,
+    capacity,
+    overCapacity: capacity.filter((c) => c.after > c.capacity).map((c) => c.name),
+  };
+  const mappingOut = Object.fromEntries(Object.entries(m).map(([k, i]) => [k, header[i]]));
+  const batch = (await one<{ id: string }>(
+    db,
+    `INSERT INTO import_batch(event_id, kind, file_name, mapping, rows, errors, summary, created_by) VALUES ($1,'TEAMS',$2,$3,$4,$5,$6,$7) RETURNING id`,
+    [ev.id, args.fileName.slice(0, 200), JSON.stringify(mappingOut), JSON.stringify(rows), JSON.stringify(planned.filter((p) => p.errors.length).map((p) => ({ row: p.row, errors: p.errors }))), JSON.stringify(summary), actor.id],
+  ))!;
+  return {
+    batchId: batch.id,
+    header,
+    mapping: mappingOut,
+    summary,
+    rows: planned.map((p) => ({ row: p.row, action: p.action, crewId: p.crewId ?? null, teamName: p.input?.teamName ?? null, captainEmail: p.input?.captainEmail ?? null, members: p.input?.members.length ?? 0, slot: p.input?.slot ?? null, accountEnabled: p.input?.accountEnabled ?? null, changes: p.changes ?? [], errors: p.errors })),
+  };
+}
+
+async function nextCrewId(tx: Tx) {
   const r = await one<{ n: number }>(tx, `SELECT nextval('crew_number_seq')::int AS n`);
   return `CRW-${String(r!.n).padStart(3, '0')}`;
 }
 
-interface CreateTeamArgs {
-  teamName: string;
-  email: string;
-  passwordHash: string;
-  members: z.infer<typeof memberSchema>[];
-  requestedDays: 'DAY1' | 'DAY2' | 'BOTH';
-  color: string;
-  createdVia: 'SELF' | 'ADMIN' | 'IMPORT' | 'SEED';
-  mustChangePassword: boolean;
-  crewId?: string;
-}
-
-/** Inserts team + roster + (inactive) day eligibility rows. Caller owns the transaction. */
-export async function insertTeam(tx: Tx, a: CreateTeamArgs): Promise<{ id: string; crewId: string }> {
+async function assignSlot(tx: Tx, actor: Actor, teamId: string, slotNumber: number | null, startingWallet: number) {
   const ev = await getEvent(tx);
-  const crewId = a.crewId ?? (await nextCrewId(tx));
-  const captain = a.members[0];
-  const team = await one<{ id: string }>(
-    tx,
-    `INSERT INTO team(event_id, crew_id, name, name_normalized, email, email_normalized, captain_name, password_hash, color,
-                      requested_days, rules_accepted_at, created_via, must_change_password)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now(),$11,$12) RETURNING id`,
-    [ev.id, crewId, a.teamName.trim().replace(/\s+/g, ' '), normalizeTeamName(a.teamName), a.email.trim(), normalizeEmail(a.email), captain.name,
-      a.passwordHash, a.color, a.requestedDays, a.createdVia, a.mustChangePassword],
-  ).catch(mapUniqueViolation);
-  for (let i = 0; i < a.members.length; i++) {
-    const m = a.members[i];
-    await tx.query(
-      `INSERT INTO team_member(team_id, position, name, institution, year, branch, student_id, is_captain) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [team!.id, i + 1, m.name, m.institution, m.year, m.branch, m.studentId || null, i === 0],
-    );
+  const cur = await one<{ id: string; slot_id: string; scored: boolean }>(tx, `SELECT se.id, se.slot_id, EXISTS (SELECT 1 FROM coin_ledger l WHERE l.enrollment_id=se.id) AS scored FROM slot_enrollment se WHERE se.team_id=$1 FOR UPDATE`, [teamId]);
+  if (slotNumber === null) {
+    if (cur) {
+      if (cur.scored) throw new AppError('SLOT_CHANGE_BLOCKED', 'This crew has already scored; it cannot be unassigned.');
+      await tx.query('DELETE FROM slot_enrollment WHERE id=$1', [cur.id]);
+    }
+    return;
   }
-  for (const d of await listDays(tx, ev.id)) {
-    await tx.query('INSERT INTO team_day_eligibility(team_id, day_id, active) VALUES ($1,$2,false)', [team!.id, d.id]);
+  const slot = await one<{ id: string; phase: string }>(tx, 'SELECT id, phase FROM slot WHERE event_id=$1 AND number=$2', [ev.id, slotNumber]);
+  if (!slot) throw new AppError('VALIDATION_FAILED', `Slot ${slotNumber} does not exist.`);
+  if (cur?.slot_id === slot.id) return;
+  if (cur) {
+    if (cur.scored) throw new AppError('SLOT_CHANGE_BLOCKED', 'This crew has already scored in its slot. Slot changes after scoring must be an audited, paused-event correction (scores are never transferred between opponents).');
+    await tx.query('UPDATE slot_enrollment SET slot_id=$2, version=version+1 WHERE id=$1', [cur.id, slot.id]);
+  } else {
+    const enr = await one<import('./context.js').EnrollmentRow>(tx, 'INSERT INTO slot_enrollment(slot_id, team_id) VALUES ($1,$2) RETURNING *', [slot.id, teamId]);
+    if (startingWallet > 0) await applyLedger(tx, enr!, { kind: 'GRANT', sprintId: null, wallet: startingWallet, grant: startingWallet, sourceType: 'starting-grant', sourceId: enr!.id, reason: 'Starting wallet', actorId: actor.id });
   }
-  return { id: team!.id, crewId };
+  await emit(tx, 'eligibility.changed', [Rooms.team(teamId), Rooms.organizers], { teamId, slot: slotNumber });
 }
 
-/**
- * Public self-registration. Atomic: team, hash, crew ID, roster and requested
- * days are created together or not at all. The request can never set roles,
- * coins, active flags or approved days. Idempotent by key.
- */
-export async function registerTeam(db: Db, input: unknown, idempotencyKey: string | undefined) {
-  const parsed = registrationSchema.safeParse(input);
-  if (!parsed.success) throw new AppError('VALIDATION_FAILED', 'Please fix the highlighted fields.', { fields: zodFieldErrors(parsed.error) });
-  const d = parsed.data;
-  const fields: Record<string, string> = {};
-  const pwErr = checkTeamPasswordPolicy(d.password);
-  if (pwErr) fields.password = pwErr;
-  if (d.password !== d.confirmPassword) fields.confirmPassword = 'Passwords do not match.';
-  if (Object.keys(fields).length) throw new AppError('VALIDATION_FAILED', 'Please fix the highlighted fields.', { fields });
-  if (!idempotencyKey) throw new AppError('VALIDATION_FAILED', 'Missing Idempotency-Key header.');
-  const passwordHash = await hashPassword(d.password);
-  // Fingerprint excludes the password so a retry from the same form is recognised.
-  const { password: _p, confirmPassword: _c, ...fp } = d;
+async function writeTeam(tx: Tx, actor: Actor, input: TeamInput, teamId: string | undefined, via: 'IMPORT' | 'ADMIN' | 'SEED') {
+  const ev = await getEvent(tx);
+  const name = input.teamName.trim().replace(/\s+/g, ' ');
+  let id = teamId;
+  let crewId: string;
+  const onUnique = (err: { code?: string; constraint?: string }) => {
+    if (err.code === '23505') {
+      if (err.constraint?.includes('email')) throw new AppError('DUPLICATE_EMAIL', 'Captain email already used by another crew.');
+      if (err.constraint?.includes('name')) throw new AppError('DUPLICATE_TEAM_NAME', 'Team name already used.');
+      if (err.constraint?.includes('crew_id')) throw new AppError('CONFLICT', 'Crew ID already exists.');
+    }
+    throw err;
+  };
+  if (!id) {
+    crewId = input.crewId?.toUpperCase() ?? (await nextCrewId(tx));
+    const color = input.color ?? CREW_COLORS[randomInt(CREW_COLORS.length)][1];
+    id = (await one<{ id: string }>(
+      tx,
+      `INSERT INTO team(event_id, crew_id, name, name_normalized, email, email_normalized, captain_name, color, account_enabled, checked_in_at, created_via)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+      [ev.id, crewId, name, normalizeTeamName(name), input.captainEmail.trim(), normalizeEmail(input.captainEmail), input.members[0].name, color, input.accountEnabled, input.checkedIn ? new Date() : null, via],
+    ).catch(onUnique))!.id;
+  } else {
+    const before = (await one<{ crew_id: string; account_enabled: boolean }>(tx, 'SELECT crew_id, account_enabled FROM team WHERE id=$1 FOR UPDATE', [id]))!;
+    crewId = before.crew_id;
+    await tx.query(
+      `UPDATE team SET name=$2, name_normalized=$3, email=$4, email_normalized=$5, captain_name=$6, account_enabled=$7,
+              checked_in_at=CASE WHEN $8 THEN COALESCE(checked_in_at, now()) ELSE NULL END, version=version+1, updated_at=now() WHERE id=$1`,
+      [id, name, normalizeTeamName(name), input.captainEmail.trim(), normalizeEmail(input.captainEmail), input.members[0].name, input.accountEnabled, input.checkedIn],
+    ).catch(onUnique);
+    if (before.account_enabled && !input.accountEnabled) await revokeAllTeamSessions(tx, id, 'ACCOUNT_DISABLED');
+  }
+  await tx.query('DELETE FROM team_member WHERE team_id=$1', [id]);
+  for (let i = 0; i < input.members.length; i++) {
+    const m = input.members[i];
+    await tx.query(`INSERT INTO team_member(team_id, position, name, institution, year, branch, student_id, is_captain) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [id, i + 1, m.name, m.institution, m.year, m.branch, m.studentId || null, i === 0]);
+  }
+  if (input.slot !== null) await assignSlot(tx, actor, id, input.slot, ev.rules.startingWallet);
+  return { id, crewId };
+}
+
+/** Commits a previewed batch. Idempotent: committing twice returns the first result. Re-validates against current data. */
+export async function commitTeamImport(db: Db, actor: Actor, batchId: string) {
   return withTx(db, async (tx) => {
-    const idem = await claimIdempotency(tx, `register:${normalizeEmail(d.captainEmail)}`, 'register-team', idempotencyKey, fp);
-    if (idem.existing) return idem.existing as { crewId: string; teamName: string; status: string };
-    const t = await insertTeam(tx, {
-      teamName: d.teamName, email: d.captainEmail, passwordHash, members: d.members, requestedDays: d.requestedDays,
-      color: d.color, createdVia: 'SELF', mustChangePassword: false,
-    });
-    await audit(tx, { type: 'TEAM', id: t.id }, 'team.registered', { type: 'team', id: t.id }, { crewId: t.crewId, requestedDays: d.requestedDays, members: d.members.length });
-    await emit(tx, 'crews.changed', [Rooms.admin], { teamId: t.id, crewId: t.crewId, change: 'REGISTERED' });
-    const response = { crewId: t.crewId, teamName: d.teamName, status: 'PENDING_ACTIVATION' };
-    await idem.save(response);
-    return response;
+    const b = await one<{ id: string; status: string; rows: { row: number; cells: string[] }[]; mapping: Record<string, string>; result: unknown; event_id: string }>(tx, 'SELECT * FROM import_batch WHERE id=$1 AND kind=$2 FOR UPDATE', [batchId, 'TEAMS']);
+    if (!b) throw new AppError('NOT_FOUND', 'Import preview not found.');
+    if (b.status === 'COMMITTED') return { ...(b.result as object), alreadyCommitted: true };
+    if (b.status !== 'PREVIEWED') throw new AppError('INVALID_TRANSITION', 'This preview was discarded.');
+    await tx.query('SELECT pg_advisory_xact_lock(727020)');
+    // Column indexes resolved at preview time (auto-mapping + explicit mapping).
+    const m = ((await one<{ summary: { columnIndex?: Record<TeamColumn, number> } }>(tx, 'SELECT summary FROM import_batch WHERE id=$1', [batchId]))!.summary.columnIndex ?? {}) as Record<TeamColumn, number>;
+    const { planned, capacity } = await planRows(tx, b.rows, m, b.event_id);
+    const bad = planned.filter((p) => p.action === 'ERROR');
+    if (bad.length) throw new AppError('IMPORT_INVALID', `${bad.length} row(s) have errors. Fix the file and preview again.`, { errors: bad.map((p) => ({ row: p.row, errors: p.errors })) });
+    const over = capacity.filter((c) => c.after > c.capacity);
+    if (over.length) throw new AppError('IMPORT_INVALID', `Over capacity: ${over.map((c) => `${c.name} ${c.after}/${c.capacity}`).join(', ')}. Raise the slot capacity or change assignments.`, { overCapacity: over });
+    const created: string[] = [];
+    const updated: string[] = [];
+    for (const p of planned) {
+      if (p.action === 'CREATE') created.push((await writeTeam(tx, actor, p.input!, undefined, 'IMPORT')).crewId);
+      else if (p.action === 'UPDATE') updated.push((await writeTeam(tx, actor, p.input!, p.teamId, 'IMPORT')).crewId);
+    }
+    const result = { created: created.length, updated: updated.length, unchanged: planned.filter((p) => p.action === 'UNCHANGED').length, createdCrewIds: created, updatedCrewIds: updated };
+    await tx.query(`UPDATE import_batch SET status='COMMITTED', committed_at=now(), result=$2 WHERE id=$1`, [batchId, JSON.stringify(result)]);
+    await audit(tx, actor, 'teams.import_committed', { type: 'import_batch', id: batchId }, result);
+    await emit(tx, 'teams.changed', [Rooms.organizers], { change: 'IMPORT', ...result });
+    return result;
   });
 }
 
-// ---------------------------------------------------------------------------
-// Eligibility & enrollment
-// ---------------------------------------------------------------------------
-
-/** Ensures an enrollment exists in the game mapped to `dayId`. Starting coins are a GRANT (wallet funding, not score). */
-export async function ensureEnrollment(tx: Tx, teamId: string, dayId: string, actor: Actor) {
-  const game = await one<{ id: string; starting_coins: number }>(tx, 'SELECT id, starting_coins FROM game WHERE day_id=$1', [dayId]);
-  if (!game) return null;
-  const existing = await one<{ id: string }>(tx, 'SELECT id FROM game_enrollment WHERE game_id=$1 AND team_id=$2', [game.id, teamId]);
-  if (existing) return existing.id;
-  const enr = await one<import('./context.js').EnrollmentRow>(tx, `INSERT INTO game_enrollment(game_id, team_id) VALUES ($1,$2) RETURNING *`, [game.id, teamId]);
-  if (game.starting_coins > 0) {
-    await applyLedger(tx, enr!, { kind: 'GRANT', wallet: game.starting_coins, grant: game.starting_coins, sourceType: 'starting-grant', sourceId: enr!.id, reason: 'Starting wallet', actorAdminId: actor.type === 'ADMIN' ? actor.id : null });
-  }
-  return enr!.id;
+export async function createTeam(db: Db, actor: Actor, raw: unknown) {
+  const input = teamInputSchema.parse(raw);
+  return withTx(db, async (tx) => {
+    const t = await writeTeam(tx, actor, input, undefined, 'ADMIN');
+    await audit(tx, actor, 'team.created', { type: 'team', id: t.id }, { crewId: t.crewId });
+    await emit(tx, 'teams.changed', [Rooms.organizers], { teamId: t.id });
+    return t;
+  });
 }
 
-export async function setDayEligibility(tx: Tx, actor: Actor, teamId: string, dayId: string, active: boolean) {
-  const team = await one<{ id: string; crew_id: string }>(tx, 'SELECT id, crew_id FROM team WHERE id=$1 FOR UPDATE', [teamId]);
-  if (!team) throw new AppError('NOT_FOUND', 'Crew not found.');
-  const prev = await one<{ active: boolean }>(tx, 'SELECT active FROM team_day_eligibility WHERE team_id=$1 AND day_id=$2', [teamId, dayId]);
-  await tx.query(
-    `INSERT INTO team_day_eligibility(team_id, day_id, active, updated_by, updated_at) VALUES ($1,$2,$3,$4,now())
-     ON CONFLICT (team_id, day_id) DO UPDATE SET active=EXCLUDED.active, updated_by=EXCLUDED.updated_by, updated_at=now()`,
-    [teamId, dayId, active, actor.id],
-  );
-  if (active) await ensureEnrollment(tx, teamId, dayId, actor);
-  if ((prev?.active ?? false) !== active) {
-    const day = await one<{ day_number: number }>(tx, 'SELECT day_number FROM event_day WHERE id=$1', [dayId]);
-    await audit(tx, actor, active ? 'eligibility.enabled' : 'eligibility.disabled', { type: 'team', id: teamId }, { crewId: team.crew_id, day: day?.day_number });
-    await emit(tx, 'eligibility.changed', [Rooms.team(teamId), Rooms.admin], { teamId, dayId, day: day?.day_number, active });
-    const game = await one<{ id: string }>(tx, 'SELECT id FROM game WHERE day_id=$1', [dayId]);
-    if (game) await emit(tx, 'standings.updated', [Rooms.game(game.id), Rooms.admin], { gameId: game.id });
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Admin provisioning: create, import, reset
-// ---------------------------------------------------------------------------
-
-export const adminCreateSchema = z.object({
-  teamName: registrationSchema.shape.teamName,
-  captainEmail: z.string().trim().max(254).email('Enter a valid email address.'),
-  members: registrationSchema.shape.members,
-  requestedDays: z.enum(['DAY1', 'DAY2', 'BOTH']),
-  color: z.string().refine((c) => COLOR_SET.has(c), 'Invalid color.'),
-  activeDays: z.array(z.number().int().min(1).max(2)).default([]),
+export const teamPatchSchema = z.object({
+  teamName: z.string().optional(),
+  captainEmail: z.string().optional(),
+  members: z.array(memberSchema).min(3).max(4).optional(),
+  accountEnabled: z.boolean().optional(),
+  checkedIn: z.boolean().optional(),
+  slot: z.number().int().min(1).max(8).nullable().optional(),
+  color: z.string().optional(),
+  status: z.enum(['ACTIVE', 'ARCHIVED']).optional(),
 });
 
-function tempPassword(): string {
-  // 4 groups of base32-ish chars + digit guarantee: satisfies the team policy.
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
-  const raw = randomToken(12).replace(/[^A-Za-z]/g, '');
-  const letters = Array.from(raw.slice(0, 10)).map((c, i) => (alphabet.includes(c) ? c : alphabet[i % alphabet.length])).join('');
-  return `${letters.slice(0, 5)}-${letters.slice(5, 10)}-${Math.floor(10 + Math.random() * 89)}`;
-}
-
-export async function adminCreateTeams(db: Db, actor: Actor, rows: unknown[], via: 'ADMIN' | 'IMPORT') {
-  if (!Array.isArray(rows) || rows.length === 0 || rows.length > 300) throw new AppError('VALIDATION_FAILED', 'Provide 1-300 crews.');
-  const parsed = rows.map((r, i) => {
-    const p = adminCreateSchema.safeParse(r);
-    if (!p.success) throw new AppError('VALIDATION_FAILED', `Row ${i + 1}: ${Object.values(zodFieldErrors(p.error))[0]}`, { row: i + 1, fields: zodFieldErrors(p.error) });
-    return p.data;
-  });
-  const prepared = await Promise.all(
-    parsed.map(async (p) => {
-      const pw = tempPassword();
-      return { p, pw, hash: await hashPassword(pw) };
-    }),
-  );
+export async function updateTeam(db: Db, actor: Actor, teamId: string, raw: unknown) {
+  const patch = teamPatchSchema.parse(raw);
   return withTx(db, async (tx) => {
-    const ev = await getEvent(tx);
-    const days = await listDays(tx, ev.id);
-    const out: { crewId: string; teamName: string; email: string; temporaryPassword: string }[] = [];
-    for (const { p, pw, hash } of prepared) {
-      const t = await insertTeam(tx, {
-        teamName: p.teamName, email: p.captainEmail, passwordHash: hash, members: p.members, requestedDays: p.requestedDays,
-        color: p.color, createdVia: via, mustChangePassword: true,
-      });
-      for (const dn of p.activeDays) {
-        const day = days.find((d) => d.day_number === dn);
-        if (day) await setDayEligibility(tx, actor, t.id, day.id, true);
-      }
-      await audit(tx, actor, via === 'IMPORT' ? 'team.imported' : 'team.created', { type: 'team', id: t.id }, { crewId: t.crewId });
-      out.push({ crewId: t.crewId, teamName: p.teamName, email: p.captainEmail, temporaryPassword: pw });
-    }
-    await emit(tx, 'crews.changed', [Rooms.admin], { change: 'CREATED', count: out.length });
-    return out;
-  });
-}
-
-/** Issues a one-time, expiring reset token (no email provider needed) and revokes the crew's sessions. */
-export async function issuePasswordReset(db: Db, actor: Actor, teamId: string) {
-  const token = randomToken(24);
-  await withTx(db, async (tx) => {
-    const t = await one<{ id: string; crew_id: string }>(tx, 'SELECT id, crew_id FROM team WHERE id=$1 FOR UPDATE', [teamId]);
+    const t = await one<{ id: string; crew_id: string; name: string; email: string; account_enabled: boolean; checked_in_at: Date | null; color: string; status: string }>(tx, 'SELECT * FROM team WHERE id=$1 FOR UPDATE', [teamId]);
     if (!t) throw new AppError('NOT_FOUND', 'Crew not found.');
-    await tx.query(`UPDATE password_reset SET used_at=now() WHERE team_id=$1 AND used_at IS NULL`, [teamId]);
-    await tx.query(`INSERT INTO password_reset(team_id, token_hash, expires_at, created_by_admin) VALUES ($1,$2, now() + interval '30 minutes', $3)`, [teamId, sha256(token), actor.id]);
-    await revokeAllTeamSessions(tx, teamId, 'PASSWORD_RESET_ISSUED');
-    await audit(tx, actor, 'team.password_reset_issued', { type: 'team', id: teamId }, { crewId: t.crew_id });
-  });
-  return { resetToken: token, expiresInMinutes: 30 };
-}
-
-export async function completePasswordReset(db: Db, token: string, newPassword: string) {
-  const pwErr = checkTeamPasswordPolicy(newPassword);
-  if (pwErr) throw new AppError('VALIDATION_FAILED', pwErr, { fields: { password: pwErr } });
-  const hash = await hashPassword(newPassword);
-  return withTx(db, async (tx) => {
-    const r = await one<{ id: string; team_id: string }>(tx, `SELECT id, team_id FROM password_reset WHERE token_hash=$1 AND used_at IS NULL AND expires_at > now() FOR UPDATE`, [sha256(token)]);
-    if (!r) throw new AppError('VALIDATION_FAILED', 'This reset link is invalid or has expired. Ask an organizer for a new one.');
-    await tx.query('UPDATE password_reset SET used_at=now() WHERE id=$1', [r.id]);
-    await tx.query('UPDATE team SET password_hash=$2, must_change_password=false, updated_at=now() WHERE id=$1', [r.team_id, hash]);
-    await revokeAllTeamSessions(tx, r.team_id, 'PASSWORD_CHANGED');
-    await audit(tx, { type: 'TEAM', id: r.team_id }, 'team.password_reset_completed', { type: 'team', id: r.team_id });
+    const ev = await getEvent(tx);
+    if (patch.teamName !== undefined || patch.captainEmail !== undefined || patch.members !== undefined || patch.accountEnabled !== undefined || patch.checkedIn !== undefined) {
+      const members = patch.members ?? (await many<{ name: string; institution: string; year: string; branch: string; student_id: string | null }>(tx, 'SELECT name, institution, year, branch, student_id FROM team_member WHERE team_id=$1 ORDER BY position', [teamId])).map((m) => ({ ...m, studentId: m.student_id ?? undefined }));
+      const input = teamInputSchema.parse({
+        teamName: patch.teamName ?? t.name, captainEmail: patch.captainEmail ?? t.email, members,
+        slot: null, accountEnabled: patch.accountEnabled ?? t.account_enabled, checkedIn: patch.checkedIn ?? !!t.checked_in_at,
+      });
+      await writeTeam(tx, actor, input, teamId, 'ADMIN');
+      if (patch.accountEnabled !== undefined && patch.accountEnabled !== t.account_enabled) {
+        await emit(tx, 'eligibility.changed', [Rooms.team(teamId), Rooms.organizers], { teamId, accountEnabled: patch.accountEnabled });
+        const enr = await one<{ slot_id: string }>(tx, 'SELECT slot_id FROM slot_enrollment WHERE team_id=$1', [teamId]);
+        if (enr) await emit(tx, 'leaderboard.updated', [Rooms.slot(enr.slot_id), Rooms.organizers, Rooms.display], { slotId: enr.slot_id });
+      }
+    }
+    if (patch.slot !== undefined) await assignSlot(tx, actor, teamId, patch.slot, ev.rules.startingWallet);
+    if (patch.color) await tx.query('UPDATE team SET color=$2, updated_at=now() WHERE id=$1', [teamId, patch.color]);
+    if (patch.status) {
+      await tx.query('UPDATE team SET status=$2, updated_at=now() WHERE id=$1', [teamId, patch.status]);
+      if (patch.status === 'ARCHIVED') await revokeAllTeamSessions(tx, teamId, 'ARCHIVED');
+    }
+    await audit(tx, actor, 'team.updated', { type: 'team', id: teamId }, { crewId: t.crew_id, ...patch, members: patch.members ? `${patch.members.length} members` : undefined });
+    await emit(tx, 'teams.changed', [Rooms.organizers], { teamId });
     return { ok: true };
   });
 }
 
-export async function getTeamProfile(q: Queryable, teamId: string) {
-  const team = await one<Record<string, unknown>>(q, `SELECT id, crew_id, name, email, captain_name, color, requested_days, status, must_change_password, created_at FROM team WHERE id=$1`, [teamId]);
-  const members = await many(q, 'SELECT position, name, institution, year, branch, student_id, is_captain FROM team_member WHERE team_id=$1 ORDER BY position', [teamId]);
-  const days = await many<{ day_number: number; label: string; active: boolean }>(
+/** Bulk slot assignment with a capacity preview. */
+export async function bulkAssign(db: Db, actor: Actor, args: { teamIds: string[]; slot: number | null; apply: boolean }) {
+  if (!args.teamIds.length || args.teamIds.length > 500) throw new AppError('VALIDATION_FAILED', 'Select 1-500 crews.');
+  return withTx(db, async (tx) => {
+    const ev = await getEvent(tx);
+    const slots = await listSlots(tx, ev.id);
+    const target = args.slot === null ? null : slots.find((s) => s.number === args.slot);
+    if (args.slot !== null && !target) throw new AppError('VALIDATION_FAILED', 'Unknown slot.');
+    const teams = await many<{ id: string; crew_id: string; slot_number: number | null; scored: boolean }>(
+      tx,
+      `SELECT t.id, t.crew_id, s.number AS slot_number, EXISTS (SELECT 1 FROM coin_ledger l WHERE l.enrollment_id=se.id) AS scored
+         FROM team t LEFT JOIN slot_enrollment se ON se.team_id=t.id LEFT JOIN slot s ON s.id=se.slot_id WHERE t.id = ANY($1)`,
+      [args.teamIds],
+    );
+    const blocked = teams.filter((t) => t.scored && t.slot_number !== args.slot).map((t) => t.crew_id);
+    const moving = teams.filter((t) => !t.scored && t.slot_number !== args.slot);
+    const current = target ? (await one<{ n: number }>(tx, 'SELECT count(*)::int AS n FROM slot_enrollment WHERE slot_id=$1', [target.id]))!.n : 0;
+    const preview = { slot: args.slot, moving: moving.map((t) => t.crew_id), blocked, capacity: target?.capacity ?? null, after: target ? current + moving.length : null };
+    if (!args.apply) return { applied: false, preview };
+    if (target && current + moving.length > target.capacity) throw new AppError('CONFLICT', `${target.name} would exceed its capacity (${current + moving.length}/${target.capacity}).`);
+    for (const t of moving) await assignSlot(tx, actor, t.id, args.slot, ev.rules.startingWallet);
+    await audit(tx, actor, 'teams.bulk_assigned', { type: 'slot', id: target?.id ?? null }, preview);
+    await emit(tx, 'teams.changed', [Rooms.organizers], { change: 'ASSIGN' });
+    return { applied: true, preview };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Credentials: preview → explicit send. Never automatic on import.
+// ---------------------------------------------------------------------------
+
+function tempPassword() {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
+  const pick = (n: number) => Array.from({ length: n }, () => A[randomInt(A.length)]).join('');
+  return `${pick(5)}-${pick(5)}-${randomInt(10, 100)}`;
+}
+
+async function credentialTargets(q: Queryable, teamIds: string[]) {
+  return many<{ id: string; crew_id: string; name: string; email: string; account_enabled: boolean; credential_status: string; slot_label: string | null }>(
     q,
-    `SELECT d.day_number, d.label, COALESCE(e.active,false) AS active FROM event_day d
-       LEFT JOIN team_day_eligibility e ON e.day_id=d.id AND e.team_id=$1 ORDER BY d.day_number`,
-    [teamId],
+    `SELECT t.id, t.crew_id, t.name, t.email, t.account_enabled, t.credential_status,
+            CASE WHEN s.id IS NULL THEN NULL ELSE s.name || ' · ' || to_char(d.date, 'DD Mon YYYY') END AS slot_label
+       FROM team t LEFT JOIN slot_enrollment se ON se.team_id=t.id LEFT JOIN slot s ON s.id=se.slot_id LEFT JOIN event_day d ON d.id=s.day_id
+      WHERE t.id = ANY($1) ORDER BY t.crew_id`,
+    [teamIds],
   );
-  return { team, members, days };
+}
+
+export async function previewCredentials(db: Db, cfg: AppConfig, teamIds: string[], reason: 'INITIAL' | 'RESET') {
+  if (!teamIds.length || teamIds.length > 500) throw new AppError('VALIDATION_FAILED', 'Select 1-500 crews.');
+  const ev = await getEvent(db);
+  let channel: string;
+  let channelNote: string;
+  try {
+    channel = mailChannel(cfg);
+    channelNote = channel === 'CAPTURE' ? 'Demo mail, not delivered externally: messages are captured locally for organizers.' : cfg.mail.sink ? 'Demo SMTP sink (e.g. Mailpit): messages are caught locally and NOT delivered externally.' : `Delivered through SMTP from ${cfg.mail.from}.`;
+  } catch (e) {
+    channel = 'NONE';
+    channelNote = (e as Error).message;
+  }
+  const targets = await credentialTargets(db, teamIds);
+  const sample = targets[0] ? credentialMail({ eventName: ev.name, teamName: targets[0].name, crewId: targets[0].crew_id, email: targets[0].email, password: '•••••••• (generated on send)', slotLabel: targets[0].slot_label ?? 'Not yet assigned', loginUrl: cfg.publicUrl, reset: reason === 'RESET' }) : null;
+  return {
+    channel,
+    channelNote,
+    recipients: targets.map((t) => ({
+      teamId: t.id, crewId: t.crew_id, name: t.name, email: t.email, slot: t.slot_label,
+      warnings: [
+        ...(!t.account_enabled ? ['account disabled'] : []),
+        ...(!t.slot_label ? ['no slot assigned'] : []),
+        ...(reason === 'INITIAL' && t.credential_status !== 'NONE' ? ['already has credentials — sending replaces them'] : []),
+      ],
+    })),
+    sample,
+  };
+}
+
+/** Explicit, organizer-triggered delivery. Creates new temporary passwords server-side and revokes old sessions. */
+export async function sendCredentials(db: Db, cfg: AppConfig, actor: Actor, teamIds: string[], reason: 'INITIAL' | 'RESET') {
+  const channel = mailChannel(cfg);
+  const ev = await getEvent(db);
+  const targets = await credentialTargets(db, teamIds);
+  const results: { crewId: string; email: string; status: string; error?: string }[] = [];
+  for (const t of targets) {
+    const pw = tempPassword();
+    const hash = await hashPassword(pw);
+    const mail = credentialMail({ eventName: ev.name, teamName: t.name, crewId: t.crew_id, email: t.email, password: pw, slotLabel: t.slot_label ?? 'Not yet assigned', loginUrl: cfg.publicUrl, reset: reason === 'RESET' });
+    let status: 'CAPTURED' | 'SENT' | 'FAILED' = 'CAPTURED';
+    let error: string | undefined;
+    if (channel === 'SMTP') {
+      try {
+        await sendSmtp(cfg, t.email, mail.subject, mail.body);
+        status = 'SENT';
+      } catch (e) {
+        status = 'FAILED';
+        error = (e as Error).message.slice(0, 300);
+      }
+    }
+    await withTx(db, async (tx) => {
+      // Only store the new credential if it reached the crew (or the local capture).
+      if (status !== 'FAILED') {
+        await tx.query(`UPDATE team SET password_hash=$2, credential_status=$3, must_change_password=true, version=version+1, updated_at=now() WHERE id=$1`, [t.id, hash, status === 'SENT' && !cfg.mail.sink ? 'DELIVERED' : 'ISSUED']);
+        await revokeAllTeamSessions(tx, t.id, reason === 'RESET' ? 'CREDENTIAL_RESET' : 'CREDENTIAL_ISSUED');
+      }
+      const d = (await one<{ id: string }>(
+        tx,
+        `INSERT INTO credential_delivery(team_id, channel, recipient, subject, status, error, reason, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+        [t.id, channel, t.email, mail.subject, status, error ?? null, reason, actor.id],
+      ))!;
+      if (status === 'CAPTURED') await tx.query('INSERT INTO mail_capture(delivery_id, recipient, subject, body) VALUES ($1,$2,$3,$4)', [d.id, t.email, mail.subject, mail.body]);
+      await audit(tx, actor, 'credentials.delivered', { type: 'team', id: t.id }, { crewId: t.crew_id, channel, status, reason });
+    });
+    results.push({ crewId: t.crew_id, email: t.email, status, error });
+  }
+  // A sink accepts mail without delivering it: never report that as external delivery.
+  return { channel, demoCapture: channel === 'CAPTURE' || cfg.mail.sink, deliveredExternally: channel === 'SMTP' && !cfg.mail.sink, results };
 }

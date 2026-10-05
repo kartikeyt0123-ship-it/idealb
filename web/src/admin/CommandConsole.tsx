@@ -1,44 +1,53 @@
 /**
- * COMMANDER CONSOLE — the ship's command terminal (admin portal).
- * Rendered inside the ship dialog, or standalone at /command (low-power route).
+ * ORGANIZER CONSOLE — the ship's command terminal for the four-slot AMONG BUG event.
+ * Every action is server-authorised; the UI only hides what the organizer's
+ * permissions (me.organizer.permissions) do not allow.
  */
-import { LogOut, RefreshCw, Satellite } from 'lucide-react';
+import { LogOut, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX, type KeyboardEvent } from 'react';
-import { ApiError, api, syncClock } from '../lib/api';
+import { ApiError, V1, api, syncClock, type OrganizerIdentity } from '../lib/api';
 import { Badge, Button, Crewmate, Label, StatePanel } from '../components/ui';
-import { ConsoleCtx, SMALL, canRole, toApiError, useConfirmHost, type ConsoleCtxValue } from './kit';
+import { ConsoleCtx, SMALL, toApiError, useConfirmHost, type ConsoleCtxValue } from './kit';
 import type { Overview, Permission } from './types';
-import { CrewTab } from './CrewTab';
-import { GameTab } from './GameTab';
-import { TasksTab } from './TasksTab';
-import { ImpostersTab } from './ImpostersTab';
-import { CoinsTab } from './CoinsTab';
-import { EliminationTab } from './EliminationTab';
-import { LibraryTab } from './LibraryTab';
-import { RankingsTab } from './RankingsTab';
-import { StatusTab } from './StatusTab';
+import { SlotsTab } from './SlotsTab';
+import { ReleasesTab } from './ReleasesTab';
+import { CrewsTab } from './CrewsTab';
+import { ImportTab } from './ImportTab';
+import { CredentialsTab } from './CredentialsTab';
+import { RulesTab } from './RulesTab';
+import { BoardsTab } from './BoardsTab';
+import { DisplaysTab } from './DisplaysTab';
+import { BankTab } from './BankTab';
+import { OpsTab } from './OpsTab';
 
-type TabId = 'crew' | 'game' | 'tasks' | 'imposters' | 'coins' | 'elimination' | 'library' | 'rankings' | 'status';
+type TabId = 'slots' | 'releases' | 'crews' | 'import' | 'credentials' | 'rules' | 'boards' | 'displays' | 'bank' | 'ops';
 
 const TABS: { id: TabId; label: string; needs?: Permission }[] = [
-  { id: 'crew', label: 'CREW', needs: 'crews.read' },
-  { id: 'game', label: 'GAME & SPRINT' },
-  { id: 'tasks', label: 'TASKS', needs: 'crews.read' },
-  { id: 'imposters', label: 'IMPOSTERS' },
-  { id: 'coins', label: 'IDEACOINS', needs: 'crews.read' },
-  { id: 'elimination', label: 'ELIMINATION', needs: 'game.control' },
-  { id: 'library', label: 'PROBLEM LIBRARY', needs: 'content.read' },
-  { id: 'rankings', label: 'RANKINGS & REWARDS' },
-  { id: 'status', label: 'SHIP STATUS' },
+  { id: 'slots', label: 'SLOTS & SPRINTS' },
+  { id: 'releases', label: 'RELEASES' },
+  { id: 'crews', label: 'CREWS', needs: 'teams.read' },
+  { id: 'import', label: 'IMPORT', needs: 'teams.write' },
+  { id: 'credentials', label: 'CREDENTIALS', needs: 'teams.read' },
+  { id: 'rules', label: 'RULES REVIEW' },
+  { id: 'boards', label: 'LEADERBOARDS & EXPORTS' },
+  { id: 'displays', label: 'DISPLAYS' },
+  { id: 'bank', label: 'QUESTION BANK', needs: 'content.read' },
+  { id: 'ops', label: 'LEDGER · AUDIT · HEALTH', needs: 'audit.read' },
 ];
 
 const ROLE_LABEL: Record<string, string> = { SUPER_ADMIN: 'SUPER ADMIN', OPERATOR: 'OPERATOR', CONTENT_EDITOR: 'CONTENT EDITOR' };
 
-export function CommandConsole({ refreshKey, onClose, standalone = false }: { refreshKey: number; onClose?: () => void; standalone?: boolean }): JSX.Element {
+export function CommandConsole({ refreshKey, me, onSignOut }: { refreshKey: number; me: OrganizerIdentity; onSignOut: () => void }): JSX.Element {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<TabId>('crew');
+  const [tab, setTab] = useState<TabId>(() => {
+    try {
+      return (sessionStorage.getItem('cmd-tab') as TabId) || 'slots';
+    } catch {
+      return 'slots';
+    }
+  });
   const [confirm, confirmNode] = useConfirmHost();
   const ctrl = useRef<AbortController | null>(null);
 
@@ -47,7 +56,7 @@ export function CommandConsole({ refreshKey, onClose, standalone = false }: { re
     const c = new AbortController();
     ctrl.current = c;
     try {
-      const o = await api.get<Overview>('/api/admin/overview', c.signal);
+      const o = await api.get<Overview>(`${V1}/admin/overview`, c.signal);
       if (c.signal.aborted) return;
       syncClock(o.serverTime);
       setOverview(o);
@@ -65,7 +74,7 @@ export function CommandConsole({ refreshKey, onClose, standalone = false }: { re
     return () => ctrl.current?.abort();
   }, [reloadOverview]);
 
-  // Realtime: the parent bumps refreshKey on every event — debounce and refetch.
+  // Realtime: the parent bumps refreshKey on every event / reconnect — debounce and refetch.
   const first = useRef(true);
   useEffect(() => {
     if (first.current) {
@@ -76,66 +85,76 @@ export function CommandConsole({ refreshKey, onClose, standalone = false }: { re
     return () => window.clearTimeout(t);
   }, [refreshKey, reloadOverview]);
 
-  const role = overview?.me.role ?? 'CONTENT_EDITOR';
-  const visibleTabs = useMemo(() => TABS.filter((t) => !t.needs || canRole(role, t.needs)), [role]);
-  const activeTab = visibleTabs.some((t) => t.id === tab) ? tab : visibleTabs[0]?.id ?? 'status';
+  const perms = me.organizer.permissions;
+  const can = useCallback((p: Permission) => perms.includes(p), [perms]);
+  const visibleTabs = useMemo(() => TABS.filter((t) => !t.needs || can(t.needs)), [can]);
+  const activeTab = visibleTabs.some((t) => t.id === tab) ? tab : visibleTabs[0]?.id ?? 'slots';
+  const pick = (id: TabId) => {
+    setTab(id);
+    try {
+      sessionStorage.setItem('cmd-tab', id);
+    } catch {
+      /* storage unavailable */
+    }
+  };
 
   const ctx = useMemo<ConsoleCtxValue | null>(
-    () => (overview ? { overview, role, refreshKey, can: (p: Permission) => canRole(role, p), reloadOverview, confirm, standalone } : null),
-    [overview, role, refreshKey, reloadOverview, confirm, standalone],
+    () => (overview ? { overview, me, refreshKey, can, reloadOverview, confirm } : null),
+    [overview, me, refreshKey, can, reloadOverview, confirm],
   );
 
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const onTabKey = (e: KeyboardEvent<HTMLDivElement>) => {
     const idx = visibleTabs.findIndex((t) => t.id === activeTab);
     let next = -1;
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % visibleTabs.length;
-    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (idx - 1 + visibleTabs.length) % visibleTabs.length;
+    if (e.key === 'ArrowRight') next = (idx + 1) % visibleTabs.length;
+    else if (e.key === 'ArrowLeft') next = (idx - 1 + visibleTabs.length) % visibleTabs.length;
     else if (e.key === 'Home') next = 0;
     else if (e.key === 'End') next = visibleTabs.length - 1;
     if (next < 0) return;
     e.preventDefault();
     const id = visibleTabs[next].id;
-    setTab(id);
+    pick(id);
     tabRefs.current[id]?.focus();
   };
 
+  const ev = overview?.event;
   const header = (
     <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-3">
         <Crewmate color="#e5cf8f" accessory size={40} state="still" />
         <div>
-          <Label className="!text-[#e7c784]">COMMANDER ACCESS GRANTED</Label>
-          <h2 className="mt-1 font-display text-2xl font-bold">Ship command terminal</h2>
-          {overview && (
+          <Label className="!text-[#e7c784]">ORGANIZER CONSOLE</Label>
+          <h1 className="mt-1 font-display text-2xl font-bold">{ev?.name ?? 'AMONG BUG'} · command terminal</h1>
+          {ev && (
             <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-[10px] text-muted">
-              <span>{overview.event.name}</span>
-              {overview.event.isDemo && <Badge>DEMO EVENT</Badge>}
+              <span>{ev.organizer}</span>
               <span>·</span>
-              <span>
-                {overview.currentDay ? `TODAY: DAY ${overview.currentDay.day_number} (${overview.currentDay.label})` : 'NO ACTIVE DAY'} · {overview.event.daySelectionMode} DAY SELECTION
-              </span>
+              <span>{ev.edition}</span>
+              <span>·</span>
+              <span>{ev.venue}</span>
+              <span>·</span>
+              <span>{ev.timezone}</span>
+              {ev.isDemo && <Badge>DEMO</Badge>}
+              {overview!.unconfirmed.length > 0 && <Badge>{`RULES UNCONFIRMED: ${overview!.unconfirmed.length}`}</Badge>}
+              <Badge>{ev.rulesFrozenAt ? 'RULES FROZEN' : 'RULES EDITABLE'}</Badge>
+              <Badge>{ev.phase === 'FINALIZED' ? 'RESULTS FINAL' : 'OVERALL PROVISIONAL'}</Badge>
             </div>
           )}
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        {overview && (
-          <div className="rounded-lg border-2 border-[#dfbd77]/60 bg-[#37414b] px-3 py-2 text-right">
-            <Label className="!text-[#e5cf8f]">SIGNED IN</Label>
-            <div className="font-display text-sm font-bold">{overview.me.name}</div>
-            <div className="font-mono text-[9px] text-[#e5cf8f]">{ROLE_LABEL[overview.me.role] ?? overview.me.role}</div>
-          </div>
-        )}
+        <div className="rounded-lg border-2 border-[#dfbd77]/60 bg-[#37414b] px-3 py-2 text-right">
+          <Label className="!text-[#e5cf8f]">SIGNED IN</Label>
+          <div className="font-display text-sm font-bold">{me.organizer.name}</div>
+          <div className="font-mono text-[9px] text-[#e5cf8f]">{ROLE_LABEL[me.organizer.role] ?? me.organizer.role}</div>
+        </div>
         <Button secondary className={SMALL} onClick={() => void reloadOverview()} ariaLabel="Refresh console data">
           <RefreshCw size={12} /> Sync
         </Button>
-        {standalone && onClose && (
-          <Button secondary className={SMALL} onClick={onClose}>
-            <LogOut size={12} /> Exit
-          </Button>
-        )}
-        {!standalone && <Satellite size={24} className="text-primary" aria-hidden="true" />}
+        <Button secondary className={SMALL} onClick={onSignOut}>
+          <LogOut size={12} /> Sign out
+        </Button>
       </div>
     </div>
   );
@@ -143,11 +162,11 @@ export function CommandConsole({ refreshKey, onClose, standalone = false }: { re
   let body: JSX.Element;
   if (loading && !overview) body = <StatePanel kind="loading" title="Establishing command uplink…" />;
   else if (error && !overview) {
-    const denied = ['UNAUTHENTICATED', 'COMMANDER_CLEARANCE_REQUIRED', 'FORBIDDEN', 'SESSION_EXPIRED'].includes(error.code);
+    const denied = ['UNAUTHENTICATED', 'ORGANIZER_CLEARANCE_REQUIRED', 'FORBIDDEN'].includes(error.code);
     body = (
       <StatePanel
         kind="error"
-        title={denied ? 'ACCESS DENIED — commander clearance required' : 'Command uplink failed'}
+        title={denied ? 'ACCESS DENIED — organizer clearance required' : 'Command uplink failed'}
         message={`${error.message} [${error.code}]`}
         action={<Button secondary onClick={() => { setLoading(true); void reloadOverview(); }}>Retry</Button>}
       />
@@ -160,7 +179,7 @@ export function CommandConsole({ refreshKey, onClose, standalone = false }: { re
             Overview refresh failed — showing last known state. {error.message}
           </div>
         )}
-        <div role="tablist" aria-label="Command console sections" className="mb-6 flex flex-wrap gap-2" onKeyDown={onTabKey}>
+        <div role="tablist" aria-label="Console sections" className="mb-6 flex flex-wrap gap-2" onKeyDown={onTabKey}>
           {visibleTabs.map((t) => {
             const sel = t.id === activeTab;
             return (
@@ -173,9 +192,9 @@ export function CommandConsole({ refreshKey, onClose, standalone = false }: { re
                 aria-selected={sel}
                 aria-controls={`cmd-panel-${t.id}`}
                 tabIndex={sel ? 0 : -1}
-                onClick={() => setTab(t.id)}
+                onClick={() => pick(t.id)}
                 className={`rounded-lg border-2 px-3 py-2 font-display text-[9px] font-bold tracking-wide shadow-[0_3px_0_#07141d] transition hover:-translate-y-0.5 ${
-                  sel ? 'border-[#b3f3d9] bg-[#8ae4cf] text-[#14342f]' : t.id === 'imposters' ? 'border-[#9d635a] bg-[#442b34] text-[#ffd8c7]' : 'border-[#52717e] bg-[#2d4654] text-[#d6e1e1]'
+                  sel ? 'border-[#b3f3d9] bg-[#8ae4cf] text-[#14342f]' : 'border-[#52717e] bg-[#2d4654] text-[#d6e1e1]'
                 }`}
               >
                 {t.label}
@@ -184,33 +203,24 @@ export function CommandConsole({ refreshKey, onClose, standalone = false }: { re
           })}
         </div>
         <div role="tabpanel" id={`cmd-panel-${activeTab}`} aria-labelledby={`cmd-tab-${activeTab}`} tabIndex={0} className="focus-visible:outline-none">
-          {activeTab === 'crew' && <CrewTab />}
-          {activeTab === 'game' && <GameTab />}
-          {activeTab === 'tasks' && <TasksTab />}
-          {activeTab === 'imposters' && <ImpostersTab />}
-          {activeTab === 'coins' && <CoinsTab />}
-          {activeTab === 'elimination' && <EliminationTab />}
-          {activeTab === 'library' && <LibraryTab />}
-          {activeTab === 'rankings' && <RankingsTab />}
-          {activeTab === 'status' && <StatusTab />}
+          {activeTab === 'slots' && <SlotsTab />}
+          {activeTab === 'releases' && <ReleasesTab />}
+          {activeTab === 'crews' && <CrewsTab />}
+          {activeTab === 'import' && <ImportTab />}
+          {activeTab === 'credentials' && <CredentialsTab />}
+          {activeTab === 'rules' && <RulesTab />}
+          {activeTab === 'boards' && <BoardsTab />}
+          {activeTab === 'displays' && <DisplaysTab />}
+          {activeTab === 'bank' && <BankTab />}
+          {activeTab === 'ops' && <OpsTab />}
         </div>
         {confirmNode}
       </ConsoleCtx.Provider>
     );
   } else body = <StatePanel kind="loading" title="Establishing command uplink…" />;
 
-  if (standalone) {
-    return (
-      <main className="min-h-screen bg-[#0a121b] px-3 py-5 text-[#f2f0e7] sm:px-6">
-        <div className="mx-auto max-w-[1400px] rounded-[18px] border-[3px] border-[#668991] bg-[#203b49] p-4 shadow-[0_10px_0_#051521] sm:p-6">
-          {header}
-          {body}
-        </div>
-      </main>
-    );
-  }
   return (
-    <div className="text-[#f2f0e7]">
+    <div className="mx-auto max-w-[1400px] rounded-[18px] border-[3px] border-[#668991] bg-[#203b49] p-4 text-[#f2f0e7] shadow-[0_10px_0_#051521] sm:p-6">
       {header}
       {body}
     </div>

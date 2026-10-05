@@ -2,7 +2,7 @@
   "name": "among-bugs",
   "private": true,
   "version": "1.0.0",
-  "description": "DEBUG + RUN / AMONG BUGS — competition platform (IDEALab.h, SGSITS Indore, AAROHAN 2026)",
+  "description": "AMONG BUG — four-slot debugging competition platform (IDEALab.h, SGSITS Indore, AAROHAN 2026)",
   "workspaces": [
     "server",
     "runner",
@@ -27,7 +27,8 @@
     "node": ">=20.11"
   },
   "overrides": {
-    "dompurify": "3.4.16"
+    "dompurify": "3.4.16",
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

@@ -3,16 +3,16 @@ import pg from 'pg';
 import { Server, type Socket } from 'socket.io';
 import { originAllowed, type AppConfig } from './config.js';
 import type { Db } from './db.js';
-import { resolveCompetitor } from './services/context.js';
+import { resolveCrew } from './services/context.js';
 import { Rooms } from './services/outbox.js';
-import { resolveSession, SESSION_COOKIE } from './services/sessions.js';
+import { DISPLAY_COOKIE, resolveSession, SESSION_COOKIE } from './services/sessions.js';
 
 interface SocketData {
   sessionId: string;
-  actorType: 'TEAM' | 'ADMIN';
+  actorType: 'TEAM' | 'ORGANIZER' | 'DISPLAY';
   teamId?: string;
-  adminId?: string;
-  gameRoom?: string;
+  organizerId?: string;
+  slotRoom?: string;
 }
 
 function readCookie(header: string | undefined, name: string): string | undefined {
@@ -53,10 +53,12 @@ export class Realtime {
     this.io.use(async (socket, next) => {
       try {
         if (!originAllowed(this.cfg, socket.handshake.headers.origin, socket.handshake.headers.host)) return next(new Error('ORIGIN_NOT_ALLOWED'));
-        const token = readCookie(socket.handshake.headers.cookie, SESSION_COOKIE);
+        // A projector connects with ?display=1 and its display cookie; everyone else with the main session cookie.
+        const wantsDisplay = socket.handshake.query?.display === '1';
+        const token = readCookie(socket.handshake.headers.cookie, wantsDisplay ? DISPLAY_COOKIE : SESSION_COOKIE);
         const s = await resolveSession(this.db, this.cfg, token);
-        if (!s) return next(new Error('UNAUTHENTICATED'));
-        const data: SocketData = { sessionId: s.session.id, actorType: s.session.actor_type, teamId: s.team?.id, adminId: s.admin?.id };
+        if (!s || (s.session.actor_type === 'DISPLAY') !== wantsDisplay) return next(new Error('UNAUTHENTICATED'));
+        const data: SocketData = { sessionId: s.session.id, actorType: s.session.actor_type, teamId: s.team?.id, organizerId: s.organizer?.id };
         socket.data = data;
         next();
       } catch {
@@ -76,44 +78,46 @@ export class Realtime {
   private async onConnection(socket: Socket) {
     const d = socket.data as SocketData;
     await socket.join(Rooms.all);
-    if (d.actorType === 'ADMIN') await socket.join(Rooms.admin);
+    if (d.actorType === 'ORGANIZER') await socket.join(Rooms.organizers);
+    if (d.actorType === 'DISPLAY') await socket.join(Rooms.display);
     if (d.teamId) {
       await socket.join(Rooms.team(d.teamId));
-      await this.syncGameRoom(socket);
+      await this.syncSlotRoom(socket);
     }
     socket.emit('hello', { serverTime: new Date().toISOString(), deliveredThrough: this.cursor });
     // Clients may ask the server to re-evaluate membership (e.g. after a status change). They cannot name rooms.
     socket.on('resync', async (ack?: (r: unknown) => void) => {
       const ok = await this.revalidate(socket);
-      if (ok) await this.syncGameRoom(socket);
-      if (typeof ack === 'function') ack({ ok, gameRoom: Boolean((socket.data as SocketData).gameRoom) });
+      if (ok) await this.syncSlotRoom(socket);
+      if (typeof ack === 'function') ack({ ok, slotRoom: Boolean((socket.data as SocketData).slotRoom) });
     });
   }
 
-  /** Join the current day's game room only while the crew is authorised for it. */
-  private async syncGameRoom(socket: Socket) {
+  /** Join the crew's own slot room only while it is authorised for it (enabled, assigned, not disqualified). */
+  private async syncSlotRoom(socket: Socket) {
     const d = socket.data as SocketData;
     if (!d.teamId) return;
     let room: string | undefined;
     try {
-      const ctx = await resolveCompetitor(this.db, d.teamId);
-      room = Rooms.game(ctx.game.id);
+      const ctx = await resolveCrew(this.db, d.teamId);
+      room = Rooms.slot(ctx.slot.id);
     } catch {
       room = undefined;
     }
-    for (const r of socket.rooms) if (r.startsWith('game:') && r !== room) await socket.leave(r);
+    for (const r of socket.rooms) if (r.startsWith('slot:') && r !== room) await socket.leave(r);
     if (room) await socket.join(room);
-    d.gameRoom = room;
+    d.slotRoom = room;
   }
 
   private async revalidate(socket: Socket): Promise<boolean> {
     const d = socket.data as SocketData;
     const r = await this.db.query(
-      `SELECT s.revoked_at, s.expires_at, a.active AS admin_active FROM session s LEFT JOIN admin_user a ON a.id=s.admin_id WHERE s.id=$1`,
+      `SELECT s.revoked_at, s.expires_at, o.active AS organizer_active, dl.revoked_at AS link_revoked
+         FROM session s LEFT JOIN organizer_user o ON o.id=s.organizer_id LEFT JOIN display_link dl ON dl.id=s.display_link_id WHERE s.id=$1`,
       [d.sessionId],
     );
     const row = r.rows[0];
-    const ok = row && !row.revoked_at && new Date(row.expires_at).getTime() > Date.now() && (d.actorType !== 'ADMIN' || row.admin_active);
+    const ok = row && !row.revoked_at && new Date(row.expires_at).getTime() > Date.now() && (d.actorType !== 'ORGANIZER' || row.organizer_active) && !row.link_revoked;
     if (!ok) {
       socket.emit('session.revoked', { reason: 'SESSION_ENDED' });
       socket.disconnect(true);
@@ -189,11 +193,12 @@ export class Realtime {
       return;
     }
     // Membership changes first, so a crew that just lost eligibility misses the private game events.
-    if (ev.topic === 'eligibility.changed' || ev.topic === 'event.changed' || (ev.topic === 'team.disqualified' && ev.payload.you)) {
-      const targets = ev.topic === 'event.changed' ? [...this.io.sockets.sockets.values()] : await this.io.in(ev.rooms.filter((r) => r.startsWith('team:'))).fetchSockets();
+    if (ev.topic === 'eligibility.changed' || ev.topic === 'teams.changed' || ev.topic === 'event.changed') {
+      const teamRooms = ev.topic === 'teams.changed' ? (typeof ev.payload.teamId === 'string' ? [Rooms.team(ev.payload.teamId)] : [...this.io.sockets.adapter.rooms.keys()].filter((r) => r.startsWith('team:'))) : ev.rooms.filter((r) => r.startsWith('team:'));
+      const targets = ev.topic === 'event.changed' ? [...this.io.sockets.sockets.values()] : teamRooms.length ? await this.io.in(teamRooms).fetchSockets() : [];
       for (const s of targets) {
         const sock = this.io.sockets.sockets.get(s.id);
-        if (sock) await this.syncGameRoom(sock);
+        if (sock) await this.syncSlotRoom(sock);
       }
     }
     this.io.to(ev.rooms).emit(ev.topic, msg);

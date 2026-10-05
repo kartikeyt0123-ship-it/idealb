@@ -1,6 +1,6 @@
 /**
- * npm run seed:demo — installs the labelled DEMO fixture (demo commander, 20 crews,
- * two games, 120 tasks, 4 imposter drafts). Refuses unless DEMO_MODE=true.
+ * npm run seed:demo — installs the labelled DEMO fixture (demo organizer, 40 crews in
+ * four slots, seeded question bank and slot release plans). Refuses unless DEMO_MODE=true.
  * Safe to re-run: never duplicates accounts, never overwrites changed passwords,
  * never touches existing game history.
  */

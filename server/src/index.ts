@@ -8,7 +8,7 @@ const db = createPool(cfg.databaseUrl);
 await migrate(db);
 const built = await buildApp(cfg, { db });
 await built.app.listen({ port: cfg.port, host: cfg.host });
-console.log(`[api] AMONG BUGS API on http://${cfg.host}:${cfg.port} (demo mode: ${cfg.demoMode})`);
+console.log(`[api] AMONG BUG API on http://${cfg.host}:${cfg.port} (demo mode: ${cfg.demoMode})`);
 
 const shutdown = async (sig: string) => {
   console.log(`[api] ${sig} received, shutting down`);

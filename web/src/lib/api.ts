@@ -1,4 +1,4 @@
-/** Thin typed client for the AMONG BUGS API. Cookies are HttpOnly; nothing secret is stored in the browser. */
+/** Thin typed client for the AMONG BUG API (/api/v1). Cookies are HttpOnly; nothing secret is stored in the browser. */
 
 export class ApiError extends Error {
   constructor(
@@ -59,6 +59,9 @@ async function request<T>(method: string, url: string, body?: unknown, opts: { i
   return data as T;
 }
 
+/** Every endpoint lives under /api/v1 (see /api/v1/openapi.json). */
+export const V1 = '/api/v1';
+
 export const api = {
   get: <T>(url: string, signal?: AbortSignal) => request<T>('GET', url, undefined, { signal }),
   post: <T>(url: string, body?: unknown, idempotencyKey?: string) => request<T>('POST', url, body, { idempotencyKey }),
@@ -68,18 +71,19 @@ export const api = {
 };
 
 // ---------------------------------------------------------------------------
-// Shared types (mirror server DTOs)
+// Shared types (mirror server DTOs — server/src/services/{snapshot,ranking,display,questions}.ts)
 // ---------------------------------------------------------------------------
 
-export type GamePhase =
-  | 'DRAFT' | 'READY' | 'WAITING' | 'RUNNING' | 'PAUSED' | 'CLOSED'
-  | 'ELIMINATION_REVIEW' | 'WAITING_NEXT_SPRINT' | 'GAME_RESULT_REVIEW' | 'COMPLETED';
+export type SlotPhase = 'CONFIGURING' | 'READY' | 'WAITING' | 'RUNNING' | 'REVIEW' | 'COMPLETED';
+export type SprintStatus = 'READY' | 'RUNNING' | 'PAUSED' | 'CLOSED' | 'FINALIZED';
+export type Metric = 'GROSS_EARNED' | 'NET_COINS';
 
 export interface SprintDto {
+  id: string;
   number: number;
-  status: 'PENDING' | 'RUNNING' | 'PAUSED' | 'CLOSED' | 'FINALIZED';
+  status: SprintStatus;
   durationSeconds: number;
-  eliminateCount: number | null;
+  eliminateCount: number;
   startedAt: string | null;
   deadlineAt: string | null;
   pausedAt: string | null;
@@ -88,30 +92,32 @@ export interface SprintDto {
   version: number;
 }
 
-export interface GameDto {
+export interface SlotDto {
   id: string;
   number: number;
   name: string;
-  phase: GamePhase;
+  phase: SlotPhase;
   currentSprint: number;
-  rankingMetric: 'NET_COINS' | 'GROSS_EARNED';
-  prizePlaces: number;
-  imposterMode: 'RESERVE' | 'OPEN';
-  imposterBlocksRegular: boolean;
-  durationPreset: string;
+  capacity: number;
+  scheduledStartAt: string | null;
+  finalizedAt: string | null;
   version: number;
+  date: string | null;
+  dayLabel: string | null;
 }
 
-export interface Standing {
+/** Public leaderboard row (approved fields only). */
+export interface BoardRow {
   crewId: string;
   name: string;
   color: string;
+  slotNumber: number;
   status: 'ACTIVE' | 'ELIMINATED' | 'DISQUALIFIED';
-  eliminatedSprint: number | null;
+  /** Score in the board's scope (sprint score on sprint boards, cumulative on slot/overall boards). */
   score: number;
-  earned: number;
-  spent: number;
-  tasksSolved: number;
+  cumulative: number;
+  perSprint: Record<string, number>;
+  solves: number;
   rank: number | null;
   zone: 'SAFE' | 'UNCERTAIN' | 'DANGER' | null;
 }
@@ -124,39 +130,24 @@ export interface DomainDto {
   symbol: string;
   prefix: string;
   workspace: string;
-  counts: { total: number; available: number; locked: number; solvedByYou: number; solvedByOthers: number; closed: number };
+  counts: { total: number; available: number; solvedByYou: number; solvedByOthers: number; expired: number };
 }
 
-export interface TaskCard {
+export type QuestionKind = 'INITIAL' | 'RESERVE' | 'BONUS';
+
+export interface QuestionCard {
   id: string;
   label: string;
+  kind: QuestionKind;
   domain: string;
   difficulty: 'EASY' | 'MEDIUM' | 'HARD';
   reward: number;
   hintCost: number;
-  state: 'LOCKED' | 'AVAILABLE' | 'SOLVED_BY_YOU' | 'SOLVED' | 'CLOSED' | 'DISABLED';
-  title: string | null;
+  state: 'AVAILABLE' | 'SOLVED_BY_YOU' | 'SOLVED' | 'EXPIRED' | 'DISABLED';
+  title: string;
   solvedByCrew: string | null;
   generation: number;
-  releaseInSeconds: number | null;
   hintUnlocked: boolean;
-}
-
-export interface ImposterDto {
-  id: string;
-  label: string;
-  title: string;
-  difficulty: string;
-  reward: number;
-  hintCost: number;
-  mode: 'RESERVE' | 'OPEN';
-  status: 'OFFERED' | 'RESERVED' | 'SOLVED' | 'EXPIRED' | 'CANCELLED';
-  claimDeadlineAt: string | null;
-  openDeadlineAt: string | null;
-  claimOpen: boolean;
-  reservedByMe: boolean;
-  reservation: { crew: string; status: string; solveDeadlineAt: string | null; mine: boolean } | null;
-  solvedBy: string | null;
 }
 
 export interface Announcement {
@@ -166,76 +157,73 @@ export interface Announcement {
   created_at: string;
 }
 
-export interface ParticipantState {
+/** GET /api/v1/slots/mine/state — the crew's complete authorised view of its own slot. */
+export interface CrewState {
   serverTime: string;
-  identity: { role: 'COMPETITOR'; teamId: string; crewId: string; name: string; color: string; members: { name: string; is_captain: boolean }[]; mustChangePassword: boolean };
-  event: { name: string; isDemo: boolean };
-  day: { number: number; label: string };
-  game: GameDto;
+  identity: { role: 'CREW'; teamId: string; crewId: string; name: string; color: string; members: { name: string; is_captain: boolean }[]; mustChangePassword: boolean };
+  event: { name: string; edition: string; organizer: string; isDemo: boolean; metric: Metric; phase: 'OPEN' | 'FINAL_REVIEW' | 'FINALIZED' };
+  slot: SlotDto;
   sprint: SprintDto | null;
   sprints: SprintDto[];
   me: {
     status: 'ACTIVE' | 'ELIMINATED' | 'DISQUALIFIED';
-    eliminatedSprint: number | null;
     wallet: number;
     earned: number;
     spent: number;
-    score: number;
-    rank: number | null;
+    sprintScore: number;
+    cumulative: number;
+    sprintRank: number | null;
+    slotRank: number | null;
+    solves: number;
     zone: 'SAFE' | 'UNCERTAIN' | 'DANGER' | null;
-    tasksSolved: number;
-    activeReservationId: string | null;
     activeCount: number;
   };
-  standings: { active: Standing[]; inactive: Standing[] };
+  leaderboards: { sprint: { number: number; rows: BoardRow[] }; slot: { rows: BoardRow[]; inactive: BoardRow[] } };
   domains: DomainDto[];
-  tasks: { sprint: number | null; tasks: TaskCard[] };
-  imposter: ImposterDto | null;
+  questions: QuestionCard[];
+  bonuses: QuestionCard[];
   announcements: Announcement[];
-  lastElimination: { sprint: number; confirmedAt: string; youEliminated: boolean; count: number } | null;
-  prizes: { place: number; label: string }[];
+  lastElimination: { sprint: number; youEliminated: boolean; count: number } | null;
   result: { rows: ResultRow[]; confirmedAt: string } | null;
 }
 
-export interface ResultRow {
+export interface ResultRow extends BoardRow {
   place: number;
-  crewId: string;
-  name: string;
-  color: string;
-  score: number;
-  earned: number;
-  spent: number;
-  prize: string | null;
+  prize?: string | null;
 }
 
-export interface CommanderShipState {
-  serverTime: string;
-  identity: { role: 'COMMANDER'; name: string; adminRole: string };
-  event: { name: string; isDemo: boolean };
-  day: { number: number; label: string } | null;
-  game: GameDto | null;
-  sprint?: SprintDto | null;
-  standings?: { active: Standing[]; inactive: Standing[] };
-  domains?: DomainDto[];
-  announcements?: Announcement[];
+/** GET /api/v1/leaderboards?scope=sprint|cumulative|event */
+export interface LeaderboardResponse {
+  scope: 'sprint' | 'cumulative' | 'event';
+  metric: Metric;
+  sprint?: number;
+  status?: 'PROVISIONAL' | 'FINAL';
+  rows: BoardRow[];
+  inactive?: BoardRow[];
 }
 
-export interface TeamStatus {
-  role: 'COMPETITOR';
-  team: { id: string; crewId: string; name: string; email: string; color: string; requestedDays: 'DAY1' | 'DAY2' | 'BOTH'; mustChangePassword: boolean };
-  members: { position: number; name: string; institution: string; year: string; branch: string; is_captain: boolean }[];
-  days: { day_number: number; label: string; active: boolean }[];
-  currentDay: { number: number; label: string } | null;
-  access: { state: string; message: string; day?: number; gameNumber?: number };
-  event: { name: string; isDemo: boolean };
+export interface CrewIdentity {
+  role: 'CREW';
+  team: { id: string; crewId: string; name: string; email: string; color: string; mustChangePassword: boolean };
+  members: { name: string; institution: string; is_captain: boolean }[];
+  /** state: ASSIGNED, or the reason the crew cannot play (SLOT_UNASSIGNED, ACCOUNT_DISABLED, TEAM_DISQUALIFIED, TEAM_ARCHIVED). */
+  access: { state: string; message: string; slot?: { id: string; number: number; name: string; phase: SlotPhase; date: string; dayLabel: string; scheduledStartAt: string | null } };
 }
 
-export interface CommanderStatus {
-  role: 'COMMANDER';
-  admin: { id: string; name: string; email: string; role: 'SUPER_ADMIN' | 'OPERATOR' | 'CONTENT_EDITOR' };
+export type OrganizerRole = 'SUPER_ADMIN' | 'OPERATOR' | 'CONTENT_EDITOR';
+export interface OrganizerIdentity {
+  role: 'ORGANIZER';
+  organizer: { id: string; name: string; email: string; role: OrganizerRole; permissions: string[] };
 }
 
-export type Me = TeamStatus | CommanderStatus | { role: null };
+export type Me = CrewIdentity | OrganizerIdentity | { role: null };
+
+export interface Meta {
+  event: { name: string; organizer: string; edition: string; venue: string; isDemo: boolean; timezone: string } | null;
+  demoMode: boolean;
+  registration: false;
+  colors: [string, string][];
+}
 
 export interface TaskFile {
   name: string;
@@ -244,9 +232,10 @@ export interface TaskFile {
   readOnly: boolean;
 }
 
-export interface TaskDetail {
+/** GET /api/v1/question-instances/:id */
+export interface QuestionDetail {
   id: string;
-  kind: 'REGULAR' | 'IMPOSTER';
+  kind: QuestionKind;
   label: string;
   generation: number;
   domain: { slug: string; name: string; room: string; color: string; symbol: string } | null;
@@ -261,12 +250,10 @@ export interface TaskDetail {
   sampleStdin: string | null;
   answerFormat: string;
   validation: { mode: 'EXACT_TEXT' | 'NUMERIC' | 'CODE_TESTS'; language?: string; testCount?: number; tolerance?: number; caseSensitive?: boolean; collapseWhitespace?: boolean };
-  status: string;
-  solvedBy?: string | null;
+  status: 'AVAILABLE' | 'SOLVED_BY_YOU' | 'SOLVED' | 'EXPIRED' | 'DISABLED';
+  solvedBy: string | null;
   hint: { cost: number; unlocked: boolean; text: string | null };
-  sprintDeadlineAt?: string | null;
-  solveDeadlineAt?: string | null;
-  reservationStatus?: string | null;
+  sprintDeadlineAt: string | null;
 }
 
 export interface SubmitResult {
@@ -278,6 +265,13 @@ export interface SubmitResult {
   judge: { passed: boolean; total: number; passedCount: number; firstFailure?: { index: number; reason: string; stderrTail?: string } } | null;
 }
 
+export interface HintResult {
+  hint: string;
+  cost: number;
+  charged: boolean;
+  wallet: number;
+}
+
 export interface RunResult {
   jobId: string;
   status: 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED' | 'CANCELLED';
@@ -286,7 +280,27 @@ export interface RunResult {
   error: string | null;
 }
 
+/** Projector payloads (GET /api/v1/display/…). */
+export interface DisplayState {
+  serverTime: string;
+  event: { name: string; edition: string; organizer: string; venue: string; phase: string; metric: Metric };
+  slots: {
+    id: string; number: number; name: string; date: string; dayLabel: string; phase: SlotPhase; currentSprint: number;
+    sprint: { id: string; number: number; status: SprintStatus; deadlineAt: string | null; pausedAt: string | null; durationSeconds: number } | null;
+    sprints: { id: string; number: number; status: SprintStatus }[];
+  }[];
+  scope: 'OVERALL' | 'SLOT' | 'SPRINT';
+  status: 'LIVE' | 'FROZEN' | 'PROVISIONAL' | 'FINAL' | 'NOT_STARTED';
+  slotId?: string;
+  sprintNumber?: number;
+  completedSlots?: number[];
+  rows: { rank: number | null; crewId: string; name: string; color: string; slotNumber: number; score: number; cumulative: number; perSprint: Record<string, number>; solves: number }[];
+}
+
 export const CREW_COLORS: [string, string][] = [
   ['Cyan', '#51cfdf'], ['Red', '#f37983'], ['Green', '#86cd97'], ['Yellow', '#edd478'], ['Purple', '#b298e7'],
   ['Orange', '#efae77'], ['Pink', '#d693b9'], ['Blue', '#7dace9'], ['Lime', '#b3d77c'], ['White', '#dfe7ea'],
 ];
+
+/** The display name is centralised server-side (event.name, default "AMONG BUG"); this is only the pre-load fallback. */
+export const FALLBACK_EVENT_NAME = 'AMONG BUG';

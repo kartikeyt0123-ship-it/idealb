@@ -5,7 +5,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { Bug, CheckCircle2, Loader2, RotateCcw, Send } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { api, newKey, type SubmitResult, type TaskDetail } from '../lib/api';
+import { api, newKey, type QuestionDetail, type SubmitResult } from '../lib/api';
 import { Button, Label } from '../components/ui';
 import { errCode, errMessage } from './util';
 
@@ -19,7 +19,7 @@ const REASONS: Record<string, string> = {
 export function VerifyPanel({
   detail, url, getFiles, answer, onAnswer, disabled, disabledReason, solvedByYou, onCorrect, onError, onBusyChange, imposter,
 }: {
-  detail: TaskDetail;
+  detail: QuestionDetail;
   url: string;
   getFiles: () => Record<string, string>;
   answer: string;
@@ -153,7 +153,8 @@ export function VerifyPanel({
               <Bug size={40} className="mx-auto mb-5 text-[#edab8d]" />
               <Label className="!text-[#edab8d]">REPAIR FAILED</Label>
               <h3 className="my-3 font-display text-2xl font-bold">BUG STILL DETECTED</h3>
-              <p className="text-xs text-muted">{imposter ? 'The imposter is still among us.' : 'The bug is still among us.'}</p>
+              <p className="text-xs text-muted">{failed.message || (imposter ? 'The imposter is still among us.' : 'The bug is still among us.')}</p>
+              <p className="mt-1 text-[11px] text-[#c9a99f]">The system stays open to every crew — keep debugging.</p>
               {failed.judge && (
                 <div className="mt-4 rounded-lg border border-white/10 bg-[#2a1f29] p-3 text-left font-mono text-[11px] leading-5 text-[#ffd8c7]">
                   <div>

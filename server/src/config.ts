@@ -21,6 +21,9 @@ export interface AppConfig {
   /** Directory containing the built web app (served by the API in production). */
   webDistDir?: string;
   trustProxy: boolean;
+  /** Base URL included in credential mails. */
+  publicUrl: string;
+  mail: { mode: 'capture' | 'smtp' | 'none'; smtpUrl?: string; from: string; sink: boolean };
   /** Seconds allowed for solve-deadline grace? Always 0: acceptance must commit before the deadline. */
   logLevel: string;
 }
@@ -55,6 +58,15 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     },
     webDistDir: process.env.WEB_DIST_DIR ? resolve(process.env.WEB_DIST_DIR) : undefined,
     trustProxy: (process.env.TRUST_PROXY ?? 'false') === 'true',
+    publicUrl: process.env.PUBLIC_URL ?? 'http://127.0.0.1:4000',
+    mail: {
+      // Demo defaults to local capture; production must configure SMTP explicitly.
+      mode: (process.env.MAIL_MODE as 'capture' | 'smtp' | 'none') ?? (demoMode ? 'capture' : 'none'),
+      smtpUrl: process.env.SMTP_URL || undefined,
+      from: process.env.MAIL_FROM ?? 'AMONG BUG <no-reply@among-bug.local>',
+      // true when SMTP_URL points at a local catcher (e.g. Mailpit): accepted mail is NOT delivered externally.
+      sink: (process.env.MAIL_SINK ?? 'false') === 'true',
+    },
     logLevel: process.env.LOG_LEVEL ?? (nodeEnv === 'test' ? 'silent' : 'info'),
     ...overrides,
   };

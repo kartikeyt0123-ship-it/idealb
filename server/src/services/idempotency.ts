@@ -40,7 +40,10 @@ export async function claimIdempotency(tx: Tx, actorKey: string, scope: string, 
 }
 
 /** Read-only lookup used before cheap pre-checks, so a retried request still gets its original response. */
-export async function peekIdempotency(q: Queryable, actorKey: string, scope: string, key: string): Promise<unknown | undefined> {
-  const r = await q.query(`SELECT response FROM idempotency_record WHERE actor_key=$1 AND scope=$2 AND key=$3 AND response <> 'null'::jsonb`, [actorKey, scope, key]);
-  return r.rows[0]?.response;
+export async function peekIdempotency(q: Queryable, actorKey: string, scope: string, key: string, payload?: unknown): Promise<unknown | undefined> {
+  const r = await q.query(`SELECT fingerprint, response FROM idempotency_record WHERE actor_key=$1 AND scope=$2 AND key=$3 AND response <> 'null'::jsonb`, [actorKey, scope, key]);
+  const row = r.rows[0];
+  if (!row) return undefined;
+  if (payload !== undefined && row.fingerprint !== fingerprint(payload)) throw new AppError('IDEMPOTENCY_MISMATCH', 'This request key was already used with different data.');
+  return row.response;
 }

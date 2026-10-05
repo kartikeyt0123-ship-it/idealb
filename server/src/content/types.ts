@@ -1,12 +1,11 @@
 /**
- * Authoring schema for AMONG BUGS challenge content.
+ * Authoring schema for AMONG BUG challenge content.
  *
- * A TaskTemplate is a reviewed base puzzle. `variant(v)` deterministically
- * produces one of four concrete variants (v = 0..3) whose numbers / data /
- * names differ, so Day-2 answers never match exposed Day-1 answers.
- *
- * Default demo assignment: v0 -> Game 1 Sprint 1, v1 -> Game 1 Sprint 2,
- * v2 -> Game 2 Sprint 1, v3 -> Game 2 Sprint 2.
+ * A TaskTemplate is a reviewed base puzzle. `variant(seed)` deterministically
+ * produces a concrete instance for ANY non-negative integer seed. Different
+ * seeds give different data / names / numbers and therefore different answers,
+ * so later slots never see an earlier slot's exposed answers. The demo seed
+ * uses ~16-60 seeds per template (4 slots x 4 sprints + reserves/bonuses).
  *
  * Everything under `solution`, `validation` and `hint` is SERVER-ONLY.
  */
@@ -94,7 +93,8 @@ export interface TaskTemplate {
   key: string;
   domain: DomainSlug;
   difficulty: Difficulty;
-  variant: (v: 0 | 1 | 2 | 3) => TaskVariant;
+  /** Must be deterministic and valid for every integer seed >= 0. */
+  variant: (seed: number) => TaskVariant;
 }
 
 export const DOMAIN_ORDER: DomainSlug[] = ['web', 'data', 'ds', 'basic', 'design', 'misc'];

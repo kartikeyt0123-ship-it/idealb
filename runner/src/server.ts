@@ -1,5 +1,5 @@
 /**
- * AMONG BUGS execution runner.
+ * AMONG BUG execution runner.
  *
  * A small, separate HTTP service that executes untrusted participant code
  * (JavaScript via Node, Python via CPython) with hard limits. The scoring API

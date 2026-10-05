@@ -9,6 +9,11 @@ import type { TaskTemplate } from '../types.js';
  * top-level `function` declarations with hidden inputs. DOM wiring in
  * script.js must be guarded with `if (typeof document !== 'undefined')` so it
  * is skipped under Node.
+ *
+ * Every template's `variant(seed)` is deterministic for any integer seed >= 0:
+ * themes come from pools indexed by the seed, and all data/numbers come from a
+ * small pure-arithmetic PRNG seeded by (seed, template salt). Expected outputs
+ * are always computed by reference implementations below, never hand-written.
  */
 
 /** Hidden harness shared by web tasks: evaluates script.js and runs `run(fns, input)` from the test stdin. */
@@ -27,19 +32,74 @@ ${body}
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Seeded helpers                                                      */
+/* ------------------------------------------------------------------ */
+
+/** Deterministic PRNG (mulberry32 mixing) seeded by the variant seed and a per-template salt. */
+function rngFor(seed: number, salt: number) {
+  let a = (Math.imul((seed % 4294967296) >>> 0, 0x9e3779b1) ^ Math.imul(salt + 1, 0x85ebca6b) ^ 0x6d2b79f5) >>> 0;
+  const next = (): number => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const int = (lo: number, hi: number): number => lo + Math.floor(next() * (hi - lo + 1));
+  const pick = <T>(arr: readonly T[]): T => arr[Math.floor(next() * arr.length)];
+  const shuffle = <T>(arr: readonly T[]): T[] => {
+    const c = arr.slice();
+    for (let i = c.length - 1; i > 0; i--) {
+      const j = Math.floor(next() * (i + 1));
+      [c[i], c[j]] = [c[j], c[i]];
+    }
+    return c;
+  };
+  return { next, int, pick, shuffle };
+}
+
+/** Injective map of seeds 0..p-1 onto 0..p-1 (p prime, mul not a multiple of p). */
+function perm(seed: number, mul: number, add: number, p: number): number {
+  return ((seed % p) * mul + add) % p;
+}
+
+/** Pool entry chosen by seed so consecutive seeds always get different themes. */
+function bySeed<T>(pool: readonly T[], seed: number): T {
+  return pool[seed % pool.length];
+}
+
+/* ------------------------------------------------------------------ */
+/* EASY: cart subtotal adds price + qty                                */
+/* ------------------------------------------------------------------ */
+
+const SHOPS = [
+  'Galley Supply', 'Med Bay Store', 'Cargo Exchange', 'Docking Kiosk', 'Reactor Canteen',
+  'Navigation Outlet', 'Shields Depot', 'Storage Bazaar', 'Comms Corner', 'Electrical Surplus',
+];
+const PRODUCTS = [
+  'Ration pack', 'Water cell', 'Thermal blanket', 'Bandage kit', 'Oxygen mask', 'Saline pouch',
+  'Bolt crate', 'Wire spool', 'Fuse', 'Docking token', 'Map chip', 'Snack bar', 'Fuel canister',
+  'Air filter', 'Keycard', 'Flashlight', 'Duct tape', 'Solder kit', 'Med scanner', 'Coffee pod',
+  'Space socks', 'Visor wipe', 'Gear oil', 'Signal flare',
+];
+
+type CartItem = { name: string; price: number; qty: number };
+
 const cartTotal: TaskTemplate = {
   key: 'web-cart-total',
   domain: 'web',
   difficulty: 'EASY',
-  variant: (v) => {
-    const shop = ['Galley Supply', 'Med Bay Store', 'Cargo Exchange', 'Docking Kiosk'][v];
-    const discount = [10, 15, 20, 25][v];
-    const items = [
-      [['Ration pack', 120, 2], ['Water cell', 45, 4], ['Thermal blanket', 300, 1]],
-      [['Bandage kit', 80, 3], ['Oxygen mask', 260, 1], ['Saline', 55, 2]],
-      [['Bolt crate', 150, 2], ['Wire spool', 90, 3], ['Fuse', 25, 6]],
-      [['Docking token', 200, 1], ['Map chip', 140, 2], ['Snack bar', 30, 5]],
-    ][v] as [string, number, number][];
+  variant: (seed) => {
+    const r = rngFor(seed, 11);
+    const shop = bySeed(SHOPS, seed);
+    const discount = r.pick([5, 10, 12, 15, 20, 25, 30]);
+    const shuffled = r.shuffle(PRODUCTS);
+    const count = r.int(3, 4);
+    const items: CartItem[] = shuffled.slice(0, count).map((name) => ({ name, price: r.int(4, 80) * 5, qty: r.int(1, 5) }));
+    // Guarantee the bug is visible: at least one line has qty > 1 (then price*qty != price+qty since price >= 20).
+    items[r.int(0, count - 1)].qty = r.int(2, 6);
+
     const html = `<!doctype html>
 <html>
 <head><link rel="stylesheet" href="style.css"></head>
@@ -58,7 +118,7 @@ h1 { color: #8ae4cf; }
 .total { font-weight: bold; color: #e8cf8e; }
 `;
     const script = `// ${shop} checkout
-const ITEMS = ${JSON.stringify(items.map(([name, price, qty]) => ({ name, price, qty })))};
+const ITEMS = ${JSON.stringify(items)};
 const DISCOUNT_PERCENT = ${discount};
 
 function subtotal(items) {
@@ -86,31 +146,40 @@ if (typeof document !== 'undefined') {
   document.getElementById('total').textContent = applyDiscount(sub, DISCOUNT_PERCENT);
 }
 `;
-    const fixed = script.replace('sum += item.price + item.qty;', 'sum += item.price * item.qty;');
-    const sub = (arr: { price: number; qty: number }[]) => arr.reduce((a, b) => a + b.price * b.qty, 0);
-    const cases = [
-      items.map(([name, price, qty]) => ({ name, price, qty })),
-      [{ name: 'A', price: 10, qty: 3 }, { name: 'B', price: 7, qty: 1 }],
-      [{ name: 'C', price: 99 + v, qty: 2 }],
-      [{ name: 'D', price: 5, qty: 10 + v }, { name: 'E', price: 1, qty: 1 }],
+    const fixed = mustReplace(script, 'sum += item.price + item.qty;', 'sum += item.price * item.qty;');
+    const refSub = (arr: CartItem[]) => arr.reduce((a, b) => a + b.price * b.qty, 0);
+    const buggySub = items.reduce((a, b) => a + b.price + b.qty, 0);
+    const p2 = shuffled.slice(count, count + 2);
+    const cases: CartItem[][] = [
+      items,
+      [
+        { name: p2[0], price: r.int(2, 40) * 5, qty: r.int(2, 9) },
+        { name: p2[1], price: r.int(1, 99), qty: 1 },
+      ],
+      [{ name: shuffled[count + 2], price: r.int(50, 999), qty: r.int(2, 12) }],
+      [
+        { name: shuffled[count + 3], price: r.int(1, 9), qty: r.int(10, 40) },
+        { name: shuffled[count + 4], price: r.int(1, 9), qty: 1 },
+        { name: shuffled[count + 5], price: r.int(100, 400), qty: r.int(1, 3) },
+      ],
+      [],
     ];
-    const tests = cases.map((c, i) => ({
-      name: `cart-${i + 1}`,
-      stdin: JSON.stringify({ items: c, percent: discount }),
-      expected: `${sub(c)} ${Math.round(sub(c) - (sub(c) * discount) / 100)}`,
-    }));
+    const tests = cases.map((c, i) => {
+      const s = refSub(c);
+      return {
+        name: `cart-${i + 1}`,
+        stdin: JSON.stringify({ items: c, percent: discount }),
+        expected: `${s} ${Math.round(s - (s * discount) / 100)}`,
+      };
+    });
     return {
       title: `${shop} checkout overcharge`,
-      statement: `The ${shop} terminal shows a total that makes no sense — a crate of three items costs less than one! The page's script computes the subtotal and then applies a ${discount}% crew discount.\n\nFix script.js so subtotal(items) returns the sum of price × quantity for every item. Use Run / Refresh Preview to check the page. Final verification calls subtotal() and applyDiscount() with hidden carts.`,
+      statement: `The ${shop} terminal shows a total that makes no sense: for a cart of ${items.length} line items (${items.map((it) => `${it.qty} x ${it.name}`).join(', ')}) the subtotal reads ${buggySub} IdeaCoins, far less than the goods are worth. The page's script computes the subtotal and then applies a ${discount}% crew discount.\n\nFix script.js so subtotal(items) returns the sum of price × quantity for every item (an empty cart is 0). Use Run / Refresh Preview to check the page. Final verification calls subtotal() and applyDiscount() with hidden carts.`,
       workspace: 'WEB',
       runLanguage: 'javascript',
       runEntry: 'script.js',
-      files: [
-        { name: 'index.html', language: 'html', content: html },
-        { name: 'style.css', language: 'css', content: css },
-        { name: 'script.js', language: 'javascript', content: script },
-      ],
-      answerFormat: 'Submit your edited files. Hidden tests call subtotal(items) and applyDiscount(amount, percent) with new carts.',
+      files: webFiles(html, css, script),
+      answerFormat: 'Submit your edited files. Hidden tests print "<subtotal(items)> <applyDiscount(subtotal, percent)>" for several new carts and compare exactly.',
       validation: {
         mode: 'CODE_TESTS',
         language: 'javascript',
@@ -118,8 +187,11 @@ if (typeof document !== 'undefined') {
         harness: [webHarness(`const s = ctx.subtotal(input.items);\nconsole.log(s + ' ' + ctx.applyDiscount(s, input.percent));`)],
         tests,
       },
-      hint: 'Each line item contributes price multiplied by quantity. Look at the operator inside the subtotal loop.',
-      solution: { explanation: 'subtotal() added price + qty; it must add price * qty.', files: { 'script.js': fixed } },
+      hint: 'Each line item contributes its price multiplied by its quantity. Look closely at the operator inside the subtotal loop.',
+      solution: {
+        explanation: `subtotal() added price + qty for each line; it must add price * qty. For the page's cart the correct subtotal is ${refSub(items)} (the bug showed ${buggySub}); applyDiscount() is already correct.`,
+        files: { 'script.js': fixed },
+      },
     };
   },
 };
@@ -146,13 +218,21 @@ h1 { color: #8ae4cf; }
 /* EASY: mission timer mm:ss padding                                   */
 /* ------------------------------------------------------------------ */
 
+const MISSIONS = [
+  'Emergency Meeting', 'Reactor Meltdown', 'O2 Depletion', 'Lights Sabotage',
+  'Comms Blackout', 'Hull Breach', 'Seismic Stabilizer', 'Crash Course',
+];
+
 const missionTimer: TaskTemplate = {
   key: 'web-mission-timer',
   domain: 'web',
   difficulty: 'EASY',
-  variant: (v) => {
-    const mission = ['Emergency Meeting', 'Reactor Meltdown', 'O2 Depletion', 'Lights Sabotage'][v];
-    const start = [125, 302, 487, 61][v];
+  variant: (seed) => {
+    const r = rngFor(seed, 22);
+    const mission = bySeed(MISSIONS, seed);
+    // Distinct start for seeds 0..592; the seconds part is always 0..9 so the bug is visible.
+    const k = perm(seed, 131, 7, 593);
+    const start = (1 + Math.floor(k / 10)) * 60 + (k % 10);
     const html = `<!doctype html>
 <html>
 <head><link rel="stylesheet" href="style.css"></head>
@@ -190,16 +270,17 @@ if (typeof document !== 'undefined') {
 }
 `;
     const fixed = mustReplace(script, "return pad2(minutes) + ':' + seconds;", "return pad2(minutes) + ':' + pad2(seconds);");
-    const ref = (t: number) => {
-      const p = (n: number) => (n < 10 ? '0' + n : String(n));
-      return p(Math.floor(t / 60)) + ':' + p(t % 60);
-    };
+    const p2 = (n: number) => (n < 10 ? '0' + n : String(n));
+    const ref = (t: number) => p2(Math.floor(t / 60)) + ':' + p2(t % 60);
     const inputs = [
-      [start, 0, 59, 600 + 3 * v, 6007 + v],
-      [start, 9, 60, 3599, 61 + 2 * v],
-      [start, 7 + v, 70, 1205, 6000],
-      [start, 5, 120 + v, 599, 9999],
-    ][v];
+      start,
+      0,
+      59,
+      r.int(10, 99) * 60 + r.int(0, 9),
+      6000 + r.int(0, 60) * 60 + r.int(1, 9),
+      r.int(1, 9) * 60 + r.int(10, 59),
+      r.int(0, 9),
+    ];
     const tests = inputs.map((s, i) => ({ name: `timer-${i + 1}`, stdin: JSON.stringify({ seconds: s }), expected: ref(s) }));
     return {
       title: `${mission} timer glitch`,
@@ -217,7 +298,10 @@ if (typeof document !== 'undefined') {
         tests,
       },
       hint: 'Minutes are already zero-padded. Is the other half of the string treated the same way?',
-      solution: { explanation: 'The seconds part was not padded; wrap it with pad2() like the minutes.', files: { 'script.js': fixed } },
+      solution: {
+        explanation: `The seconds part was not padded; wrap it with pad2() like the minutes. ${start}s must render as "${ref(start)}".`,
+        files: { 'script.js': fixed },
+      },
     };
   },
 };
@@ -226,14 +310,25 @@ if (typeof document !== 'undefined') {
 /* MEDIUM: pagination off-by-one                                       */
 /* ------------------------------------------------------------------ */
 
+const LOGS = [
+  'Security Camera Log', 'Vitals Log', 'Admin Swipe Log', 'Vent Sensor Log',
+  'Door Access Log', 'Reactor Event Log', 'Shuttle Dock Log', 'Comms Relay Log',
+];
+const LOG_PREFIX = ['E', 'CAM', 'VIT', 'SW', 'VNT', 'DR', 'RX', 'EVT'];
+
 const logPager: TaskTemplate = {
   key: 'web-log-pager',
   domain: 'web',
   difficulty: 'MEDIUM',
-  variant: (v) => {
-    const log = ['Security Camera Log', 'Vitals Log', 'Admin Swipe Log', 'Vent Sensor Log'][v];
-    const perPage = [5, 4, 6, 3][v];
-    const entries = Array.from({ length: [13, 11, 20, 10][v] }, (_, i) => `E${String(i + 1).padStart(2, '0')}`);
+  variant: (seed) => {
+    const r = rngFor(seed, 33);
+    const log = bySeed(LOGS, seed);
+    const prefix = r.pick(LOG_PREFIX);
+    const perPage = r.int(3, 7);
+    // Always a partial last page so Math.floor visibly loses entries.
+    const total = perPage * r.int(2, 4) + r.int(1, perPage - 1);
+    const base = 1 + perm(seed, 37, 5, 401);
+    const entries = Array.from({ length: total }, (_, i) => `${prefix}${String(base + i).padStart(3, '0')}`);
     const html = `<!doctype html>
 <html>
 <head><link rel="stylesheet" href="style.css"></head>
@@ -291,12 +386,15 @@ if (typeof document !== 'undefined') {
     const refCount = (t: number, p: number) => (t <= 0 ? 1 : Math.ceil(t / p));
     const refItems = (it: string[], page: number, p: number) => it.slice((page - 1) * p, (page - 1) * p + p);
     const lastPage = refCount(entries.length, perPage);
+    const subLen = r.int(7, total);
+    const subPer = r.int(2, 4);
     const cases: { items: string[]; page: number; perPage: number }[] = [
       { items: entries, page: 1, perPage },
       { items: entries, page: lastPage, perPage },
       { items: entries.slice(0, perPage * 2), page: 2, perPage },
       { items: [], page: 1, perPage },
-      { items: entries.slice(0, 7 + v), page: 2, perPage: 3 },
+      { items: entries.slice(0, subLen), page: r.int(2, refCount(subLen, subPer)), perPage: subPer },
+      { items: entries, page: lastPage + 1, perPage },
     ];
     const tests = cases.map((c, i) => ({
       name: `page-${i + 1}`,
@@ -305,7 +403,7 @@ if (typeof document !== 'undefined') {
     }));
     return {
       title: `${log} pagination`,
-      statement: `The ${log} has ${entries.length} entries shown ${perPage} per page, but the viewer never shows entry E01 and the last few entries cannot be reached — the page counter claims there are only ${Math.floor(entries.length / perPage)} page(s).\n\nFix script.js:\n- pageCount(total, perPage) must return how many pages are needed to show every entry (an empty log still has 1 page).\n- pageItems(items, page, perPage) must return the entries on 1-based page number \`page\` (page 1 starts with the first entry; pages past the end are empty).\n\nFinal verification calls both functions with hidden logs.`,
+      statement: `The ${log} has ${entries.length} entries (${entries[0]} to ${entries[entries.length - 1]}) shown ${perPage} per page, but the viewer never shows ${entries[0]} and the last few entries cannot be reached — the page counter claims there are only ${Math.floor(entries.length / perPage)} page(s).\n\nFix script.js:\n- pageCount(total, perPage) must return how many pages are needed to show every entry (an empty log still has 1 page).\n- pageItems(items, page, perPage) must return the entries on 1-based page number \`page\` (page 1 starts with the first entry; pages past the end are empty).\n\nFinal verification calls both functions with hidden logs.`,
       workspace: 'WEB',
       runLanguage: 'javascript',
       runEntry: 'script.js',
@@ -320,7 +418,7 @@ if (typeof document !== 'undefined') {
       },
       hint: 'Two off-by-one errors: a partial last page still counts as a page, and page numbers start at 1 while array indices start at 0.',
       solution: {
-        explanation: 'pageCount must round up (Math.ceil) and pageItems must start at (page - 1) * perPage.',
+        explanation: `pageCount must round up (Math.ceil): ${entries.length} entries at ${perPage}/page need ${lastPage} pages, not ${Math.floor(entries.length / perPage)}. pageItems must start at (page - 1) * perPage so page 1 begins with ${entries[0]}.`,
         files: { 'script.js': fixed },
       },
     };
@@ -331,26 +429,46 @@ if (typeof document !== 'undefined') {
 /* MEDIUM: leaderboard sort + competition ranking                      */
 /* ------------------------------------------------------------------ */
 
+const BOARDS = [
+  'Task Sprint', 'Wiring Rally', 'Asteroid Blitz', 'Fuel Relay',
+  'Card Swipe Cup', 'Shield Dash', 'Download Derby', 'Engine Tune-up',
+];
+const CREW = [
+  'Nova', 'Orion', 'Lyra', 'Vega', 'Atlas', 'Cora', 'Pip', 'Juno', 'Rex', 'Ivy', 'Bolt', 'Kai',
+  'Zed', 'Mira', 'Ash', 'Luna', 'Echo', 'Dax', 'Tess', 'Finn', 'Oslo', 'Rune', 'Gale', 'Bea',
+  'Yuki', 'Abe', 'Moe', 'Kit', 'Bix', 'Cam', 'Ari', 'Sol',
+];
+
+type Player = { name: string; score: number };
+
+function refRank(ps: Player[], n: number): string {
+  const s = ps.slice().sort((a, b) => (a.score !== b.score ? b.score - a.score : a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return s.slice(0, n).map((p) => `${1 + ps.filter((q) => q.score > p.score).length}. ${p.name} ${p.score}`).join('\n');
+}
+
 const crewLeaderboard: TaskTemplate = {
   key: 'web-crew-leaderboard',
   domain: 'web',
   difficulty: 'MEDIUM',
-  variant: (v) => {
-    const board = ['Task Sprint', 'Wiring Rally', 'Asteroid Blitz', 'Fuel Relay'][v];
-    const names = [
-      ['Nova', 'Orion', 'Lyra', 'Vega', 'Atlas', 'Cora'],
-      ['Pip', 'Juno', 'Rex', 'Ivy', 'Bolt', 'Kai'],
-      ['Zed', 'Mira', 'Ash', 'Luna', 'Echo', 'Dax'],
-      ['Tess', 'Finn', 'Oslo', 'Rune', 'Gale', 'Bea'],
-    ][v];
-    const scores = [
-      [420, 380, 420, 290, 380, 510],
-      [150, 230, 150, 230, 90, 300],
-      [700, 640, 700, 700, 520, 640],
-      [88, 120, 88, 120, 120, 45],
-    ][v];
-    const players = names.map((name, i) => ({ name, score: scores[i] }));
-    const topN = [4, 5, 4, 5][v];
+  variant: (seed) => {
+    const r = rngFor(seed, 44);
+    const board = bySeed(BOARDS, seed);
+    const crew = r.shuffle(CREW);
+    const unit = r.pick([1, 5, 10]);
+    const s4 = r.int(3, 40) * unit;
+    const s3 = s4 + r.int(1, 15) * unit;
+    const s2 = s3 + r.int(1, 15) * unit;
+    const s1 = s2 + r.int(1, 15) * unit;
+    // Every pattern contains a tie inside the top 4, so both bugs are always visible.
+    const pattern = r.pick([
+      [s1, s2, s2, s3, s3, s4],
+      [s1, s1, s2, s3, s3, s4],
+      [s1, s2, s2, s2, s3, s4],
+      [s1, s1, s2, s2, s3, s4],
+      [s1, s2, s3, s3, s4, s4],
+    ]);
+    const players: Player[] = r.shuffle(pattern).map((score, i) => ({ name: crew[i], score }));
+    const topN = r.int(4, 5);
     const html = `<!doctype html>
 <html>
 <head><link rel="stylesheet" href="style.css"></head>
@@ -399,21 +517,28 @@ if (typeof document !== 'undefined') {
       'const rank = i + 1;',
       'let rank = i + 1;\n    if (i > 0 && sorted[i].score === sorted[i - 1].score) rank = lastRank;\n    lastRank = rank;',
     ).replace('const rows = [];', 'const rows = [];\n  let lastRank = 0;');
-    const ref = (ps: { name: string; score: number }[], n: number) => {
-      const s = ps.slice().sort((a, b) => (a.score !== b.score ? b.score - a.score : a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-      return s.slice(0, n).map((p) => `${1 + ps.filter((q) => q.score > p.score).length}. ${p.name} ${p.score}`).join('\n');
-    };
-    const cases: { players: { name: string; score: number }[]; topN: number }[] = [
+    const tieScore = r.int(20, 90);
+    const triple = r.int(10, 60);
+    const cases: { players: Player[]; topN: number }[] = [
       { players, topN },
       { players, topN: players.length },
-      { players: [{ name: 'Yuki', score: 50 + v }, { name: 'Abe', score: 50 + v }, { name: 'Moe', score: 10 }], topN: 3 },
-      { players: [{ name: 'Solo', score: 7 * (v + 1) }], topN: 3 },
-      { players: [{ name: 'Kit', score: 30 }, { name: 'Bix', score: 40 }, { name: 'Cam', score: 30 }, { name: 'Ari', score: 30 }], topN: 2 + (v % 2) },
+      { players: [{ name: crew[6], score: tieScore }, { name: crew[7], score: tieScore }, { name: crew[8], score: tieScore - r.int(1, 15) }], topN: 3 },
+      { players: [{ name: crew[9], score: r.int(1, 99) }], topN: 3 },
+      {
+        players: [
+          { name: crew[10], score: triple },
+          { name: crew[11], score: triple + r.int(1, 20) },
+          { name: crew[12], score: triple },
+          { name: crew[13], score: triple },
+        ],
+        topN: r.int(2, 3),
+      },
     ];
-    const tests = cases.map((c, i) => ({ name: `board-${i + 1}`, stdin: JSON.stringify(c), expected: ref(c.players, c.topN) }));
+    const tests = cases.map((c, i) => ({ name: `board-${i + 1}`, stdin: JSON.stringify(c), expected: refRank(c.players, c.topN) }));
+    const shownTie = players.filter((p) => players.filter((q) => q.score === p.score).length > 1).map((p) => p.name);
     return {
       title: `${board} leaderboard order`,
-      statement: `The ${board} leaderboard on the Communications screen is unfair: crewmates with the same score appear in reverse alphabetical order, and tied crewmates get different rank numbers.\n\nFix rankCrew(players, topN) in script.js so it returns the top \`topN\` rows as "<rank>. <name> <score>":\n- higher score first; equal scores ordered by name A to Z;\n- competition ranking: equal scores share a rank and the next rank skips (scores 90, 80, 80, 70 give ranks 1, 2, 2, 4);\n- never reorder the caller's array.\n\nFinal verification calls rankCrew() with hidden rosters.`,
+      statement: `The ${board} leaderboard on the Communications screen is unfair: crewmates with the same score (look at ${shownTie.slice(0, 2).join(' and ')}) appear in reverse alphabetical order, and tied crewmates get different rank numbers.\n\nFix rankCrew(players, topN) in script.js so it returns the top \`topN\` rows (the page shows the top ${topN}) as "<rank>. <name> <score>":\n- higher score first; equal scores ordered by name A to Z;\n- competition ranking: equal scores share a rank and the next rank skips (scores 90, 80, 80, 70 give ranks 1, 2, 2, 4);\n- never reorder the caller's array.\n\nFinal verification calls rankCrew() with hidden rosters.`,
       workspace: 'WEB',
       runLanguage: 'javascript',
       runEntry: 'script.js',
@@ -428,7 +553,7 @@ if (typeof document !== 'undefined') {
       },
       hint: 'A sort comparator must return a negative number when a should come first. And a rank is not always the row position — look at the previous row.',
       solution: {
-        explanation: 'The tie-break comparator was reversed (should return -1 when a.name < b.name), and ranks must repeat for equal scores (competition ranking) instead of always being i + 1.',
+        explanation: `The tie-break comparator was reversed (it must return -1 when a.name < b.name), and ranks must repeat for equal scores (competition ranking) instead of always being i + 1. Correct page output:\n${refRank(players, topN)}`,
         files: { 'script.js': fixed },
       },
     };
@@ -470,34 +595,34 @@ function refCargoHistory(actions: CargoAction[]): string {
   return history.map((s) => s.items.map((it) => `${it.id}:${it.qty}`).join(',') || '(empty)').join('\n');
 }
 
+const BAYS = [
+  'Cargo Bay A', 'Storage Deck', 'Lower Engine Hold', 'Shuttle Locker',
+  'Upper Engine Hold', 'Med Bay Cabinet', 'Armory Rack', 'Reactor Supply Room',
+];
+const CARGO_IDS = ['fuel', 'wire', 'bolt', 'card', 'oxy', 'med', 'food', 'tool', 'coil', 'gear', 'pipe', 'seal', 'map', 'key', 'lamp', 'rope'];
+
 const cargoUndo: TaskTemplate = {
   key: 'web-cargo-undo',
   domain: 'web',
   difficulty: 'HARD',
-  variant: (v) => {
-    const bay = ['Cargo Bay A', 'Storage Deck', 'Lower Engine Hold', 'Shuttle Locker'][v];
-    const ids = [
-      ['fuel', 'wire', 'bolt', 'card'],
-      ['oxy', 'med', 'food', 'tool'],
-      ['coil', 'gear', 'pipe', 'seal'],
-      ['map', 'key', 'lamp', 'rope'],
-    ][v];
-    const [a, b, c, d] = ids;
+  variant: (seed) => {
+    const r = rngFor(seed, 55);
+    const bay = bySeed(BAYS, seed);
+    const [a, b, c, d] = r.shuffle(CARGO_IDS);
+    const q = () => r.int(1, 9);
+    // Sequences 1-4 always add to / re-set an EXISTING item, so the mutation bug always corrupts history.
     const scripts: CargoAction[][] = [
+      [{ type: 'ADD', id: a, qty: q() }, { type: 'ADD', id: b, qty: q() }, { type: 'ADD', id: a, qty: q() }, { type: 'UNDO' }, { type: 'ADD', id: c, qty: q() }],
+      [{ type: 'ADD', id: b, qty: q() }, { type: 'SET_QTY', id: b, qty: 10 + q() }, { type: 'ADD', id: d, qty: q() }, { type: 'UNDO' }, { type: 'UNDO' }],
       [
-        { type: 'ADD', id: a, qty: 2 + v }, { type: 'ADD', id: b, qty: 1 }, { type: 'ADD', id: a, qty: 3 }, { type: 'UNDO' }, { type: 'ADD', id: c, qty: 4 },
+        { type: 'ADD', id: c, qty: q() }, { type: 'ADD', id: d, qty: q() }, { type: 'REMOVE', id: c }, { type: 'ADD', id: d, qty: q() },
+        { type: 'UNDO' }, { type: 'SET_QTY', id: d, qty: 0 },
       ],
+      [{ type: 'ADD', id: a, qty: q() }, { type: 'ADD', id: a, qty: q() }, { type: 'ADD', id: a, qty: q() }, { type: 'UNDO' }, { type: 'UNDO' }, { type: 'ADD', id: b, qty: q() }],
+      [{ type: 'ADD', id: d, qty: q() }, { type: 'REMOVE', id: a }, { type: 'UNDO' }, { type: 'ADD', id: b, qty: q() }],
       [
-        { type: 'ADD', id: b, qty: 5 }, { type: 'SET_QTY', id: b, qty: 9 + v }, { type: 'ADD', id: d, qty: 1 }, { type: 'UNDO' }, { type: 'UNDO' },
-      ],
-      [
-        { type: 'ADD', id: c, qty: 1 }, { type: 'ADD', id: d, qty: 2 }, { type: 'REMOVE', id: c }, { type: 'ADD', id: d, qty: 6 + v }, { type: 'UNDO' }, { type: 'SET_QTY', id: d, qty: 0 },
-      ],
-      [
-        { type: 'ADD', id: a, qty: 1 }, { type: 'ADD', id: a, qty: 1 }, { type: 'ADD', id: a, qty: 1 + v }, { type: 'UNDO' }, { type: 'UNDO' }, { type: 'ADD', id: b, qty: 3 },
-      ],
-      [
-        { type: 'ADD', id: d, qty: 7 }, { type: 'REMOVE', id: a }, { type: 'UNDO' }, { type: 'ADD', id: b, qty: 2 * (v + 1) },
+        { type: 'ADD', id: a, qty: q() }, { type: 'ADD', id: c, qty: q() }, { type: 'SET_QTY', id: a, qty: 20 + q() }, { type: 'ADD', id: c, qty: q() },
+        { type: 'UNDO' }, { type: 'UNDO' }, { type: 'UNDO' },
       ],
     ];
     const html = `<!doctype html>
@@ -579,9 +704,12 @@ if (typeof document !== 'undefined') {
       'if (idx !== -1) items[idx] = { id: items[idx].id, qty: action.qty };',
     );
     const tests = scripts.map((actions, i) => ({ name: `history-${i + 1}`, stdin: JSON.stringify({ actions }), expected: refCargoHistory(actions) }));
+    const ex = scripts[0];
+    const exA1 = (ex[0] as { qty: number }).qty;
+    const exA2 = (ex[2] as { qty: number }).qty;
     return {
       title: `${bay} undo corrupts history`,
-      statement: `The ${bay} manifest has an Undo button, but Undo is lying: after adding more ${a} to an existing crate and pressing Undo, the quantity stays at the new value. Older snapshots in the history seem to change by themselves.\n\nThe page keeps an array of every previous state and Undo simply goes back one entry, so cargoReducer(state, action) in script.js must be pure: it must return a new state and must never modify \`state\` or any item object inside it. Supported actions:\n\`\`\`\n{ type: 'ADD', id, qty }      add qty to an existing item, or append a new item at the end\n{ type: 'REMOVE', id }        remove the item\n{ type: 'SET_QTY', id, qty }  set the quantity; qty <= 0 removes the item\n\`\`\`\nItem order must be preserved. Final verification replays hidden action sequences (including undo) and prints every snapshot in the history.`,
+      statement: `The ${bay} manifest has an Undo button, but Undo is lying: load ${exA1} ${a}, then ${exA2} more ${a}, press Undo — the crate still says ${exA1 + exA2} instead of ${exA1}. Older snapshots in the history seem to change by themselves.\n\nThe page keeps an array of every previous state and Undo simply goes back one entry, so cargoReducer(state, action) in script.js must be pure: it must return a new state and must never modify \`state\` or any item object inside it. Supported actions:\n\`\`\`\n{ type: 'ADD', id, qty }      add qty to an existing item, or append a new item at the end\n{ type: 'REMOVE', id }        remove the item\n{ type: 'SET_QTY', id, qty }  set the quantity; qty <= 0 removes the item\n\`\`\`\nItem order must be preserved. Final verification replays hidden action sequences (including undo) and prints every snapshot in the history.`,
       workspace: 'WEB',
       runLanguage: 'javascript',
       runEntry: 'script.js',
@@ -609,7 +737,7 @@ console.log(history.map(function (s) { return s.items.map(function (it) { return
       },
       hint: 'state.items.slice() copies the array, but the item objects inside are still shared with the previous state. Any line that assigns to a property of an existing item changes history too.',
       solution: {
-        explanation: 'The array was shallow-copied but existing item objects were mutated (found.qty += ..., items[idx].qty = ...), corrupting earlier snapshots. Replace the item with a new object instead of mutating it.',
+        explanation: 'The array was shallow-copied but existing item objects were mutated (found.qty += ..., items[idx].qty = ...), corrupting earlier snapshots. Replace the item with a new object instead of mutating it, in both ADD and SET_QTY.',
         files: { 'script.js': fixed },
       },
     };

@@ -1,0 +1,45 @@
+{
+  "questions": [
+    {
+      "key": "sample-misc-hex-beacon",
+      "domain": "misc",
+      "pool": "REGULAR",
+      "title": "Hex beacon",
+      "difficulty": "EASY",
+      "statement": "The emergency beacon in STORAGE repeats the bytes 41 4D 4F 4E 47 every few seconds. Decode the hex bytes as ASCII and enter the word.",
+      "workspace": "MISC",
+      "runLanguage": null,
+      "files": [],
+      "answerFormat": "One uppercase word",
+      "validation": { "mode": "EXACT_TEXT", "answer": "AMONG", "caseSensitive": false, "collapseWhitespace": true },
+      "hint": "Each pair of hex digits is one ASCII character: 41 is A.",
+      "solutionExplanation": "0x41 A, 0x4D M, 0x4F O, 0x4E N, 0x47 G gives AMONG.",
+      "solutionAnswer": "AMONG"
+    },
+    {
+      "key": "sample-basic-fuel-sum",
+      "domain": "basic",
+      "pool": "REGULAR",
+      "title": "Fuel gauge off-by-one",
+      "difficulty": "MEDIUM",
+      "statement": "fuel.py should print the sum of all integers read from stdin (one per line), but the last tank is always missing. Fix it.",
+      "workspace": "BASIC",
+      "runLanguage": "python",
+      "runEntry": "fuel.py",
+      "files": [{ "name": "fuel.py", "language": "python", "content": "import sys\nvals = [int(x) for x in sys.stdin.read().split()]\ntotal = 0\nfor i in range(len(vals) - 1):\n    total += vals[i]\nprint(total)\n" }],
+      "sampleStdin": "3\n4\n5\n",
+      "answerFormat": "Fix fuel.py so every hidden test passes",
+      "validation": {
+        "mode": "CODE_TESTS", "language": "python", "entry": "fuel.py",
+        "tests": [
+          { "name": "three tanks", "stdin": "3\n4\n5\n", "expected": "12" },
+          { "name": "one tank", "stdin": "7\n", "expected": "7" },
+          { "name": "negatives", "stdin": "-2\n9\n-1\n", "expected": "6" }
+        ]
+      },
+      "hint": "Look at the loop bound: which index is never visited?",
+      "solutionExplanation": "range(len(vals) - 1) skips the last element; iterate over all values.",
+      "solutionFiles": { "fuel.py": "import sys\nvals = [int(x) for x in sys.stdin.read().split()]\nprint(sum(vals))\n" }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 /**
  * Durable competition worker. All schedules live in PostgreSQL (sprint
- * deadline_at, imposter deadlines), so a restart never re-rolls timers or
+ * deadline_at, release offsets), so a restart never re-rolls timers or
  * restarts a round: on boot it simply closes whatever is overdue, using the
  * authoritative deadline as the close time. Safe to run several replicas —
  * every transition is a locked, idempotent transaction.
@@ -8,41 +8,27 @@
 import { loadConfig } from './config.js';
 import { createPool, many, withTx, type Db } from './db.js';
 import { SYSTEM } from './services/audit.js';
-import { expireImposters } from './services/imposter.js';
 import { closeSprint } from './services/lifecycle.js';
-import { emit, Rooms } from './services/outbox.js';
+import { releaseDue } from './services/releases.js';
 import { migrate } from './migrate.js';
 
-export async function tick(db: Db): Promise<{ closed: number; imposters: number; released: number }> {
+export async function tick(db: Db): Promise<{ closed: number; released: number }> {
   let closed = 0;
-  const due = await many<{ game_id: string }>(
+  const due = await many<{ slot_id: string }>(
     db,
-    `SELECT s.game_id FROM sprint s JOIN game g ON g.id=s.game_id
-      WHERE s.status='RUNNING' AND g.phase='RUNNING' AND s.number=g.current_sprint AND s.deadline_at <= clock_timestamp()`,
+    `SELECT s.slot_id FROM sprint s JOIN slot sl ON sl.id=s.slot_id
+      WHERE s.status='RUNNING' AND sl.phase='RUNNING' AND s.number=sl.current_sprint AND s.deadline_at <= clock_timestamp()`,
   );
   for (const d of due) {
-    const r = await withTx(db, (tx) => closeSprint(tx, SYSTEM, d.game_id, 'DEADLINE')).catch((err) => {
+    const r = await withTx(db, (tx) => closeSprint(tx, SYSTEM, d.slot_id, 'DEADLINE')).catch((err) => {
       if ((err as { code?: string }).code !== 'INVALID_TRANSITION') console.error('[worker] close failed', (err as Error).message);
       return null;
     });
     if (r) closed++;
   }
-  const imposters = await expireImposters(db);
-  // Announce timed task releases (release_offset reached) once.
-  let released = 0;
-  const releasing = await many<{ game_id: string; n: number }>(
-    db,
-    `SELECT s.game_id, count(*)::int AS n FROM task_instance ti JOIN sprint s ON s.id=ti.sprint_id
-      WHERE s.status='RUNNING' AND ti.release_offset_seconds > 0
-        AND EXTRACT(EPOCH FROM (clock_timestamp() - s.started_at)) - s.paused_total_ms/1000.0 >= ti.release_offset_seconds
-        AND ti.release_offset_seconds > EXTRACT(EPOCH FROM (clock_timestamp() - s.started_at)) - s.paused_total_ms/1000.0 - 1.0
-      GROUP BY s.game_id`,
-  );
-  for (const r of releasing) {
-    await withTx(db, (tx) => emit(tx, 'task.available', [Rooms.game(r.game_id), Rooms.admin], { gameId: r.game_id, count: r.n }));
-    released += r.n;
-  }
-  return { closed, imposters, released };
+  // Scheduled releases (initial sets, bonuses) by active sprint time; paused sprints never release.
+  const released = await releaseDue(db);
+  return { closed, released };
 }
 
 export async function housekeeping(db: Db) {
@@ -65,7 +51,7 @@ async function main() {
       const t0 = Date.now();
       try {
         const r = await tick(db);
-        if (r.closed || r.imposters) console.log(`[worker] closed ${r.closed} sprint(s), resolved ${r.imposters} imposter(s)`);
+        if (r.closed || r.released) console.log(`[worker] closed ${r.closed} sprint(s), released ${r.released} batch(es)`);
         await db.query(
           `INSERT INTO worker_heartbeat(name, beat_at, info) VALUES ('competition-worker', now(), $1)
            ON CONFLICT (name) DO UPDATE SET beat_at=now(), info=EXCLUDED.info`,

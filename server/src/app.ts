@@ -11,7 +11,9 @@ import type { Deps } from './http.js';
 import { Realtime } from './realtime.js';
 import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
-import { gameRoutes } from './routes/game.js';
+import { crewRoutes } from './routes/crew.js';
+import { displayRoutes } from './routes/display.js';
+import { openApiDocument, registeredRoutes } from './routes/openapi.js';
 import { createLimiters } from './security/rateLimit.js';
 import { zodFieldErrors } from './services/teams.js';
 import { RunService } from './services/runs.js';
@@ -87,14 +89,20 @@ export async function buildApp(cfg: AppConfig, opts: { db?: Db } = {}): Promise<
     return reply.code(500).send({ error: 'INTERNAL', message: 'Ship systems hit an unexpected fault. Try again; organizers have the logs.' });
   });
 
-  app.get('/api/health', async () => {
+  const health = async () => {
     await db.query('SELECT 1');
     return { ok: true, time: new Date().toISOString() };
-  });
+  };
+  app.get('/api/health', health);
+  app.get('/api/v1/health', health);
 
   await authRoutes(app, deps);
-  await gameRoutes(app, deps);
+  await crewRoutes(app, deps);
   await adminRoutes(app, deps);
+  await displayRoutes(app, deps);
+  // Public registration is deliberately absent: crews are imported by organizers.
+  app.get('/api/v1/openapi.json', async () => openApiDocument(cfg.publicUrl));
+  app.get('/api/v1/routes', async () => registeredRoutes());
 
   app.setNotFoundHandler((req, reply) => {
     if (req.url.startsWith('/api/')) return reply.code(404).send({ error: 'NOT_FOUND', message: 'Unknown endpoint.' });

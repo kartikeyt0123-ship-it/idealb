@@ -1,9 +1,12 @@
-# AMONG BUGS — full local / venue stack.
+# AMONG BUG — full local / venue stack (db, isolated runner, api, worker, demo mail sink).
 #   cp .env.example .env   (set secrets; keep DEMO_MODE=true only for the demo)
 #   docker compose up -d --build
 #   docker compose run --rm api node server/dist/scripts/seed-demo.js      # demo fixture (DEMO_MODE=true)
-# Open http://localhost:4000
-name: among-bugs
+# App:  http://localhost:4000      Demo mail inbox (Mailpit): http://localhost:8025
+# Credential mail goes to Mailpit, a local SMTP catcher: nothing is delivered externally
+# (MAIL_SINK=true makes the console say so). For real delivery set MAIL_MODE=smtp,
+# SMTP_URL=<provider> and MAIL_SINK=false in .env.
+name: among-bug
 
 services:
   db:
@@ -50,9 +53,14 @@ services:
       WEB_DIST_DIR: /app/web/dist
       NODE_ENV: ${NODE_ENV:-production}
       UV_THREADPOOL_SIZE: 8
+      MAIL_MODE: ${MAIL_MODE:-smtp}
+      SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
+      MAIL_SINK: ${MAIL_SINK:-true}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:4000}
     depends_on:
       db: { condition: service_healthy }
       runner: { condition: service_started }
+      mailpit: { condition: service_started }
     ports:
       - "4000:4000"
     networks: [default, sandbox]
@@ -68,6 +76,17 @@ services:
     command: ["node", "server/dist/worker.js"]
     depends_on:
       db: { condition: service_healthy }
+    networks: [default]
+    restart: unless-stopped
+
+  # Demo mail sink: catches every SMTP message locally (web inbox on :8025). Never relays.
+  mailpit:
+    image: axllent/mailpit:v1.27
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    ports:
+      - "127.0.0.1:8025:8025"
     networks: [default]
     restart: unless-stopped
 

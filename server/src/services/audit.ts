@@ -1,7 +1,7 @@
 import type { Queryable } from '../db.js';
 
 export interface Actor {
-  type: 'ADMIN' | 'TEAM' | 'SYSTEM';
+  type: 'ORGANIZER' | 'TEAM' | 'SYSTEM';
   id: string | null;
 }
 

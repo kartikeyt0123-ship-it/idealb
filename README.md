@@ -1,307 +1,378 @@
-# DEBUG + RUN / AMONG BUGS
+# AMONG BUG
 
-A full-stack, Among-Us-themed debugging competition platform for **IDEALab.h, SGSITS Indore —
-AAROHAN 2026**. Crews register, get approved for a competition day, board an explorable spaceship,
-repair buggy programs at six task stations, and race for IdeaCoins. Commanders run the event from
-a card-swipe-protected command console.
+An Among-Us-themed debugging competition platform for **IDEALab.h · AAROHAN 2026 · SGSITS Indore**.
 
-| Landing | Ship lobby | Engineering terminal |
+The format is **2 days × 2 slots × 4 sprints**, and every crew plays in exactly one slot. Crews
+board an explorable spaceship, repair buggy programs at six domain stations, and race for
+IdeaCoins. Organizers import crews, send credentials, start each sprint explicitly, release
+reserves and bonuses, and finalize results. Projectors show live sprint, slot and overall boards.
+
+| Landing | Ship lobby + HUD | Rankings |
 |---|---|---|
-| ![](docs/screenshots/landing.png) | ![](docs/screenshots/lobby.png) | ![](docs/screenshots/web-workspace.png) |
-| **Command console** | **Game & sprint control** | **Data workspace** |
-| ![](docs/screenshots/command-console.png) | ![](docs/screenshots/game-control.png) | ![](docs/screenshots/data-workspace.png) |
+| ![](docs/screenshots/landing.png) | ![](docs/screenshots/lobby.png) | ![](docs/screenshots/rankings.png) |
+| **Organizer console** | **Projector (overall, provisional)** | |
+| ![](docs/screenshots/command-console.png) | ![](docs/screenshots/display-overall.png) | |
 
-## What is in this repository
+Screenshots regenerate with `node e2e/tools/shots.mjs docs/screenshots` against `npm run dev`.
 
 | Part | Stack | Purpose |
 |---|---|---|
-| `web/` | React 19, TypeScript, Vite, Tailwind v4, motion, Monaco (bundled locally), Socket.IO client | Landing / registration / login, access card, playable ship (WASD / E / scroll / click / touch), HUD, task workspaces, card-swipe gate, command console |
-| `server/` | Node 20+, TypeScript, Fastify 5, PostgreSQL (`pg`), Socket.IO, zod | Auth & sessions, registration, eligibility, competition engine (first-solve transactions, paid hints, imposters), sprint lifecycle, elimination & results, ledger, outbox realtime, admin API, durable worker |
-| `runner/` | Node HTTP service + CPython | Isolated execution of participant JavaScript / Python with hard limits; the scoring API never spawns processes |
-| `server/src/content/` | TypeScript templates | 30 reviewed regular task templates × 4 variants (120 tasks) + 4 imposter templates, all self-verified |
-| `docs/` | | Runbook, API contract, decisions / provisional rules, content review, developer-only demo access |
+| `web/` | React 19, TypeScript, Vite, Tailwind v4, motion, Monaco, Socket.IO client | Landing (Crew Login / Organizer Login), access card, playable ship + HUD, question workspace, organizer console (`/command`), projector screens (`/display/...`) |
+| `server/` | Node 20+, Fastify 5, PostgreSQL (`pg`), Socket.IO, zod, exceljs, nodemailer | `/api/v1` (+ OpenAPI), sessions, imports, credentials, slot/sprint lifecycle, release scheduler, first-solve scoring, ledger, boards, exports, worker |
+| `runner/` | Node HTTP service + CPython | Isolated execution of participant JavaScript / Python; the scoring API never spawns processes |
+| `samples/` | CSV / XLSX / JSON | Team and question import samples, including an invalid fixture |
+| `docs/` | | Runbook, API, decisions / rules, import formats, demo access, content review |
 
-### UI source and fidelity
+---
 
-The organizer's published Figma Make site (`silk-bird-25541875.figma.site`) was the visual
-reference. No source export was supplied, so the published production bundle was downloaded and
-**decompiled back to JSX** (`docs/figma-reference-decompiled.jsx`). The crewmate, ship rooms,
-stations, doors, HUD, access card, palette (`#8ae4cf` mint, `#0a121b` ink, cream headings, amber
-accents), fonts (Chakra Petch / Outfit / JetBrains Mono) and keyframes were ported from it into
-typed React components with real data. This is a faithful reconstruction from the published build,
-not the original Figma project files. The decorative crewmates in the lobby are not live presence.
+## Future context (read this first)
+
+This section is the maintained handoff for whoever works on the repo next (human or AI).
+Keep it current when behaviour changes.
+
+### History
+
+1. **v1 (commit `a2914de`):** a two-game / two-sprint event (Game 1 = Day 1, Game 2 = Day 2) with
+   self-registration, per-day eligibility, elimination after each sprint, and reservable imposter
+   problems.
+2. **v2 (current):** rebuilt to the **four-slot brief** (`AMONG_BUG_Four_Slots_Claude_Code_Prompt.md`,
+   supplied by the organizers, not stored here). It supersedes v1 completely. The schema, services,
+   API (`/api` → `/api/v1`), seed, tests and UI were rewritten. Conflicts and every rule default:
+   [`docs/DECISIONS.md`](docs/DECISIONS.md).
+
+### The model in one screen
+
+- **Structure:**
+  - `event` (one row; `rules` jsonb + `rule_confirmations`) → `event_day` (2) → `slot` (4) →
+    `sprint` (4 per slot).
+  - `team` → `slot_enrollment`, which is unique per team: one slot per crew. It caches wallet,
+    earned, spent and score, and is the scoring identity.
+- **Content:**
+  - `question` → `question_version` (DRAFT → REVIEWED → PUBLISHED).
+  - Per slot, the **release plan** is `release` rows (INITIAL / RESERVE / BONUS; PENDING /
+    SCHEDULED / RELEASED / CANCELLED; active-time `offset_seconds`) owning `question_instance` rows.
+  - It is built by `buildSlotPlan` from the rules' blueprint. Each slot uses different versions.
+- **Scoring:**
+  - `submission` → `solve_award` (unique per instance + generation) → append-only `coin_ledger`
+    (`slot_id`, `sprint_id`).
+  - `hint_purchase` is unique per crew + instance.
+  - Sprint score = ledger rows of that sprint, so each sprint board starts at zero. Slot
+    cumulative = all rows. Overall = across slots (provisional until `finalizeEvent`).
+  - Metric: GROSS_EARNED (default) or NET_COINS, in `services/ranking.ts`. It is the ONE scoring
+    rule used everywhere.
+- **Lifecycle (organizer-driven, `services/lifecycle.ts`):**
+  - `preflight` → `startSprint` (releases INITIAL, freezes rules).
+  - The worker closes at the DB deadline (`closeSprint`: expires fresh questions, cancels
+    unreleased releases, freezes a snapshot).
+  - Then the next `startSprint` → … → `finalizeSlot` → `finalizeEvent`.
+  - Pause / resume shift the deadline. Only one slot runs at a time.
+- **Releases (`services/releases.ts`):** a single idempotent `releaseNow` is used by the worker
+  scheduler and by organizers. Organizer early or manual releases need a reason and are fairness
+  deviations.
+- **People:**
+  - Crews come only from CSV/XLSX import (`services/teams.ts`: preview → commit, stable `CRW-NNN`,
+    never resets passwords).
+  - Credentials only via explicit send (`services/mail.ts`: capture / smtp / none; `MAIL_SINK`).
+  - Organizers: SUPER_ADMIN / OPERATOR / CONTENT_EDITOR permissions (`server/src/http.ts`).
+  - Projectors: revocable display links → display-only cookie (`services/display.ts`).
+- **Realtime:** a transactional outbox → LISTEN/NOTIFY → Socket.IO rooms (`slot:<id>` only for
+  enrolled, enabled crews; `organizers`; `display`). Messages are hints; clients re-fetch
+  `GET /api/v1/slots/mine/state`.
+
+### Invariants (do not break)
+
+- PostgreSQL is the only source of truth. The ledger and audit log are append-only (triggers).
+  Corrections are compensating entries.
+- Scoring locks in the order slot → sprint → enrollment → question instance. The deadline is
+  checked with `clock_timestamp()` under lock. Every scoring mutation takes an `Idempotency-Key`,
+  and a reused key with a different payload is rejected.
+- A slot id in a URL never authorizes anything (the crew's enrollment decides). Other-slot or
+  unreleased questions give 404.
+- No public registration, no auto-sent credentials, no auto-published questions, no auto-started
+  sprints. Never report captured or sink mail as delivered.
+- Display / slot / all broadcasts never contain emails, answers, hints, statements or members.
+- Every `/api/v1` route is declared via `api(app)` (`server/src/routes/openapi.ts`), which feeds
+  `/api/v1/openapi.json`.
+- Demo credentials exist only in the demo seed (hashed). They are never shown on the landing
+  page or returned by an API.
+
+### Where things live
+
+| Concern | File(s) |
+|---|---|
+| Schema | `server/src/migrations/001_init.sql` |
+| Rules, defaults, rule catalogue | `server/src/services/rules.ts` |
+| Crew context / slot resolution | `server/src/services/context.ts` |
+| Questions, submit, hints | `server/src/services/questions.ts` |
+| Boards | `server/src/services/ranking.ts` |
+| Snapshot for crews | `server/src/services/snapshot.ts` |
+| Organizer ops, exports, health | `server/src/services/admin.ts` |
+| Routes | `server/src/routes/{auth,crew,admin,display}.ts` |
+| Worker (deadlines, scheduler, heartbeat) | `server/src/worker.ts` |
+| Seed (demo) / skeleton (prod) | `server/src/seed/demo.ts`, `server/src/seed/structure.ts`, `server/src/scripts/bootstrap.ts` |
+| Seedable content templates | `server/src/content/templates/*.ts` (`variant(seed)`) |
+| Web API types (mirror server DTOs) | `web/src/lib/api.ts` |
+| Crew UI | `web/src/screens/*`, `web/src/game/*`, `web/src/workspace/*` |
+| Organizer console | `web/src/admin/*` |
+| Projectors | `web/src/display/DisplayScreen.tsx` |
+| Tests | `server/test/*.test.ts` (real PostgreSQL + runner), `e2e/ui.spec.ts` (Playwright) |
+
+### Open items / known gaps
+
+See **Known limitations** at the bottom. Keep that list honest.
+
+---
 
 ## Quick start — local, no Docker (Windows / macOS / Linux)
 
-Requirements: **Node 20.11+** (tested on 24.12) and **Python 3.10+** on `PATH` (tested on 3.12)
-for Python tasks. PostgreSQL is downloaded automatically (embedded-postgres, real PostgreSQL 18 binaries).
+Requirements: **Node 20.11+** (tested on 24.12) and **Python 3.10+** on `PATH` for Python
+questions. PostgreSQL is downloaded automatically (embedded-postgres, real PostgreSQL binaries,
+data in `.local-pg/`, port 54329).
 
 ```bash
 npm install
-cp .env.example .env          # demo defaults: DEMO_MODE=true, local DB on :54329
-npm run build -w runner       # once (the content check and tests use the compiled runner)
-npm run dev                   # starts PostgreSQL, runner, API, worker and web; seeds the demo
+cp .env.example .env          # demo defaults: DEMO_MODE=true, MAIL_MODE=capture, local DB
+npm run build -w runner       # once
+npm run dev                   # PostgreSQL, runner, API, worker and web; seeds the demo if empty
 ```
 
-Open **http://127.0.0.1:5173**. `npm run dev -- --no-db` uses an existing `DATABASE_URL`;
-`--no-web` skips Vite. Stop with Ctrl+C (the whole process tree is stopped).
+Open **http://127.0.0.1:5173**. The organizer console is at **/command**.
+`npm run dev -- --no-db` uses an existing `DATABASE_URL`; `--no-web` skips Vite. Ctrl+C stops the
+whole process tree. Fresh demo data: `npm run reset:demo -- --yes`.
 
-### Demo logins (demo database only)
+### Demo logins (demo database only — details in [`docs/DEMO_ACCESS.md`](docs/DEMO_ACCESS.md))
 
 | Who | Login | Password |
 |---|---|---|
-| Commander (SUPER_ADMIN) | `admin@crm.local` | `idealab` |
-| Public demo crew NEXORA (CRW-042, both days) | `nexora@example.test` | `CrewDemo123!` |
-| Other 19 crews, 5 of them pending | see [`docs/DEMO_ACCESS.md`](docs/DEMO_ACCESS.md) | |
+| Organizer (SUPER_ADMIN) | `admin@crm.local` | `idealab` |
+| Nexora, CRW-001, Slot 1 (8 Oct 2026) | `nexora@example.test` or `CRW-001` | `CrewDemo123!` |
+| CRW-002 … CRW-040 (10 per slot) | captain email or crew id | `Crew-NNN-Demo!` |
 
-The demo starts in **WAITING** with Day 1 selected. Nothing runs until a commander acts.
+The demo contains:
+- 4 slots on 8 and 9 October 2026, 4 sprints each (30 min; REHEARSAL preset = 2 min);
+- a bank of 1,296 published demo questions;
+- 1,080 planned instances (960 initial + 120 reserves / bonuses);
+- every rule **UNCONFIRMED**.
 
-## Live link (public URL from your laptop, no account needed)
+Nothing runs until an organizer starts a sprint.
+
+## Live link (public URL from your laptop)
 
 ```powershell
-# one time: download cloudflared into tools/
+# one time: cloudflared into tools/
 mkdir tools
 curl.exe -L -o tools\cloudflared.exe https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
 
-# every time
+# every time (keep the terminal open)
 npm run live
 ```
 
-`npm run live` builds the web app, serves app and API together on port 4000, and opens a
-Cloudflare quick tunnel. It prints `AMONG BUGS IS LIVE -> https://<random>.trycloudflare.com`.
-The link works while that terminal stays open; Ctrl+C stops everything.
-A new random URL is issued each run. Quick tunnels are meant for demos and rehearsals; for the
-event, use a named tunnel or a proper host. The demo accounts are public knowledge, so keep the
-link private or reset the passwords before sharing it widely.
+This builds the web app, serves app and API on :4000, and prints
+`AMONG BUG IS LIVE -> https://<random>.trycloudflare.com`.
+- Display links created in the console use the URL you opened the console from, so they work
+  through the tunnel.
+- The demo passwords are public knowledge: keep the link private, or use a non-demo database.
 
-## Quick start — Docker Compose
+## Docker Compose
 
 ```bash
-cp .env.example .env    # set RUNNER_TOKEN, GRADING_SECRET (random, ≥32 chars); NODE_ENV=production for real use
+cp .env.example .env    # set RUNNER_TOKEN, GRADING_SECRET (≥32 random chars); NODE_ENV=production for real use
 docker compose up -d --build
-# demo fixture (only with DEMO_MODE=true in .env):
-docker compose run --rm api node server/dist/scripts/seed-demo.js
-# real event instead: bootstrap your own admin + event skeleton (no demo accounts):
-docker compose run --rm -e ADMIN_BOOTSTRAP_EMAIL=you@org -e ADMIN_BOOTSTRAP_PASSWORD='…' api node server/dist/scripts/bootstrap.js
+docker compose run --rm api node server/dist/scripts/seed-demo.js        # demo (DEMO_MODE=true)
+# real event: bootstrap an organizer + skeleton (no demo data, every rule unconfirmed)
+docker compose run --rm -e ADMIN_BOOTSTRAP_EMAIL=you@org -e ADMIN_BOOTSTRAP_PASSWORD='…' -e EVENT_DAY1=2026-10-08 -e EVENT_DAY2=2026-10-09 api node server/dist/scripts/bootstrap.js
 ```
 
-Open **http://localhost:4000**. In production the API serves the built web app under a strict CSP.
-
-Services:
-
-| Service | Image / config |
+| Service | Notes |
 |---|---|
-| `db` | PostgreSQL 17, persistent `pgdata` volume |
-| `runner` | non-root, read-only root fs, tmpfs, `cap_drop: ALL`, pids / memory / CPU caps, **internal-only network** with no egress |
-| `api` | Fastify + Socket.IO + web |
-| `worker` | deadlines, imposter expiry, heartbeat |
+| `db` | PostgreSQL 17, `pgdata` volume |
+| `runner` | Non-root, read-only fs, tmpfs, `cap_drop: ALL`, pid / memory / CPU caps, internal-only network (no egress) |
+| `api` | Fastify + Socket.IO + built web app, on :4000 |
+| `worker` | Sprint deadlines, release scheduler, heartbeat |
+| `mailpit` | **Demo mail sink.** Credential mail is caught at http://localhost:8025 and never relayed. `MAIL_SINK=true` makes the console say "not delivered externally". |
 
-> The Docker files were written and reviewed, but **Docker is not installed on the machine this
-> was built on, so `docker compose up` has not been executed here**. Everything else below was
-> run for real. Validate the compose stack once on the venue machine.
+For real delivery, set `MAIL_MODE=smtp`, `SMTP_URL=<provider>` and `MAIL_SINK=false`.
+
+> Docker is **not installed** on the machine this was built on, so `docker compose up` has not
+> been executed here. Validate it once on the venue machine.
 
 ## Commands
 
 | Task | Command |
 |---|---|
-| Install | `npm install` |
-| Build everything | `npm run build` (runner, server, web) |
+| Build everything | `npm run build` |
 | Typecheck | `npm run typecheck` |
 | Migrate | `npm run migrate` |
-| Seed demo (idempotent; refuses unless `DEMO_MODE=true`) | `npm run seed:demo` |
-| Reset demo DB (explicit, destructive) | `npm run reset:demo -- --yes` |
-| Production bootstrap (no demo data) | `npm run bootstrap` with `ADMIN_BOOTSTRAP_*` env |
-| Backend integration tests (real PostgreSQL + runner) | `npm test` |
-| UI end-to-end tests (needs `npm run dev` running) | `npm run test:e2e` |
-| Content self-check (all variants) | `npm run content:check` |
-| Opt-in load / rehearsal simulator | `npm run rehearsal:sim -- --yes --crews 100 --sessions 4 --duration 120 --think 8 [--start]` |
-| Production CSP check | run the API with `WEB_DIST_DIR=web/dist`, then `E2E_BASE=http://127.0.0.1:4000 node e2e/tools/csp-check.mjs` |
+| Seed demo (idempotent; needs `DEMO_MODE=true`) | `npm run seed:demo` |
+| Reset demo DB (destructive) | `npm run reset:demo -- --yes` |
+| Production bootstrap | `npm run bootstrap` with `ADMIN_BOOTSTRAP_*`, `EVENT_DAY1/2` |
+| Integration tests (real PostgreSQL + runner) | `npm test` |
+| UI e2e (needs `npm run dev`) | `npm run test:e2e` |
+| Content self-check | `npm run content:check` (options `--domain`, `--seeds 0-63`, `--distinct 64`) |
+| Load / rehearsal simulator (opt-in) | `npm run rehearsal:sim -- --yes --slot 1 --sessions 4 --duration 120 --all --start` |
+| API contract | `GET /api/v1/openapi.json` · [`docs/API.md`](docs/API.md) |
 
-## Event flow (what a rehearsal looks like)
+## Event flow
 
-1. **Commander** signs in (Commander Login) → command card → *Enter ship* → walks to the command
-   control panel (or uses the Stations menu) → **swipes the card**. The server authorises the
-   session and the console opens. `/command` is the direct, low-power route to the same console.
-2. **Crew management:** tick **Active Day 1 / Active Day 2** (bulk actions preview first).
-   Self-registered crews start pending.
-3. **Game & Sprint:** confirm the ranking rule, check durations or apply the REHEARSAL preset, set the
-   elimination counts (preflight shows "10 active → eliminate 2 → 8 survive"), then **Start Sprint 1**.
-4. Crews open stations, repair code, verify (server-judged), buy hints, and react to **IMPOSTER DETECTED**.
-5. The timer ends, the worker closes the sprint at the authoritative deadline, and standings freeze.
-   Every device shows *checking crew status*.
-6. **Elimination:** review the bottom K from the frozen standings and resolve any cutoff tie
-   explicitly → confirm. Ejected crews see the ejection and become read-only; survivors wait.
-7. **Activate Sprint 2** manually → close → eliminate → **Results** (prize-place ties need a
-   decision) → confirm. Every crew sees the podium.
-8. Switch the event day. **Game 2** is independent: fresh wallets, tasks, eligibility and prizes.
+1. **Setup:**
+   - Rules review: confirm every rule (production cannot start otherwise).
+   - Question bank: import → verify → publish.
+   - **Build release plan** per slot.
+   - **Import crews** (preview → commit), assign slots, **Send credentials** (preview first).
+2. **Slot n, Sprint 1:**
+   - The organizer presses Start after the preflight.
+   - Crews see 60 fresh questions (10 per domain). The first correct answer in the slot wins each.
+   - Bonuses (IMPOSTER DETECTED, 900 coins, open to all) release at their offsets; reserves are
+     released on demand.
+   - HUD: sprint score, cumulative, wallet, sprint rank, slot rank, timer.
+3. **The deadline passes:** the worker closes the sprint, unsolved questions expire and boards
+   freeze. The sprint board restarts at zero next sprint.
+4. **Sprints 2–4:** each started explicitly. After sprint 4, **Finalize slot** (top-3 ties need a
+   published decision).
+5. **Repeat** for Slots 2–4. Only one slot runs at a time.
+6. **Finalize overall results.** Projectors switch from PROVISIONAL to FINAL. Export standings,
+   ledger and audit.
+
+Projector routes: `/display/overall`, `/display/slots/:slotId`, `/display/slots/:slotId/sprints/:sprintId`
+(open via a display link from the console).
 
 ## Verified in this build (actually run)
 
+Run on 5 Oct 2026, on Windows 11 with Node 24.12, real PostgreSQL (embedded-postgres) and the real runner:
+
 | Check | Result |
 |---|---|
-| `npm test`: 29 integration tests in 6 files against real PostgreSQL 18 + the real runner | **29 / 29 pass** |
-| `npm run test:e2e`: 4 browser tests (Chromium) against the live stack | **4 / 4 pass** |
-| `npm run content:check`: buggy starters fail, solutions pass, variants distinct | **136 variants, 0 problems** |
+| `npm test`: integration tests in 4 files (auth, import, slots, competition) | **42 / 42 pass** |
+| `npm run test:e2e`: Chromium against `npm run dev` on a fresh demo seed | **7 / 7 pass** |
+| `npm run content:check` (runner proof for seeds 0–5, structural pass over 64 seeds per template) | **204 variants runner-checked, 0 problems** |
 | `npm run typecheck`, `npm run build` (runner, server, web) | **pass** |
-| Production mode: API serving the built web app under strict CSP | Monaco + sandboxed preview render, **0 CSP violations** |
-| `npm audit` | **0 vulnerabilities** (dompurify pinned to a patched version) |
+| `npm audit` | **0 vulnerabilities** |
 
-The integration tests cover the release gates:
+What the integration tests cover:
 
-- **Demo commander:** the exact credentials work, a wrong password fails, and the hash is scrypt.
-- **Commander access cannot be faked:** crews can't select or forge the commander role; the swipe
-  returns 403 for crews; every admin route returns 403 to crews.
-- **Requests:** CSRF header and origin are enforced. Login, refresh and logout restore or revoke
-  the server session; forged cookies fail.
-- **Registration flow:** 4-member registration → pending → admin enables Day 1 → the same session
-  reaches the Day 1 lobby → the Day 2 switch is denied with the exact message.
-- **Registration safety:** roster sizes 2 and 5, weak passwords and unknown fields create no
-  records. Concurrent duplicate email / team-name races create exactly one team. Same-key retries
-  return the same crew ID. Passwords never appear in the audit log or idempotency records.
-- **First solve:** tasks are locked shells before release (no titles or statements). Two crews
-  open the same task, a wrong answer keeps it open, and concurrent correct submissions yield
-  exactly one award and one credit. The loser gets *"This problem has already been solved by
-  another crew. Move on to the next task."*
-- **No double credit:** duplicate or concurrent same-key submits and lost-response retries credit once.
-- **Real execution:** real Python and JavaScript output, real `SyntaxError` / `ReferenceError`;
-  Run never changes the wallet.
-- **Paid hints:**
-  - Hint text is absent from detail, snapshot and list before purchase.
-  - An insufficient balance is rejected without going negative.
-  - A crew that earned coins buys a hint: three concurrent purchases produce one debit.
-  - A second device sees the hint; other crews don't.
-  - Buying on a solved task is denied with no charge.
-  - Net score drops by the hint cost.
-- **Ledger:** the append-only ledger reconciles with wallets; UPDATE and DELETE are rejected by triggers.
-- **Imposters:**
-  - Hidden before release; the first of four concurrent reservations wins.
-  - The statement is owner-only.
-  - Exclusive mode is enforced on the owner's second device.
-  - Timeout expires with no late award, and regular mode is restored.
-  - Re-arm creates generation 2; concurrent correct submits award once.
-- **Sprint lifecycle:**
-  - Pause and resume shift the deadline, and scoring is refused while paused.
-  - Repeated clicks with a stale version are rejected.
-  - The timer closes the sprint; late submits are rejected.
-  - Standings are frozen: post-freeze adjustments don't change the preview.
-  - A zero-score tie across the cutoff requires a decision; double confirmation is rejected.
-  - No automatic Sprint 2. Ejected crews can't submit, fetch tasks or run code. Wallets carry into Sprint 2.
-- **Live eligibility:** disabling Day 1 mid-game blocks the existing session's APIs immediately,
-  and Day 2 eligibility is untouched.
-- **Full two-game rehearsal:** Game 1 goes S1 → eliminate → S2 → eliminate → results, then the
-  Day 2 switch. Day-1-only crews are denied. Game 2 starts with a fresh wallet and has no shared
-  problem versions with Game 1. There are separate result rows, Game 1 history is unchanged,
-  and there's no cross-game ledger contamination. The results CSV exports correctly.
-- **Realtime:**
-  - Unauthenticated sockets are refused.
-  - Solves broadcast after commit, with no answers or hints in the payload.
-  - Disabling eligibility unsubscribes the crew's socket from game events.
-  - Logout disconnects the socket.
-- **Persistence:** stopping and restarting the API and PostgreSQL on the same data directory keeps
-  registrations, balances, hint purchases, the same browser session and the exact deadline.
-  Re-running the seed changes nothing.
+- **Access:**
+  - No registration endpoint (old or new); `/meta` never returns credentials.
+  - Crew login by email or CRW id; disabled crews and crews without credentials are refused.
+  - Organizer and crew separation; CSRF and origin checks.
+  - 4-device session cap; change-password signs out the other devices.
+  - A wrong-slot URL gives `WRONG_SLOT`.
+  - The OpenAPI document covers every route.
+- **Import:**
+  - CSV / XLSX templates.
+  - Preview writes nothing; commit is idempotent with stable `CRW-041…`; no credentials or mail on import.
+  - Re-importing as XLSX with aliased headers gives 3 × UNCHANGED.
+  - Each error kind in the invalid fixture is reported.
+  - Non-spreadsheet uploads are rejected; capacity is enforced at commit.
+  - Slot change after scoring is blocked (edit and re-import).
+  - Exports are formula-safe.
+- **Credentials:**
+  - Preview, then explicit send.
+  - The captured mail is labelled "not delivered externally", and its temporary password works and
+    forces a change.
+  - No transport gives `MAIL_NOT_CONFIGURED`, with nothing changed.
+- **Question bank:**
+  - JSON and CSV imports (linked asset required) create DRAFTs.
+  - PUBLISHED is impossible before REVIEWED.
+  - Verify runs the real runner for the code sample.
+- **Four slots:**
+  - Demo structure: dates, 10 crews per slot, 30-min sprints, 270 instances per slot, 5E/3M/2H × 6
+    domains, 20 reserves, bonus offsets [8,16,24]…, no version shared between slots.
+  - Nothing visible before start; one running slot at a time.
+  - Other slots can't see, open, submit or rank Slot 1.
+  - First correct wins and the loser gets `QUESTION_ALREADY_SOLVED`; socket events reach only that
+    slot.
+  - Hints reduce the wallet only (GROSS_EARNED).
+  - The sprint board restarts at zero and cumulative carries; fresh questions expire.
+  - Projector link: approved fields only, revocation cuts the HTTP session and the socket, crews are
+    refused.
+  - The **full 4 slots × 4 sprints run** finalizes each slot and the event: cumulative = S1+S2+S3+S4,
+    prize labels, FINAL boards, ledger reconciled.
+- **Races and integrity:**
+  - Rule review: unconfirmed defaults; changes clear confirmations; REHEARSAL scales offsets
+    (8 min → 32 s); a non-demo event cannot start with unconfirmed rules; rules freeze at the
+    first start.
+  - 3 concurrent starts → 1.
+  - 10 crews racing one answer → 1 award and 1 ledger row.
+  - The same key from 4 devices → applied once; a reused key with a different answer →
+    `IDEMPOTENCY_MISMATCH`.
+  - 4 concurrent hint buys → 1 debit.
+  - Insufficient funds are refused.
+- **Releases and timing:**
+  - The scheduler releases bonuses by active time; pause suspends it; idempotent.
+  - Bonus first-correct gives `BONUS_REWARD`; code answers are judged by the real runner.
+  - Reserves release without a reason; early scheduled or manual releases need one and are flagged
+    as deviations.
+  - Close cancels unreleased releases, which are never replayed.
+  - An answer after the DB deadline is rejected before the worker runs.
+- **Restart:** a rebuilt server keeps sessions and standings; the worker closes an overdue sprint
+  at its stored deadline, exactly once.
 
-UI tests cover:
-
-- registration in the browser → pending screen → commander ticks *Active Day 1* in the console → the crew boards;
-- a crew swipe is **denied**: the reader closes, the crew is back in the lobby, and no `/api/admin/*` request was made;
-- `/command` with a crew session shows the denial;
-- a commander swipe is **granted** and the console shows all nine sections;
-- typing `wasd…` in a workspace never moves the crewmate;
-- the statement / editor and preview / console panels sit side by side at laptop width.
-
-Manual browser passes also covered:
-
-- web, data, data-structures and misc workspaces;
-- a real fix in Monaco → preview refresh → server-verified *TASK COMPLETE*;
-- the rankings room;
-- a 390 px phone layout.
-
-## Measured performance (rehearsal simulator, this machine)
-
-Setup: one laptop (Intel i5-13420H, 12 logical CPUs, 16 GB) running PostgreSQL, one API process,
-the worker and the runner (4 concurrent jobs) together. **100 crews × 4 sessions = 400 sessions**,
-120 s, each device acting every ~8 s. Command:
-
-```bash
-npm run rehearsal:sim -- --yes --crews 100 --sessions 4 --duration 120 --think 8 --start
-```
-
-| Operation | count | p50 | p95 |
-|---|---|---|---|
-| state snapshot | 6024 | 19 ms | **424 ms** |
-| open task | 390 | 21 ms | 1232 ms |
-| hint purchase | 185 | 28 ms | 870 ms |
-| wrong submission (incl. runner judging for code tasks) | 165 | 324 ms | 1422 ms |
-| correct submission (judged against hidden tests) | 35 | 1182 ms | 2621 ms |
-| solve → `task.solved` received by another client (end to end, incl. judging) | 30 | 1162 ms | 2390 ms |
-| run (13 of 52 got an honest 503 *runner busy*) | 52 | 254 ms | 1519 ms |
-| login burst (400 sign-ins in the same second; scrypt) | 400 | 7.2 s | 14.3 s |
-
-How these compare with the proposed targets:
-
-- **Snapshots and typed answers** meet the targets (under 1 s).
-- **Code submissions** are dominated by runner judging. They need more runner capacity
-  (`RUNNER_MAX_CONCURRENCY`, more CPU, or a separate runner host) to reach p95 under 1 s.
-- **Standings propagation** itself is fast; the 2.4 s p95 above includes judging.
-- **Logins** are only slow when all 400 arrive in the same second. `UV_THREADPOOL_SIZE=8` is now
-  set to widen hashing parallelism (not re-measured).
-
-An earlier, harsher run (~4 s think time, no snapshot cache) gave a 21.7 s p95 for snapshots.
-It led to the version-keyed shared-state cache, which serves identical, never-stale data.
-
-These are rehearsal numbers on a laptop, not a capacity guarantee. Re-run the simulator on the
-venue hardware. The simulator creates real "SIM" crews: run it on a rehearsal database, then
-`npm run reset:demo -- --yes`.
+The e2e tests cover:
+- the landing shows only Crew / Organizer login (no registration, no credentials, no old branding);
+- the console's ten sections, and starting Slot 1 · Sprint 1 through the preflight
+  acknowledgement;
+- Nexora's HUD, 60 questions, and the Sprint / Slot / Overall rankings;
+- a Slot 2 crew waiting and seeing nothing;
+- a crew denied at `/command`;
+- the projector link (key removed from the URL, no emails, revoked → 401);
+- **a real repair in the ship workspace** raising wallet, sprint score and cumulative.
 
 ## Security model (summary)
 
 - **Sessions and requests:**
-  - Server sessions use random tokens stored as SHA-256, in HttpOnly / `SameSite=Lax` (`Secure` in
-    production) cookies, with idle and absolute expiry and revocation (logout, reset, archive, admin).
-  - CSRF protection uses a custom header plus an Origin allow-list.
-  - Passwords use scrypt (N = 2¹⁵) with a dummy hash for unknown accounts.
+  - Random server-session tokens, stored as SHA-256 in HttpOnly cookies with `Secure` in
+    production; idle and absolute expiry; revocation.
+  - CSRF protection: a custom header plus an origin check.
+  - Passwords use scrypt with a dummy hash for unknown accounts. Rate limits apply per identifier
+    and per IP.
 - **Authorization:**
-  - Roles are `SUPER_ADMIN`, `OPERATOR` and `CONTENT_EDITOR`, enforced on every admin route,
-    export and socket room.
-  - Day eligibility is checked on every game request and socket subscription.
-  - The day comes from server config (Asia/Kolkata), never the browser.
-- **Scoring integrity:**
-  - First-solve, hint, imposter and elimination transactions lock rows in a consistent order:
-    game, sprint, enrollment, task.
+  - Organizer permissions are enforced on every route and export.
+  - Crews reach only their own slot (enforced server-side, including socket rooms).
+  - Projectors get approved fields only.
+- **Integrity:**
   - Unique constraints back every single-award rule.
-  - Idempotency keys make every scoring mutation safe to retry.
-  - The deadline is checked with the DB clock under lock.
-- **Answers and hints:**
-  - Exact-text answers are stored only as HMAC verifiers.
-  - Hints and solutions never leave the server before purchase / for participants.
-- **Code isolation:**
-  - The web preview runs in an `iframe sandbox="allow-scripts"` (no same-origin), served with
-    `connect-src 'none'`.
-  - The runner is a separate non-root service: Node permission model, Python `-I`, time / output /
-    size caps, and an internal-only network.
-- **Exports and audit:** CSV exports escape formula injection. The ledger and audit log are
-  append-only by trigger.
+  - Idempotency keys carry payload fingerprints.
+  - The deadline is checked on the DB clock under lock.
+  - The append-only ledger is reconciled in Health.
+- **Secrets:** exact-text answers are stored as HMAC verifiers. Hints, solutions and hidden tests
+  never reach crews before purchase / at all.
+- **Code isolation:** the sandboxed iframe preview has `connect-src 'none'`. The runner is a
+  separate service with no egress in Docker.
+- **Exports and imports:**
+  - Exports are formula-injection safe (CSV and XLSX) and never contain passwords.
+  - Uploads are size / row capped, with extension and magic-byte checks; XLSX formulas are not
+    evaluated.
 
-## Known limitations / what needs organizer action
+## Known limitations
 
-- **Docker:** the compose stack was not executed here (Docker unavailable on the build machine).
-- **Runner isolation:** in local non-Docker mode, Python runs only with `-I` (no OS sandbox); use
-  the Docker runner for the event. Node jobs use Node's permission model in both modes.
-- **Provisional rules** in [`docs/DECISIONS.md`](docs/DECISIONS.md) need confirmation. These
-  include the real elimination counts for the real roster, durations, prizes, score basis,
-  imposter rules and session policy.
-- **Content:** all 120 tasks and 16 imposter variants are demo content. Review them per
-  [`docs/CONTENT_REVIEW.md`](docs/CONTENT_REVIEW.md).
-- **Scaling:** rate limiting is in-process; use one API instance, or move limits to Redis for
-  several. The runner is the throughput bottleneck for code-judged tasks; benchmark on the venue
-  hardware.
-- **Logos:** institutional logos were not supplied. The IDEA LAB mark is text plus an icon, easy
-  to swap in `web/src/components/ui.tsx`.
-- **Admin API gaps:**
-  - Member and email details can't be edited after registration.
-  - Problems can't be archived via the API.
-  - Ledger and audit views show the latest 500 / 150 rows.
+- **Docker:** the compose stack (including Mailpit) was written but not executed here, because
+  Docker is not installed on this machine.
+- **Rules:** every demo default is UNCONFIRMED by design and needs organizer review:
+  - durations, question scope, rewards and hint costs;
+  - GROSS_EARNED vs NET_COINS;
+  - elimination (off);
+  - bonus policy, ties, sessions;
+  - prize labels (placeholders, no amounts).
+- **Content:** the 1,296 questions are demo material from 34 templates
+  ([`docs/CONTENT_REVIEW.md`](docs/CONTENT_REVIEW.md)). Review them or import your own.
+- **Not exercised in a browser:**
+  - the console's import / credentials / rules / bank / releases screens are covered by API
+    tests, but only partly by e2e;
+  - the projector and ship UIs were checked visually at 1440 × 900 only, not on phones in this
+    pass.
+- **Performance:** the four-slot build has **not been load-tested yet**. Run
+  `npm run rehearsal:sim -- --yes --slot 1 --all --start` on the venue hardware. The v1
+  measurements (400 sessions) do not carry over automatically.
+- **Optimistic concurrency:** the console does not send `If-Match`. Server transitions are still
+  locked and state-checked, so a double click cannot double-start.
+- **Import mapping editor:** a column the server auto-detected can be re-pointed but not cleared.
+- **Scaling:** rate limits are in-process (one API instance, or move them to Redis). The runner is
+  the bottleneck for code judging.
+- **Isolation:** in local non-Docker mode, Python runs with `-I` only (no OS sandbox). Use the
+  Docker runner for the event.
+- **Slot correction after scoring:** blocked rather than automated. It is a manual, audited
+  procedure (see `docs/DECISIONS.md`).
 
-See also: [`docs/RUNBOOK.md`](docs/RUNBOOK.md) (event-day operations, outages, backups) ·
-[`docs/API.md`](docs/API.md) (endpoints, error codes, realtime topics).
+See also [`docs/RUNBOOK.md`](docs/RUNBOOK.md), [`docs/API.md`](docs/API.md),
+[`docs/IMPORT_FORMATS.md`](docs/IMPORT_FORMATS.md), [`docs/DECISIONS.md`](docs/DECISIONS.md) and
+[`docs/DEMO_ACCESS.md`](docs/DEMO_ACCESS.md).

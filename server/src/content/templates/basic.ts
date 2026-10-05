@@ -2,17 +2,47 @@ import type { TaskTemplate } from '../types.js';
 
 /**
  * REACTOR / Basic Programming.
- * Pattern reference for authors: parameterise by `v`, keep the bug identical
- * in spirit across variants, change the data so answers differ.
+ * Every template takes ANY non-negative integer seed. Names / words / divisors
+ * are chosen by mixed-radix decomposition of the seed (so seeds 0..N-1 give
+ * distinct combinations) and the hidden test data comes from a seeded LCG.
+ * The bug concept stays identical across seeds; expected outputs are computed
+ * by TypeScript reference implementations.
  */
 
+/** Small deterministic LCG for generating test data (no Math.random). */
+function lcg(seed: number): () => number {
+  let s = (seed * 2654435761 + 0x9e3779b9) >>> 0;
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+const randInt = (r: () => number, lo: number, hi: number) => lo + Math.floor(r() * (hi - lo + 1));
+/** Mixed-radix digits of the seed: distinct seeds below prod(sizes) give distinct index tuples. */
+function mix(seed: number, sizes: number[]): number[] {
+  let s = Math.max(0, Math.floor(seed));
+  return sizes.map((n) => {
+    const d = s % n;
+    s = Math.floor(s / n);
+    return d;
+  });
+}
+const SALT = (seed: number, k: number) => Math.max(0, Math.floor(seed)) * 7919 + k;
+
+// ---------------------------------------------------------------------------
+// EASY (JavaScript): off-by-one loop bound in the reactor monitor.
+// ---------------------------------------------------------------------------
 const reactorSum: TaskTemplate = {
   key: 'basic-reactor-sum',
   domain: 'basic',
   difficulty: 'EASY',
-  variant: (v) => {
-    const sensors = ['power', 'coolant', 'oxygen', 'thrust'][v];
-    const starter = `// Reactor ${sensors} monitor
+  variant: (seed) => {
+    const SENSORS = ['power', 'coolant', 'oxygen', 'thrust', 'plasma', 'neutron', 'shield', 'turbine'];
+    const BAYS = ['Upper', 'Lower', 'North', 'South', 'Aft', 'Fore', 'Core', 'Outer'];
+    const [si, bi, ex] = mix(seed, [SENSORS.length, BAYS.length, 1000]);
+    const sensors = SENSORS[si];
+    const bay = `${BAYS[bi]} bay ${ex > 0 ? `R-${ex}` : 'R'}`;
+    const starter = `// ${bay}: reactor ${sensors} monitor
 // Input: first line N, second line N space-separated readings.
 // Output: the total of ALL readings.
 const lines = require('fs').readFileSync(0, 'utf8').trim().split('\\n');
@@ -26,20 +56,21 @@ for (let i = 0; i < n - 1; i++) {
 console.log(total);
 `;
     const fixed = starter.replace('i < n - 1', 'i < n');
-    const sets: number[][][] = [
-      [[6, 8, 10, 18], [5], [1, 2, 3, 4, 5, 6], [100, -40, 7]],
-      [[9, 9, 9, 15], [12], [2, 4, 6, 8, 10], [50, -25, 3, 1]],
-      [[11, 3, 20, 7], [8], [3, 1, 4, 1, 5, 9], [70, -10, 2]],
-      [[4, 16, 12, 9], [21], [10, 20, 30, 40], [-5, 5, 13, 1]],
-    ];
-    const tests = sets[v].map((arr, i) => ({
+    const r = lcg(SALT(seed, 101));
+    const arr = (k: number, lo: number, hi: number) => {
+      const a = Array.from({ length: k }, () => randInt(r, lo, hi));
+      if (a[a.length - 1] === 0) a[a.length - 1] = randInt(r, 1, 9);
+      return a;
+    };
+    const sets: number[][] = [arr(randInt(r, 4, 6), 1, 40), [randInt(r, 2, 99)], arr(randInt(r, 6, 9), 1, 12), arr(randInt(r, 3, 5), -60, 120), arr(randInt(r, 10, 15), 0, 500)];
+    const tests = sets.map((a, i) => ({
       name: `case-${i + 1}`,
-      stdin: `${arr.length}\n${arr.join(' ')}\n`,
-      expected: String(arr.reduce((a, b) => a + b, 0)),
+      stdin: `${a.length}\n${a.join(' ')}\n`,
+      expected: String(a.reduce((x, y) => x + y, 0)),
     }));
     return {
-      title: `Restore the ${sensors} total`,
-      statement: `The reactor's ${sensors} monitor is reporting a low total. It reads N sensor readings and must print the sum of every reading — but the last reading never seems to count.\n\nRepair the program so it prints the correct total for any input. Your code is verified against hidden test inputs.`,
+      title: `Restore the ${sensors} total (${BAYS[bi]} bay)`,
+      statement: `The ${sensors} monitor in the reactor's ${bay} is reporting a low total. It reads N sensor readings and must print the sum of every reading — but the last reading never seems to count.\n\nRepair the program so it prints the correct total for any input. Your code is verified against hidden test inputs.`,
       workspace: 'BASIC',
       runLanguage: 'javascript',
       runEntry: 'main.js',
@@ -53,31 +84,28 @@ console.log(total);
   },
 };
 
-/** Small deterministic LCG for generating test data (no Math.random). */
-function lcg(seed: number): () => number {
-  let s = (seed * 2654435761) >>> 0;
-  return () => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
-}
-const randInt = (r: () => number, lo: number, hi: number) => lo + Math.floor(r() * (hi - lo + 1));
+// ---------------------------------------------------------------------------
+// EASY (Python): FizzBuzz-style condition order in the vent cycler.
+// ---------------------------------------------------------------------------
+/** Divisor pairs (a < b, b not a multiple of a) so "both" is a distinct case. */
+const DIV_PAIRS: [number, number][] = (() => {
+  const out: [number, number][] = [];
+  for (let a = 2; a <= 7; a++) for (let b = a + 1; b <= 11; b++) if (b % a !== 0) out.push([a, b]);
+  return out;
+})();
+const VENT_WORDS = ['O2', 'VENT', 'PUMP', 'SEAL', 'TICK', 'HUM', 'SCAN', 'PURGE', 'FLUX', 'GLOW', 'ZAP', 'BEEP', 'WARP', 'DOCK', 'SPIN', 'CORE'];
 
-// ---------------------------------------------------------------------------
-// EASY (Python): FizzBuzz-style condition order in the O2 vent cycler.
-// ---------------------------------------------------------------------------
 const o2Cycler: TaskTemplate = {
   key: 'basic-o2-vent-cycler',
   domain: 'basic',
   difficulty: 'EASY',
-  variant: (v) => {
-    const [a, b, wa, wb] = ([
-      [3, 5, 'O2', 'VENT'],
-      [4, 6, 'PUMP', 'SEAL'],
-      [2, 7, 'TICK', 'HUM'],
-      [3, 8, 'SCAN', 'PURGE'],
-    ] as const)[v];
-    const room = ['O2 room', 'Admin', 'Electrical', 'Medbay'][v];
+  variant: (seed) => {
+    const ROOMS = ['O2 room', 'Admin', 'Electrical', 'Medbay', 'Storage', 'Navigation', 'Weapons', 'Shields'];
+    const [pi, wi, oi, ri] = mix(seed, [DIV_PAIRS.length, VENT_WORDS.length, VENT_WORDS.length - 1, ROOMS.length]);
+    const [a, b] = DIV_PAIRS[pi];
+    const wa = VENT_WORDS[wi];
+    const wb = VENT_WORDS[(wi + 1 + oi) % VENT_WORDS.length]; // offset 1..15, never equal to wa
+    const room = ROOMS[(ri + seed) % ROOMS.length];
     const head = `# ${room} vent cycler
 # Input: one integer N.
 # For every cycle i from 1 to N print exactly one line:
@@ -122,12 +150,10 @@ for i in range(1, n + 1):
       }
       return out.join('\n');
     };
-    const lcm = (() => {
-      let m = Math.max(a, b);
-      while (m % a || m % b) m++;
-      return m;
-    })();
-    const ns = [1, a, lcm, 2 * lcm + 3, 50 + 7 * v];
+    let lcm = Math.max(a, b);
+    while (lcm % a || lcm % b) lcm++;
+    const r = lcg(SALT(seed, 202));
+    const ns = [1, a, lcm, 2 * lcm + randInt(r, 1, 5), lcm + randInt(r, 10, 60)];
     const tests = ns.map((n, i) => ({ name: `cycle-${i + 1}`, stdin: `${n}\n`, expected: ref(n) }));
     return {
       title: `${room} vent cycler skips the double cycle`,
@@ -140,7 +166,7 @@ for i in range(1, n + 1):
       answerFormat: 'Submit your repaired main.py. It runs against hidden inputs; stdout must match exactly line by line (trailing whitespace ignored).',
       validation: { mode: 'CODE_TESTS', language: 'python', entry: 'main.py', tests },
       hint: 'An if/elif chain stops at the FIRST true condition. Which condition can never be reached in the current order?',
-      solution: { explanation: `The "both" check was placed after the single-divisor checks, so it was unreachable. Test divisibility by both ${a} and ${b} first.`, files: { 'main.py': fixed } },
+      solution: { explanation: `The "both" check was placed after the single-divisor checks, so it was unreachable (cycle ${lcm} printed "${wa}" instead of "${wa}${wb}"). Test divisibility by both ${a} and ${b} first.`, files: { 'main.py': fixed } },
     };
   },
 };
@@ -152,12 +178,16 @@ const squadRoster: TaskTemplate = {
   key: 'basic-squad-roster',
   domain: 'basic',
   difficulty: 'MEDIUM',
-  variant: (v) => {
-    const ship = ['The Skeld', 'Mira HQ', 'Polus Base', 'The Airship'][v];
-    const fnName = ['build_roster', 'assemble_squad', 'collect_crew', 'muster'][v];
+  variant: (seed) => {
+    const SHIPS = ['The Skeld', 'Mira HQ', 'Polus Base', 'The Airship', 'The Fungle', 'Dleks Station', 'Orbital Dock 9', 'Outpost Kepler'];
+    const FNS = ['build_roster', 'assemble_squad', 'collect_crew', 'muster', 'gather_team', 'enlist', 'form_squad', 'roll_call'];
+    const [shi, fi, ex] = mix(seed, [SHIPS.length, FNS.length, 1000]);
+    const ship = SHIPS[shi];
+    const fnName = FNS[fi];
+    const squadWord = ex === 0 ? 'Squad' : ['Squad', 'Team', 'Unit', 'Crew'][ex % 4];
     const body = (sig: string, init: string) => `# ${ship} squad roster
 # Input: first line Q, then Q lines. Each line lists crew names separated by commas.
-# For each squad print:  Squad k: <count> crew -> <NAMES>
+# For each squad print:  ${squadWord} k: <count> crew -> <NAMES>
 # where NAMES are the squad's distinct names, UPPERCASE, sorted A-Z, separated by spaces.
 # Names are case-insensitive ("kit" and "KIT" are the same crewmate); blank entries are ignored.
 import sys
@@ -176,12 +206,12 @@ q = int(lines[0])
 for k in range(1, q + 1):
     squad = ${fnName}(lines[k].split(","))
     squad.sort()
-    print("Squad " + str(k) + ": " + str(len(squad)) + " crew -> " + " ".join(squad))
+    print("${squadWord} " + str(k) + ": " + str(len(squad)) + " crew -> " + " ".join(squad))
 `;
     const starter = body('names, roster=[]', '');
     const fixed = body('names, roster=None', '    if roster is None:\n        roster = []\n');
-    const pool = ['ava', 'Bo', 'cyan', 'Dex', 'echo', 'Finn', 'Gus', 'hana', 'Iris', 'Jax', 'kit', 'Lux', 'Mo', 'nova', 'Orin', 'Pax', 'Quinn', 'rhea', 'Sol', 'Tao'];
-    const r = lcg(500 + v);
+    const pool = ['ava', 'Bo', 'cyan', 'Dex', 'echo', 'Finn', 'Gus', 'hana', 'Iris', 'Jax', 'kit', 'Lux', 'Mo', 'nova', 'Orin', 'Pax', 'Quinn', 'rhea', 'Sol', 'Tao', 'Uma', 'Vex', 'wren', 'Yuki'];
+    const r = lcg(SALT(seed, 303));
     const caseFlip = (s: string) => (r() < 0.4 ? s.toUpperCase() : r() < 0.5 ? s.toLowerCase() : s);
     const squadLine = (size: number) => {
       const parts: string[] = [];
@@ -202,20 +232,24 @@ for k in range(1, q + 1):
     };
     const makeTest = (squads: string[]) => {
       const stdin = `${squads.length}\n${squads.join('\n')}\n`;
-      const expected = squads.map((s, i) => { const n = ref(s); return `Squad ${i + 1}: ${n.length} crew -> ${n.join(' ')}`; }).join('\n');
+      const expected = squads.map((s, i) => { const n = ref(s); return `${squadWord} ${i + 1}: ${n.length} crew -> ${n.join(' ')}`; }).join('\n');
       return { stdin, expected };
     };
+    // Guaranteed leak witness: squad 2 never contains squad 1's first name.
+    const pa = seed % pool.length;
+    const pb = (pa + 1 + (Math.floor(seed / pool.length) % 7)) % pool.length;
+    const pc = (pb + 3 + (seed % 5)) % pool.length === pa ? (pb + 2) % pool.length : (pb + 3 + (seed % 5)) % pool.length;
     const raw: string[][] = [
-      [squadLine(4 + v)],
+      [squadLine(randInt(r, 3, 7))],
       [squadLine(3), squadLine(4), squadLine(2)],
-      [`${pool[v]},${pool[v + 1]}`, `${pool[v + 1].toUpperCase()}, ${pool[v + 5]}`],
+      [`${pool[pa]},${pool[pb]}`, `${pool[pb].toUpperCase()}, ${pool[pc]}`],
       [squadLine(5), ' , ,', squadLine(3), squadLine(6)],
       [squadLine(2), squadLine(2), squadLine(7), squadLine(1), squadLine(3)],
     ];
     const tests = raw.map((s, i) => ({ name: `roster-${i + 1}`, ...makeTest(s) }));
     return {
       title: `${ship} rosters keep growing`,
-      statement: `Security on ${ship} prints one roster line per squad. Each input line is a squad of comma-separated names; the roster must list that squad's distinct crewmates (case-insensitive), uppercase and sorted.\n\nThe first squad always looks right, but every following squad mysteriously contains crewmates from the earlier squads too. Find out why ${fnName}() remembers old crew and repair main.py. Verified against hidden inputs.`,
+      statement: `Security on ${ship} prints one roster line per squad ("${squadWord} k: ..."). Each input line is a squad of comma-separated names; the roster must list that squad's distinct crewmates (case-insensitive), uppercase and sorted.\n\nThe first squad always looks right, but every following squad mysteriously contains crewmates from the earlier squads too. Find out why ${fnName}() remembers old crew and repair main.py. Verified against hidden inputs.`,
       workspace: 'BASIC',
       runLanguage: 'python',
       runEntry: 'main.py',
@@ -224,7 +258,7 @@ for k in range(1, q + 1):
       answerFormat: 'Submit your repaired main.py. It runs against hidden inputs; stdout must match exactly line by line (trailing whitespace ignored).',
       validation: { mode: 'CODE_TESTS', language: 'python', entry: 'main.py', tests },
       hint: `Python evaluates default argument values once, when the function is defined, not on every call. Look closely at the signature of ${fnName}().`,
-      solution: { explanation: 'The default `roster=[]` is a single list shared by every call, so names accumulate across squads. Use `roster=None` and create a fresh list inside the function.', files: { 'main.py': fixed } },
+      solution: { explanation: `The default \`roster=[]\` is a single list shared by every call of ${fnName}(), so names accumulate across squads. Use \`roster=None\` and create a fresh list inside the function.`, files: { 'main.py': fixed } },
     };
   },
 };
@@ -236,10 +270,14 @@ const hullExtremes: TaskTemplate = {
   key: 'basic-hull-extremes',
   domain: 'basic',
   difficulty: 'MEDIUM',
-  variant: (v) => {
-    const sensor = ['hull pressure', 'cryo temperature', 'shield flux', 'cabin pressure'][v];
-    const [HI, LO] = ([['PEAK', 'LOW'], ['MAX', 'MIN'], ['HIGH', 'DROP'], ['TOP', 'FLOOR']] as const)[v];
-    const code = (fixed: boolean) => `// ${sensor} extremes report
+  variant: (seed) => {
+    const SENSORS = ['hull pressure', 'cryo temperature', 'shield flux', 'cabin pressure', 'engine vibration', 'antenna drift', 'fuel line pressure', 'gravity field'];
+    const LABELS: [string, string][] = [['PEAK', 'LOW'], ['MAX', 'MIN'], ['HIGH', 'DROP'], ['TOP', 'FLOOR'], ['UPPER', 'LOWER'], ['CREST', 'TROUGH'], ['SUMMIT', 'BASE'], ['HI', 'LO']];
+    const [si, li, ex] = mix(seed, [SENSORS.length, LABELS.length, 1000]);
+    const sensor = SENSORS[si];
+    const [HI, LO] = LABELS[li];
+    const deck = `deck ${String.fromCharCode(65 + (ex % 26))}${ex >= 26 ? Math.floor(ex / 26) : ''}`;
+    const code = (fixed: boolean) => `// ${sensor} extremes report (${deck})
 // Input: first value N, then N integer readings (may be negative), whitespace separated.
 // Output two lines:
 //   ${HI} <largest reading> CHECK <digit sum of |largest|>
@@ -273,20 +311,20 @@ console.log('${LO} ' + low + ' CHECK ' + digitSum(low));
       const lo = Math.min(...arr);
       return `${HI} ${hi} CHECK ${ds(hi)}\n${LO} ${lo} CHECK ${ds(lo)}`;
     };
-    const r = lcg(900 + v);
+    const r = lcg(SALT(seed, 404));
     const rand = (k: number, lo: number, hi: number) => Array.from({ length: k }, () => randInt(r, lo, hi));
     const sets: number[][] = [
-      [12 + v, 48, 7, 30 + v, 19],
-      rand(6, -999, -10),
-      [-(37 + 11 * v)],
-      [0, 0, 5 + v, 0],
+      rand(5, 1, 99),
+      rand(randInt(r, 4, 8), -999, -10),
+      [-randInt(r, 11, 9999)],
+      [0, 0, randInt(r, 1, 9), 0],
       rand(10, -5000, 5000),
       rand(5, 100, 9999),
     ];
     const tests = sets.map((arr, i) => ({ name: `readings-${i + 1}`, stdin: `${arr.length}\n${arr.join(' ')}\n`, expected: ref(arr) }));
     return {
-      title: `${sensor} extremes ignore the cold side`,
-      statement: `The ${sensor} monitor reports the largest and smallest of N readings, each followed by a CHECK value: the digit sum of the reading's absolute value (so -47 has CHECK 11).\n\nDuring a hull breach every reading went negative and the report printed "${HI} 0" with CHECK 0 for the low side, too. Repair main.js so both lines are correct for any readings, including all-negative ones. Verified against hidden inputs.`,
+      title: `${sensor[0].toUpperCase() + sensor.slice(1)} extremes ignore the cold side`,
+      statement: `The ${sensor} monitor on ${deck} reports the largest and smallest of N readings, each followed by a CHECK value: the digit sum of the reading's absolute value (so -47 has CHECK 11).\n\nDuring a hull breach every reading went negative and the report printed "${HI} 0" with CHECK 0 for the low side, too. Repair main.js so both lines are correct for any readings, including all-negative ones. Verified against hidden inputs.`,
       workspace: 'BASIC',
       runLanguage: 'javascript',
       runEntry: 'main.js',
@@ -327,9 +365,13 @@ const romanCodes: TaskTemplate = {
   key: 'basic-roman-launch-codes',
   domain: 'basic',
   difficulty: 'HARD',
-  variant: (v) => {
-    const sys = ['launch', 'airlock', 'escape pod', 'cargo bay'][v];
-    const code = (fixed: boolean) => `# ${sys} code translator
+  variant: (seed) => {
+    const SYSTEMS = ['launch', 'airlock', 'escape pod', 'cargo bay', 'shuttle bay', 'armory', 'vault', 'docking clamp'];
+    const CONSOLES = ['primary', 'backup', 'bridge', 'auxiliary', 'emergency', 'remote', 'legacy', 'field'];
+    const [si, ci, ex] = mix(seed, [SYSTEMS.length, CONSOLES.length, 1000]);
+    const sys = SYSTEMS[si];
+    const consoleName = `${CONSOLES[ci]} console${ex ? ` #${ex + 1}` : ''}`;
+    const code = (fixed: boolean) => `# ${sys} code translator (${consoleName})
 # Input: whitespace-separated tokens. Each token is either a decimal number (1..3999)
 # or a Roman numeral (any letter case).
 # For each token print:  <token> = <converted value>
@@ -387,7 +429,7 @@ print("TOTAL = " + to_roman(total))
       out.push(`TOTAL = ${toRoman(total)}`);
       return out.join('\n');
     };
-    const r = lcg(1300 + v);
+    const r = lcg(SALT(seed, 505));
     const randomTokens = (k: number) => {
       const out: string[] = [];
       for (let i = 0; i < k; i++) {
@@ -398,17 +440,27 @@ print("TOTAL = " + to_roman(total))
       }
       return out;
     };
+    // Values whose Roman form needs subtractive pairs (contain a 4 or 9 digit).
+    const subtractive = () => {
+      for (;;) {
+        const n = randInt(r, 1, 1999);
+        if (/[49]/.test(String(n))) return n;
+      }
+    };
+    const s1 = subtractive();
+    const s2 = subtractive();
+    const s3 = subtractive();
     const edge: string[][] = [
-      ['4', '9', String(14 + v * 5)],
-      ['MCMXCIV', 'xl', String(90 + v)],
-      [toRoman(3999 - 444 * v)],
-      ['CDXLIV', String(400 + v), 'IX'],
+      [String([4, 9, 40, 90, 400, 900][seed % 6]), String(s1), String(randInt(r, 10, 99))],
+      [toRoman(s2), toRoman(randInt(r, 30, 49)).toLowerCase(), String(randInt(r, 90, 99))],
+      [toRoman(randInt(r, 2000, 3999))],
+      [toRoman(s3), String(randInt(r, 400, 499)), 'IX'],
     ];
     const sets = [edge[0], edge[1], edge[2], edge[3], randomTokens(4), randomTokens(6)];
     const tests = sets.map((t, i) => ({ name: `codes-${i + 1}`, stdin: t.join('\n') + '\n', expected: ref(t) }));
     return {
       title: `${sys[0].toUpperCase() + sys.slice(1)} codes translate wrong`,
-      statement: `The ${sys} console stores its authorisation codes as Roman numerals, and the crew types some of them as plain numbers. The translator must convert every token in BOTH directions and finish with the TOTAL of all values, written as a Roman numeral.\n\nRoman numerals use subtractive pairs: IV = 4, IX = 9, XL = 40, XC = 90, CD = 400, CM = 900 (so 1994 = MCMXCIV). Right now "IX" decodes to the wrong number and 4 encodes as "IIII". Repair main.py so every conversion is correct for values 1..3999. Verified against hidden inputs.`,
+      statement: `The ${sys} ${consoleName} stores its authorisation codes as Roman numerals, and the crew types some of them as plain numbers. The translator must convert every token in BOTH directions and finish with the TOTAL of all values, written as a Roman numeral.\n\nRoman numerals use subtractive pairs: IV = 4, IX = 9, XL = 40, XC = 90, CD = 400, CM = 900 (so 1994 = MCMXCIV). Right now "IX" decodes to the wrong number and 4 encodes as "IIII". Repair main.py so every conversion is correct for values 1..3999. Verified against hidden inputs.`,
       workspace: 'BASIC',
       runLanguage: 'python',
       runEntry: 'main.py',

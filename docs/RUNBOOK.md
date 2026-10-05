@@ -1,101 +1,114 @@
-# AMONG BUGS — Event-day runbook
+# AMONG BUG — event-day runbook
 
-Audience: the organizer or operator running DEBUG + RUN at AAROHAN 2026.
+Audience: the organizer / operator running AMONG BUG at AAROHAN 2026 (IDEALab.h, SGSITS Indore).
+Format: 2 days × 2 slots × 4 sprints; each crew plays in exactly one slot.
 
 ## 1. Topology (one authoritative database)
 
 ```
-browsers ──HTTPS──▶ reverse proxy (TLS) ──▶ api (Fastify + Socket.IO, serves the web app)
-                                            │        │
-                                            │        └──internal "sandbox" network──▶ runner (Node + Python, no egress)
-                                            ▼
-                                       PostgreSQL ◀── worker (deadlines, imposter expiry, heartbeat)
+browsers / projectors ──HTTPS──▶ reverse proxy (TLS) ──▶ api (Fastify + Socket.IO, serves the web app)
+                                                          │        │
+                                                          │        └─ internal "sandbox" network ─▶ runner (Node + Python, no egress)
+                                                          ▼
+                                                     PostgreSQL ◀── worker (deadlines, release scheduler, heartbeat)
+                                                          api ──SMTP──▶ mail provider (or Mailpit in the demo compose)
 ```
 
-- PostgreSQL is the **only** source of truth. Do not run a second score database (for example, a LAN copy
-  and a cloud copy at the same time).
-- The API can scale horizontally. Each instance delivers outbox events to its own sockets, and the
-  dispatcher reads committed rows, so duplicates are harmless. The in-process rate limits then become
-  per instance; move them to Redis if you run more than one instance.
-- The worker can run as more than one replica. Every transition is a locked, idempotent transaction.
+- PostgreSQL is the **only** source of truth. Never run two score databases at once.
+- Several API instances are possible: each delivers committed outbox events to its own sockets.
+  The in-process rate limits then become per instance.
+- Several worker replicas are safe: every transition is a locked, idempotent transaction.
 
-## 2. Before the event (T-1 day)
+## 2. Before the event (T-2 days)
 
-1. Create the `.env` from `.env.example` and set:
-   - `NODE_ENV=production`, `DEMO_MODE=false`, `COOKIE_SECURE=true`, `TRUST_PROXY=true` (behind TLS).
-   - `GRADING_SECRET` and `RUNNER_TOKEN` as long random strings, e.g. `openssl rand -hex 32`.
-   - `ALLOWED_ORIGINS=https://your-domain`.
+1. `.env` from `.env.example`:
+   - `NODE_ENV=production`, `DEMO_MODE=false`, `COOKIE_SECURE=true`, `TRUST_PROXY=true`.
+   - Long random `GRADING_SECRET` and `RUNNER_TOKEN`.
+   - `ALLOWED_ORIGINS` and `PUBLIC_URL` set to `https://your-domain`.
    - `POSTGRES_PASSWORD`.
-2. Start the stack with `docker compose up -d --build`.
-3. Bootstrap the event and your admin account. This creates no demo accounts and no known passwords:
-   `docker compose run --rm -e ADMIN_BOOTSTRAP_EMAIL=you@org -e ADMIN_BOOTSTRAP_PASSWORD='…' api node server/dist/scripts/bootstrap.js`
-4. Sign in at `/command` and check, for each game:
-   - **Day mapping and dates.** Event day selection should be AUTO (Asia/Kolkata date). Use MANUAL for rehearsals.
-   - **Elimination counts K1 and K2** for the real roster. Preflight shows "N active → eliminate K → M survive".
-   - **Ranking rule.** Choose NET_COINS or GROSS_EARNED, then tick *confirm*. It is frozen when Sprint 1 starts.
-   - **Prize places and labels.**
-   - **Imposter mode** (claim vs open), the exclusivity toggle, and the claim/solve durations.
-   - **Recycling policy** for Sprint 2 (off unless you decide otherwise).
-5. Load the real problems in the Problem Library: create, **Verify with runner**, Publish, then Assign to a sprint.
-   Re-use the demo set only after reviewing it (`docs/CONTENT_REVIEW.md`).
-6. Approve crews: tick **Active Day 1 / Day 2** in Crew management. Bulk actions show a preview first.
-7. Run a **full rehearsal** on a copy of the database with the REHEARSAL preset, plus `npm run rehearsal:sim` (see README).
+   - Mail: `MAIL_MODE=smtp`, `SMTP_URL=smtps://user:pass@provider:465`, `MAIL_FROM`, `MAIL_SINK=false`.
+2. `docker compose up -d --build`.
+3. Bootstrap (no demo accounts, no known passwords):
+   `docker compose run --rm -e ADMIN_BOOTSTRAP_EMAIL=you@org -e ADMIN_BOOTSTRAP_PASSWORD='…' -e EVENT_DAY1=2026-10-08 -e EVENT_DAY2=2026-10-09 api node server/dist/scripts/bootstrap.js`
+4. Sign in at `/command` → **Rules review**. Read every rule and confirm it (or change it first).
+   A production event cannot start a sprint while any rule is unconfirmed. Rules freeze at the first start.
+5. **Question bank:** import or author questions → **Verify** → REVIEWED → PUBLISHED. The bank
+   coverage table shows *need vs have* per domain and difficulty for the remaining slots. Then
+   **Build release plan** for each slot. Preflight warns if slots are not comparable.
+6. **Crews:** Import CSV/XLSX → fix row errors → Commit. Assign slots (in the file or with bulk
+   assign) within capacity. Then **Send credentials** (preview first). Crews change their
+   password at first sign-in.
+7. **Displays:** create one display link per projector. The key is shown once; store it, or
+   create a new link if you lose it.
+8. Rehearse on a copy of the database with the REHEARSAL preset, plus
+   `npm run rehearsal:sim -- --yes --slot 1 --all --start`.
 
-## 3. During a sprint
+## 3. Running a slot
 
-| Situation | Action |
+| Step | Action |
 |---|---|
-| Start | Game & Sprint → preflight must be green → **Start Sprint 1**. |
-| Emergency (power, network, wrong task) | **Pause**. Every deadline (sprint, imposter claim/solve) shifts by the paused time on Resume. Fix the issue (e.g. disable a broken task), announce it, then **Resume**. |
-| Broken task | Tasks tab → **Disable** (only unsolved tasks). To replace one: pause, assign a new published version, resume. |
-| Crew must leave / cheats | Crew → **Disqualify** (GAME or EVENT scope, with a reason). Use Revoke with a reason to correct a mistake. |
-| Lost device / password | Crew → **Reset password** gives a one-time 30-minute code; the crew uses `/reset`. Their sessions are revoked. |
-| Too many devices | The session limit (default 4) evicts the oldest session. You can also revoke a session in the crew row. |
-| Imposter | Imposters tab → **Release** (only while running). Cancel stops it with no award; Re-arm creates a new generation. |
+| Doors open | Crews sign in; check-in is visible per crew. Unassigned / disabled crews see why they cannot play. |
+| Start | Slots → *Slot n* → **Start sprint 1**. Preflight must have no blockers. Read the warnings: unconfirmed rules (demo only), crews without credentials, comparability, manual deviations. The initial set is released at start. |
+| During | Bonuses release automatically at their active-time offsets. Reserves: **Release now** when stations run dry (part of the plan; no reason needed). |
+| Emergency (power, network, broken question) | **Pause**: the deadline and every scheduled release stop and shift on Resume. Announce, fix, resume. |
+| Early release of a scheduled batch / manual override | Allowed with a written reason; it is shown as a **fairness deviation** in the plan, preflight and audit log. |
+| Device / account problems | Crews → sessions (revoke), disable / enable, **Send credentials (RESET)** for a new temporary password. |
+| Misconduct | Crews → **Disqualify** with a reason (revocable with a reason; audited). |
+| End of sprint | The worker closes it at the authoritative deadline (DB clock). Late submissions are rejected even if the worker is late. Unreleased releases are cancelled, never replayed. Standings freeze into a snapshot. |
+| Next sprint | Crews wait. **Start sprint n+1** when ready (the previous sprint is finalized automatically when elimination is off). The sprint board restarts at zero; cumulative carries. |
+| After sprint 4 | Slot is in REVIEW → **Finalize slot**. Ties involving the top 3 require a published decision (share, or a manual order with a note). |
 
-The worker closes the sprint at the authoritative deadline. Submissions are rejected once that
-deadline passes, even if the worker is late or down.
+Only one slot may run at a time (rule `singleRunningSlot`).
 
-## 4. Between sprints
+## 4. After all four slots
 
-1. Sprint closed → the game is in **ELIMINATION_REVIEW** and standings are frozen.
-2. Elimination tab: check the bottom K. If a **tie crosses the cutoff**, the console requires a decision first:
-   retain the tied group, eliminate the tied group, or a manual published tiebreak. All three need a written
-   note, which is audited.
-3. **Confirm elimination.** It is idempotent; a second confirmation is rejected.
-4. Survivors wait in the lobby. **Sprint 2 starts only when you press Activate Sprint 2.**
-5. After Sprint 2, confirm eliminations, then review **Results**. Prize-boundary ties need a decision;
-   **Confirm results** shows them to every crew.
-6. Switch the event day (or let AUTO mode do it at midnight IST). Game 2 is independent: fresh wallets,
-   tasks and eligibility.
+1. Check the overall board (provisional): Leaderboards → Overall.
+2. **Finalize overall results**. Prize-place ties need a decision. The projectors switch from
+   PROVISIONAL to FINAL.
+3. Exports: overall / slot / sprint standings, ledger, audit (CSV or XLSX; formula-safe; never passwords).
 
-## 5. Outages
+## 5. Projectors
+
+- Open the link from the Displays tab on the projector browser. The key in the URL fragment is
+  exchanged for a display-only cookie and removed from the address bar.
+- Routes: `/display/overall`, `/display/slots/:slotId`, `/display/slots/:slotId/sprints/:sprintId`
+  (footer links switch between them).
+- A projector sees only approved standings fields (rank, crew name / id / colour, slot, per-sprint
+  and total scores, solves). Revoking the link disconnects it immediately.
+
+## 6. Outages
 
 | Failure | Behaviour | Response |
 |---|---|---|
-| API crash or restart | Sessions persist in the DB. Clients reconnect and re-fetch a full snapshot. | `docker compose restart api`. |
-| Worker down | Deadlines are still enforced at request time. Closing and freezing standings waits for the worker. Ship Status shows the heartbeat age. | `docker compose restart worker`. On start it closes overdue sprints **at their original deadline**. |
-| Database down | API returns errors and clients show "Ship comms are down". | Restore the DB. If the outage crossed a deadline, the sprint closes at the deadline when the worker resumes. It is never silently extended. Announce and use **Pause** if you need extra time. |
-| Runner down | Run and code verification return a real error ("runner unreachable"). Typed-answer tasks still work. | `docker compose restart runner`. Ship Status shows runtimes. |
+| API restart | Sessions are in the DB; clients reconnect and re-fetch a full snapshot. | `docker compose restart api` |
+| Worker down | Deadlines are still enforced per request. Closing and scheduled releases wait for the worker. Health shows the heartbeat age. | `docker compose restart worker`. It closes overdue sprints at their stored deadline. |
+| Database down | API errors; clients show "Ship comms are down". | Restore the DB; nothing is re-rolled. |
+| Runner down | Run / code verification return a real error; typed answers still work. | `docker compose restart runner` |
+| Mail provider down | Deliveries are recorded as FAILED and old credentials stay valid. | Fix SMTP and resend to the failed crews. |
 
-## 6. Backup and restore
+## 7. Backup and restore
 
 ```bash
-docker compose exec db pg_dump -U amongbugs -Fc among_bugs > backup-$(date +%F-%H%M).dump   # every sprint boundary
+docker compose exec db pg_dump -U amongbugs -Fc among_bugs > backup-$(date +%F-%H%M).dump   # at every sprint boundary
 docker compose exec -T db pg_restore -U amongbugs -d among_bugs --clean < backup-XXXX.dump
 ```
 
-The ledger and audit tables are append-only (enforced by triggers). Use a full restore, never manual edits.
+The ledger and audit tables are append-only (enforced by triggers). Correct mistakes with
+compensating adjustments (Crews → adjust), never by editing rows.
 
-## 7. Health checks
+## 8. Health
 
-- `GET /api/health` returns DB liveness (public).
-- Command Console → **Ship Status** shows DB latency, worker heartbeat (healthy if under 10 s), outbox
-  backlog, runner runtimes, connected sockets and live deadlines.
-- Alert if the worker heartbeat is over 10 s old, outbox lag keeps growing, or the runner reports unhealthy.
+- `GET /api/v1/health` (public) shows DB liveness.
+- Console → Health shows:
+  - DB latency;
+  - worker heartbeat (healthy if under 10 s);
+  - outbox lag;
+  - runner;
+  - live deadlines;
+  - **ledger reconciliation** (cached wallets = ledger sums);
+  - mail mode.
 
-## 8. Demo / rehearsal database
+## 9. Demo / rehearsal database
 
-```bash
-npm run reset:demo -- --yes   # wipes and re-seeds an isolated DEMO database (refuses on a non-demo event)
-```
+`npm run reset:demo -- --yes` wipes and re-seeds an isolated demo database. It refuses on a
+non-demo event. See [DEMO_ACCESS.md](DEMO_ACCESS.md).

@@ -1,0 +1,3 @@
+key,domain,pool,difficulty,title,statement,workspace,validation_mode,answer,tolerance,case_sensitive,answer_format,hint,solution,files,run_language,run_entry
+sample-data-o2-average,data,REGULAR,EASY,O2 average,"Open o2-readings.csv (linked asset). What is the average oxygen level across all rows, to one decimal place?",DATA,NUMERIC,20.5,0.05,,A number with one decimal,Add the six readings and divide by six.,The readings sum to 123; 123 / 6 = 20.5.,o2-readings.csv,,
+sample-web-alt-attribute,web,REGULAR,EASY,Missing alt text,Which HTML attribute gives the reactor diagram a text alternative for screen readers?,WEB,EXACT_TEXT,alt,,false,One HTML attribute name,Screen readers announce this attribute instead of the image.,The alt attribute provides the text alternative.,,,

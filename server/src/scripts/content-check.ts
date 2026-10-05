@@ -29,6 +29,11 @@ import { runnerExecute, runnerHealth, type RunnerConfig } from '../grading/runne
 const args = process.argv.slice(2);
 const onlyDomain = args.includes('--domain') ? args[args.indexOf('--domain') + 1] : undefined;
 const onlyKey = args.includes('--key') ? args[args.indexOf('--key') + 1] : undefined;
+/** Seeds proven with the real runner (default 0..5). `--seeds 0-63` widens it. */
+const seedArg = args.includes('--seeds') ? args[args.indexOf('--seeds') + 1] : '0-5';
+const [seedLo, seedHi] = seedArg.includes('-') ? seedArg.split('-').map(Number) : [Number(seedArg), Number(seedArg)];
+/** Seeds checked structurally + for distinctness without running code (fast). Demo seed needs up to ~60. */
+const DISTINCT = Number(args.includes('--distinct') ? args[args.indexOf('--distinct') + 1] : 64);
 const includeImposters = !onlyDomain || onlyDomain === 'imposter';
 
 async function ensureRunner(): Promise<{ cfg: RunnerConfig; stop: () => void }> {
@@ -101,7 +106,7 @@ function answerVerifies(x: TaskVariant, submitted: string): boolean {
   return false;
 }
 
-async function checkVariant(cfg: RunnerConfig, t: TaskTemplate, v: 0 | 1 | 2 | 3): Promise<string[]> {
+async function checkVariant(cfg: RunnerConfig, t: TaskTemplate, v: number): Promise<string[]> {
   let x: TaskVariant;
   try {
     x = t.variant(v);
@@ -169,30 +174,50 @@ async function main() {
     for (const t of templates) {
       if (keys.has(t.key)) { console.log(`✗ duplicate key ${t.key}`); failures++; }
       keys.add(t.key);
-      const fps = new Set<string>();
-      const statements = new Set<string>();
-      for (const v of [0, 1, 2, 3] as const) {
+      // 1) Runner proof for the selected seed range.
+      for (let v = seedLo; v <= seedHi; v++) {
         checked++;
         const errs = await checkVariant(cfg, t, v);
         if (errs.length) {
           failures++;
-          console.log(`✗ ${t.key} v${v}: ${errs.join('; ')}`);
+          console.log(`✗ ${t.key} seed ${v}: ${errs.join('; ')}`);
         } else {
-          console.log(`✓ ${t.key} v${v}`);
+          console.log(`✓ ${t.key} seed ${v}`);
         }
+      }
+      // 2) Fast structural + distinctness pass over many seeds (what the demo seed consumes).
+      const fps = new Set<string>();
+      const statements = new Set<string>();
+      let bad = 0;
+      for (let v = 0; v < DISTINCT; v++) {
         try {
           const x = t.variant(v);
+          const errs = structural(t, v, x);
+          if (errs.length) {
+            bad++;
+            if (bad <= 3) console.log(`✗ ${t.key} seed ${v} (structural): ${errs.join('; ')}`);
+          }
+          if (x.validation.mode !== 'CODE_TESTS' && x.solution.answer !== undefined && !answerVerifies(x, x.solution.answer)) {
+            bad++;
+            if (bad <= 3) console.log(`✗ ${t.key} seed ${v}: solution.answer does not verify`);
+          }
           fps.add(variantFingerprint(x));
           statements.add(x.statement);
-        } catch { /* reported above */ }
+        } catch (err) {
+          bad++;
+          if (bad <= 3) console.log(`✗ ${t.key} seed ${v}: variant() threw: ${(err as Error).message}`);
+        }
       }
-      if (fps.size < 4) { failures++; console.log(`✗ ${t.key}: variants must have 4 distinct answers/test sets (found ${fps.size})`); }
-      if (statements.size < 4) { failures++; console.log(`✗ ${t.key}: variants must have 4 distinct statements (found ${statements.size})`); }
+      if (bad) failures++;
+      const need = Math.ceil(DISTINCT * 0.9);
+      if (fps.size < need) { failures++; console.log(`✗ ${t.key}: only ${fps.size}/${DISTINCT} distinct answers/test sets over seeds 0..${DISTINCT - 1} (need >= ${need})`); }
+      if (statements.size < need) { failures++; console.log(`✗ ${t.key}: only ${statements.size}/${DISTINCT} distinct statements (need >= ${need})`); }
     }
   } finally {
     stop();
   }
-  console.log(`\n${checked} variants checked, ${failures} problem(s).`);
+  console.log(`
+${checked} variants runner-checked (seeds ${seedLo}-${seedHi}), ${DISTINCT} seeds per template structurally checked, ${failures} problem(s).`);
   process.exit(failures ? 1 : 0);
 }
 

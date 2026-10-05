@@ -3,10 +3,10 @@ import { io, type Socket } from 'socket.io-client';
 import { syncClock } from './api';
 
 export const TOPICS = [
-  'eligibility.changed', 'session.revoked', 'event.changed', 'game.updated', 'sprint.started', 'sprint.paused', 'sprint.resumed',
-  'sprint.closed', 'task.available', 'task.solved', 'task.reopened', 'wallet.updated', 'hint.unlocked', 'standings.updated',
-  'imposter.offered', 'imposter.reserved', 'imposter.expired', 'imposter.solved', 'imposter.cancelled', 'team.eliminated',
-  'team.disqualified', 'game.completed', 'announcement.created', 'crews.changed', 'content.changed',
+  'eligibility.changed', 'session.revoked', 'event.changed', 'slot.updated', 'slot.finalized', 'event.finalized',
+  'sprint.started', 'sprint.paused', 'sprint.resumed', 'sprint.closed', 'sprint.finalized',
+  'question.released', 'question.solved', 'question.expired', 'bonus.released', 'wallet.updated', 'hint.unlocked',
+  'leaderboard.updated', 'team.eliminated', 'team.disqualified', 'announcement.created', 'teams.changed', 'content.changed',
 ] as const;
 export type Topic = (typeof TOPICS)[number];
 export type ConnState = 'connecting' | 'online' | 'reconnecting' | 'offline';
@@ -17,7 +17,7 @@ export type ConnState = 'connecting' | 'online' | 'reconnecting' | 'offline';
  * them as "something changed" hints and re-fetch the authorised snapshot;
  * `onReconnect` fires after every (re)connect for a full resync.
  */
-export function useRealtime(enabled: boolean, onEvent: (topic: Topic, msg: Record<string, unknown>) => void, onReconnect: () => void) {
+export function useRealtime(enabled: boolean, onEvent: (topic: Topic, msg: Record<string, unknown>) => void, onReconnect: () => void, opts: { display?: boolean } = {}) {
   const [state, setState] = useState<ConnState>('connecting');
   const handler = useRef(onEvent);
   const reconnect = useRef(onReconnect);
@@ -27,7 +27,8 @@ export function useRealtime(enabled: boolean, onEvent: (topic: Topic, msg: Recor
   useEffect(() => {
     if (!enabled) return;
     const seen = new Set<number>();
-    const socket: Socket = io({ path: '/socket.io', withCredentials: true, transports: ['websocket', 'polling'], reconnectionDelayMax: 8000 });
+    // Projectors authenticate with their display cookie (?display=1); everyone else with the session cookie.
+    const socket: Socket = io({ path: '/socket.io', withCredentials: true, transports: ['websocket', 'polling'], reconnectionDelayMax: 8000, query: opts.display ? { display: '1' } : {} });
     socket.on('connect', () => setState('online'));
     socket.on('hello', (m: { serverTime: string }) => {
       syncClock(m.serverTime);
@@ -51,6 +52,6 @@ export function useRealtime(enabled: boolean, onEvent: (topic: Topic, msg: Recor
     return () => {
       socket.close();
     };
-  }, [enabled]);
+  }, [enabled, opts.display]);
   return state;
 }

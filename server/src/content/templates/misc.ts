@@ -2,36 +2,63 @@ import type { TaskTemplate } from '../types.js';
 
 /**
  * STORAGE / Miscellaneous.
- * Puzzles and small fixes. Every answer and expected output is computed here
- * in TypeScript from the variant parameters, never typed by hand.
+ * Puzzles and small fixes. Every template accepts ANY non-negative integer
+ * seed: names / messages / formats come from mixed-radix digits of the seed,
+ * data from a seeded LCG. Every answer and expected output is computed here
+ * in TypeScript, never typed by hand.
  */
 
 function lcg(seed: number): () => number {
-  let s = (seed * 2654435761) >>> 0;
+  let s = (seed * 2654435761 + 0x9e3779b9) >>> 0;
   return () => {
     s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
     return s / 4294967296;
   };
 }
 const randInt = (r: () => number, lo: number, hi: number) => lo + Math.floor(r() * (hi - lo + 1));
+/** Mixed-radix digits of the seed: distinct seeds below prod(sizes) give distinct index tuples. */
+function mix(seed: number, sizes: number[]): number[] {
+  let s = Math.max(0, Math.floor(seed));
+  return sizes.map((n) => {
+    const d = s % n;
+    s = Math.floor(s / n);
+    return d;
+  });
+}
+const SALT = (seed: number, k: number) => Math.max(0, Math.floor(seed)) * 7919 + k;
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const NATO = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet', 'kilo', 'lima', 'mike', 'november', 'oscar', 'papa'];
 
 // ---------------------------------------------------------------------------
 // EASY: Caesar-shifted ship log.
 // ---------------------------------------------------------------------------
+const CIPHER_ROOMS = ['ELECTRICAL', 'NAVIGATION', 'SHIELDS', 'SECURITY', 'STORAGE', 'MEDBAY', 'ADMIN', 'WEAPONS', 'REACTOR', 'CAFETERIA', 'COMMUNICATIONS', 'OXYGEN'];
+const CIPHER_EVENTS = ['REACTOR DRILL', 'LIGHTS WENT OUT', 'LAST MEETING', 'OXYGEN ALARM', 'COMMS BLACKOUT', 'DOOR LOCKDOWN', 'CARD SWIPE', 'ASTEROID STORM'];
+const CIPHER_TIMES = ['MIDNIGHT', 'DAWN', 'NOON', 'THE NEXT MEETING', 'SHIFT CHANGE', 'LIGHTS OUT', 'DOCKING', 'LAUNCH'];
+const CIPHER_COLOURS = ['RED', 'BLUE', 'GREEN', 'PINK', 'ORANGE', 'YELLOW', 'BLACK', 'WHITE'];
+const CIPHER_TEMPLATES: ((r: string, r2: string, e: string, t: string, c: string) => string)[] = [
+  (r, _r2, e) => `MEET IN ${r} AFTER THE ${e}`,
+  (r, r2) => `THE IMPOSTER VENTED FROM ${r} TO ${r2}`,
+  (r, _r2, _e, t) => `CHECK THE CAMERAS IN ${r} BEFORE ${t}`,
+  (r, _r2, _e, _t, c) => `THE WIRING TASK IN ${r} IS A TRAP SET BY ${c}`,
+  (r, _r2, _e, t) => `DO NOT WALK ALONE TO ${r} AT ${t}`,
+  (r, _r2, e, _t, c) => `I SAW ${c} LEAVE ${r} RIGHT BEFORE THE ${e}`,
+];
+
 const caesarLog: TaskTemplate = {
   key: 'misc-caesar-ship-log',
   domain: 'misc',
   difficulty: 'EASY',
-  variant: (v) => {
-    const plain = [
-      'MEET IN ELECTRICAL AFTER THE REACTOR DRILL',
-      'THE IMPOSTER VENTED FROM NAVIGATION TO SHIELDS',
-      'CHECK THE CAMERAS IN SECURITY BEFORE MIDNIGHT',
-      'THE WIRING TASK IN STORAGE IS A TRAP',
-    ][v];
-    const shift = [3, 7, 11, 19][v];
-    const officer = ['Lt. Cyan', 'Cmdr. Lime', 'Ens. Pink', 'Capt. Brown'][v];
+  variant: (seed) => {
+    const [ri, ti, xi, yi] = mix(seed, [CIPHER_ROOMS.length, CIPHER_TEMPLATES.length, 8, 8]);
+    const room = CIPHER_ROOMS[ri];
+    const room2 = CIPHER_ROOMS[(ri + 1 + xi) % CIPHER_ROOMS.length];
+    const plain = CIPHER_TEMPLATES[ti](room, room2, CIPHER_EVENTS[(xi + yi) % 8], CIPHER_TIMES[(xi + 3 * yi) % 8], CIPHER_COLOURS[(ri + xi + yi) % 8]);
+    const shift = 1 + ((seed * 11 + Math.floor(seed / 25)) % 25); // 1..25
+    const OFFICERS = ['Lt. Cyan', 'Cmdr. Lime', 'Ens. Pink', 'Capt. Brown', 'Sgt. Tan', 'Dr. Coral', 'Adm. Maroon', 'Cpl. Rose'];
+    const FOUND = ['Storage', 'a vent in Admin', 'the Medbay scanner', 'the Cafeteria table', 'the Reactor console', 'a crate in Cargo', 'the Comms desk', 'an escape pod'];
+    const [oi, fi] = mix(seed, [OFFICERS.length, FOUND.length]);
+    const officer = OFFICERS[oi];
     const enc = (s: string) => s.replace(/[A-Z]/g, (c) => LETTERS[(LETTERS.indexOf(c) + shift) % 26]);
     const log = `=== PRIVATE LOG: ${officer} ===
 CIPHER NOTE: every letter was shifted FORWARD by ${shift} positions in the alphabet
@@ -43,14 +70,14 @@ ${enc(plain)}
 `;
     return {
       title: `Decode ${officer}'s private log`,
-      statement: `A private log written by ${officer} was found in Storage. It is protected by a simple rotation cipher: each letter was moved forward by a fixed number of places in the alphabet before it was saved. The cipher note at the top of log.txt tells you the shift.\n\nDecode the hidden message and submit the plain English sentence.`,
+      statement: `A private log written by ${officer} was found in ${FOUND[fi]}. It is protected by a simple rotation cipher: each letter was moved forward by a fixed number of places in the alphabet before it was saved. The cipher note at the top of log.txt tells you the shift.\n\nDecode the hidden message and submit the plain English sentence.`,
       workspace: 'MISC',
       runLanguage: null,
       files: [{ name: 'log.txt', language: 'text', content: log, readOnly: true }],
       answerFormat: 'Type the decoded sentence (words separated by spaces). Comparison is case-insensitive; extra spaces between words are ignored.',
       validation: { mode: 'EXACT_TEXT', answer: plain, caseSensitive: false, collapseWhitespace: true },
-      hint: `To decode, move every letter BACK by ${shift} places (A goes back to the end of the alphabet).`,
-      solution: { explanation: `Shift each letter back by ${shift}.`, answer: plain },
+      hint: `To decode, move every letter BACK by ${shift} places (A goes back to the end of the alphabet), or equivalently FORWARD by ${26 - shift}.`,
+      solution: { explanation: `Shift each letter back by ${shift}: "${enc(plain)}" decodes to "${plain}".`, answer: plain },
     };
   },
 };
@@ -58,17 +85,21 @@ ${enc(plain)}
 // ---------------------------------------------------------------------------
 // EASY: hex / binary signal frames.
 // ---------------------------------------------------------------------------
+const CODEWORDS = ['CAFETERIA', 'O2FILTER', 'MEDSCAN', 'UPPERENGINE', 'LOWERDECK', 'NAVCOM', 'SHIELDGEN', 'REACTOR', 'ADMINCARD', 'WEAPONS', 'STORAGE', 'SECURITY', 'COMMS', 'SPECIMEN', 'DROPSHIP', 'VAULT'];
+
 const signalFrames: TaskTemplate = {
   key: 'misc-signal-frames',
   domain: 'misc',
   difficulty: 'EASY',
-  variant: (v) => {
-    const word = ['CAFETERIA', 'O2FILTER', 'MEDSCAN7', 'UPPERENGINE'][v];
-    const binary = v % 2 === 1;
-    const r = lcg(70 + v);
+  variant: (seed) => {
+    // (seed % 16, seed % 9) are jointly distinct for 144 consecutive seeds.
+    const word = CODEWORDS[seed % CODEWORDS.length] + String((seed % 9) + 1);
+    const binary = (seed + Math.floor(seed / 16)) % 2 === 1;
+    const relay = `${NATO[seed % NATO.length]}-${10 + ((seed * 7) % 90)}`;
+    const r = lcg(SALT(seed, 606));
     const fmt = (n: number) => (binary ? n.toString(2).padStart(8, '0') : n.toString(16).toUpperCase().padStart(2, '0'));
     const lines: string[] = [];
-    let t = 100 + 13 * v;
+    let t = randInt(r, 100, 900);
     for (const ch of word) {
       const noise = randInt(r, 0, 2);
       for (let i = 0; i < noise; i++) lines.push(`[t=${String(t++).padStart(4, '0')}] PING ${fmt(randInt(r, 33, 126))}`);
@@ -76,15 +107,15 @@ const signalFrames: TaskTemplate = {
     }
     lines.push(`[t=${String(t++).padStart(4, '0')}] PING ${fmt(randInt(r, 33, 126))}`);
     const enc = binary ? '8-bit binary' : 'two-digit hexadecimal';
-    const log = `COMMS CAPTURE - relay ${['alpha', 'beta', 'gamma', 'delta'][v]}
+    const log = `COMMS CAPTURE - relay ${relay}
 Each frame carries one byte written in ${enc}.
 PING frames are keep-alive noise. DATA frames carry ASCII characters of the codeword, in order.
 
 ${lines.join('\n')}
 `;
     return {
-      title: `Decode relay ${['alpha', 'beta', 'gamma', 'delta'][v]}'s codeword`,
-      statement: `Comms intercepted a burst from relay ${['alpha', 'beta', 'gamma', 'delta'][v]} (see log.txt). Every frame holds one byte in ${enc}. Ignore the PING keep-alive frames; the DATA frames, read in order and converted to ASCII characters, spell a room codeword.\n\nSubmit the codeword.`,
+      title: `Decode relay ${relay}'s codeword`,
+      statement: `Comms intercepted a burst from relay ${relay} (see log.txt). Every frame holds one byte in ${enc}. Ignore the PING keep-alive frames; the DATA frames, read in order and converted to ASCII characters, spell a room codeword followed by a digit.\n\nSubmit the codeword.`,
       workspace: 'MISC',
       runLanguage: null,
       files: [{ name: 'log.txt', language: 'text', content: log, readOnly: true }],
@@ -93,7 +124,7 @@ ${lines.join('\n')}
       hint: binary
         ? 'Convert each 8-bit DATA byte to decimal (e.g. 01000001 = 65) and look it up in an ASCII table (65 = A, 48 = 0).'
         : 'Convert each DATA hex byte to decimal (e.g. 41 hex = 65) and look it up in an ASCII table (65 = A, 48 = 0).',
-      solution: { explanation: `DATA bytes decode to ${word}.`, answer: word },
+      solution: { explanation: `Drop the PING frames; the ${word.length} DATA bytes (${enc}) decode to ${word}.`, answer: word },
     };
   },
 };
@@ -105,9 +136,14 @@ const crewIdRegex: TaskTemplate = {
   key: 'misc-crew-id-regex',
   domain: 'misc',
   difficulty: 'MEDIUM',
-  variant: (v) => {
-    const [P, SEP, D] = ([[3, '-', 4], [2, '_', 3], [4, '-', 5], [3, ':', 2]] as const)[v];
-    const ship = ['The Skeld', 'Mira HQ', 'Polus', 'The Airship'][v];
+  variant: (seed) => {
+    const SEPS = ['-', '_', ':', '#', '@', '~'];
+    const SHIPS = ['The Skeld', 'Mira HQ', 'Polus', 'The Airship', 'The Fungle', 'Dleks', 'Kepler Dock', 'Orion Relay'];
+    const [pi, si, di, shi] = mix(seed, [3, SEPS.length, 5, SHIPS.length]);
+    const P = 2 + pi;
+    const SEP = SEPS[si];
+    const D = 2 + di;
+    const ship = SHIPS[(shi + seed) % SHIPS.length];
     const re = new RegExp(`^[A-Z]{${P}}${SEP}\\d{${D}}$`);
     const code = (fixed: boolean) => `// ${ship} crew-ID scanner
 // A valid crew ID is EXACTLY: ${P} uppercase letters A-Z, then "${SEP}", then ${D} digits.
@@ -122,7 +158,7 @@ for (const raw of lines) {
   console.log(id + ' ' + (CREW_ID.test(id) ? 'VALID' : 'INVALID'));
 }
 `;
-    const r = lcg(300 + v);
+    const r = lcg(SALT(seed, 707));
     const letters = (n: number) => Array.from({ length: n }, () => LETTERS[randInt(r, 0, 25)]).join('');
     const digits = (n: number) => Array.from({ length: n }, () => String(randInt(r, 0, 9))).join('');
     const valid = () => letters(P) + SEP + digits(D);
@@ -144,7 +180,7 @@ for (const raw of lines) {
     });
     const sets: string[][] = [
       [valid(), valid(), gens[5](), gens[6]()],
-      [valid(), gens[2](), gens[3](), valid()],
+      [valid(), gens[2](), gens[3](), valid()], // gens[3] is always accepted by the buggy pattern
       [gens[1](), gens[4](), valid(), gens[4]()],
       Array.from({ length: 10 }, () => gens[randInt(r, 0, gens.length - 1)]()),
       gens.map((g) => g()),
@@ -179,6 +215,13 @@ function luhnOk(code: string): boolean {
   }
   return sum % 10 === 0;
 }
+/** The starter's (buggy) rule: doubles every second digit counted from the LEFT. */
+function luhnBuggy(code: string): boolean {
+  const d = code.replace(/\D/g, '').split('').map(Number);
+  let sum = 0;
+  d.forEach((x, i) => { if (i % 2 === 1) { x *= 2; if (x > 9) x -= 9; } sum += x; });
+  return sum % 10 === 0;
+}
 function luhnCheckDigit(payload: string): string {
   for (let c = 0; c <= 9; c++) if (luhnOk(payload + c)) return String(c);
   throw new Error('unreachable');
@@ -188,9 +231,12 @@ const badgeLuhn: TaskTemplate = {
   key: 'misc-badge-checksum',
   domain: 'misc',
   difficulty: 'MEDIUM',
-  variant: (v) => {
-    const [OK, NO] = ([['ACCEPT', 'REJECT'], ['OPEN', 'LOCKED'], ['GRANTED', 'DENIED'], ['PASS', 'FAIL']] as const)[v];
-    const door = ['Admin', 'Reactor', 'Navigation', 'Security'][v];
+  variant: (seed) => {
+    const VERDICTS: [string, string][] = [['ACCEPT', 'REJECT'], ['OPEN', 'LOCKED'], ['GRANTED', 'DENIED'], ['PASS', 'FAIL'], ['CLEAR', 'BLOCKED'], ['ALLOW', 'REFUSE'], ['VALID', 'FORGED'], ['ENTER', 'HALT']];
+    const DOORS = ['Admin', 'Reactor', 'Navigation', 'Security', 'Medbay', 'Electrical', 'Weapons', 'Storage'];
+    const [vi, di, ex] = mix(seed, [VERDICTS.length, DOORS.length, 1000]);
+    const [OK, NO] = VERDICTS[vi];
+    const door = `${DOORS[di]}${ex ? ` ${String.fromCharCode(65 + (ex % 26))}${Math.floor(ex / 26) || ''}` : ''}`;
     const code = (fixed: boolean) => `# ${door} door badge checker (Luhn checksum)
 # Input: one badge number per line (may contain spaces between digit groups).
 # Output per non-empty line:  <badge> -> ${OK}   or   <badge> -> ${NO}
@@ -219,7 +265,7 @@ for line in sys.stdin.read().splitlines():
         continue
     print(line + " -> " + ("${OK}" if badge_ok(line) else "${NO}"))
 `;
-    const r = lcg(4100 + v);
+    const r = lcg(SALT(seed, 808));
     const badge = (len: number, makeValid: boolean, spaced: boolean) => {
       let p = '';
       for (let i = 0; i < len - 1; i++) p += String(randInt(r, i === 0 ? 1 : 0, 9));
@@ -228,10 +274,17 @@ for line in sys.stdin.read().splitlines():
       const full = p + last;
       return spaced ? (full.match(/.{1,4}/g) ?? [full]).join(' ') : full;
     };
+    /** A genuine 16-digit badge that the buggy left-to-right rule rejects. */
+    const witness = () => {
+      for (;;) {
+        const b = badge(16, true, true);
+        if (!luhnBuggy(b)) return b;
+      }
+    };
     const ref = (lines: string[]) => lines.map((l) => `${l} -> ${luhnOk(l) ? OK : NO}`).join('\n');
     const sets: string[][] = [
       [badge(9, true, false), badge(11, false, false), badge(7, true, false)],
-      [badge(16, true, true), badge(16, false, true), badge(12, true, false)],
+      [witness(), badge(16, false, true), badge(12, true, false)],
       [badge(10, true, false), badge(8, true, false), badge(14, false, false)],
       Array.from({ length: 8 }, (_, i) => badge(randInt(r, 6, 16), i % 3 !== 0, r() < 0.3)),
       Array.from({ length: 6 }, (_, i) => badge(8 + 2 * i, i % 2 === 0, false)),
@@ -239,7 +292,7 @@ for line in sys.stdin.read().splitlines():
     const tests = sets.map((s, i) => ({ name: `badges-${i + 1}`, stdin: s.join('\n') + '\n', expected: ref(s) }));
     return {
       title: `${door} door rejects real crew`,
-      statement: `The ${door} door checks each badge number with the Luhn checksum. Strangely, it works for some badges but rejects genuine crewmates holding 16-digit badges and lets forged ones through.\n\nThe Luhn rule counts positions from the RIGHT end of the number (the check digit). Fix badge_ok() in main.py so it gives the right verdict for badges of every length, with or without spaces between digit groups. Verified against hidden badge lists.`,
+      statement: `The ${door} door checks each badge number with the Luhn checksum and prints ${OK} or ${NO}. Strangely, it works for some badges but rejects genuine crewmates holding 16-digit badges and lets forged ones through.\n\nThe Luhn rule counts positions from the RIGHT end of the number (the check digit). Fix badge_ok() in main.py so it gives the right verdict for badges of every length, with or without spaces between digit groups. Verified against hidden badge lists.`,
       workspace: 'MISC',
       runLanguage: 'python',
       runEntry: 'main.py',
@@ -292,43 +345,57 @@ function consistentPairs(n: number, said: Said[]): [number, number][] {
   return out;
 }
 
+const MEETING_COLOURS = ['RED', 'BLUE', 'GREEN', 'PINK', 'ORANGE', 'YELLOW', 'BLACK', 'WHITE', 'PURPLE', 'CYAN', 'LIME', 'BROWN'];
+const COLOUR_PAIRS: [number, number][] = (() => {
+  const out: [number, number][] = [];
+  for (let i = 0; i < MEETING_COLOURS.length; i++) for (let j = i + 1; j < MEETING_COLOURS.length; j++) out.push([i, j]);
+  return out;
+})();
+
 const logicMeeting: TaskTemplate = {
   key: 'misc-emergency-meeting-logic',
   domain: 'misc',
   difficulty: 'HARD',
-  variant: (v) => {
-    const names = [
-      ['RED', 'BLUE', 'GREEN', 'PINK', 'ORANGE', 'YELLOW'],
-      ['BLACK', 'WHITE', 'PURPLE', 'CYAN', 'LIME', 'BROWN'],
-      ['RED', 'PURPLE', 'LIME', 'YELLOW', 'BLUE', 'WHITE'],
-      ['GREEN', 'BROWN', 'PINK', 'BLACK', 'CYAN', 'ORANGE'],
-    ][v];
-    const secret = ([[1, 4], [0, 3], [2, 5], [1, 2]] as const)[v];
+  variant: (seed) => {
+    // 29 is coprime with 66, so seeds 0..65 pick 66 different imposter colour pairs.
+    const [ca, cb] = COLOUR_PAIRS[(seed * 29) % COLOUR_PAIRS.length];
+    const r = lcg(SALT(seed, 909));
+    const others = MEETING_COLOURS.map((_, i) => i).filter((i) => i !== ca && i !== cb);
+    for (let i = others.length - 1; i > 0; i--) { const j = randInt(r, 0, i); [others[i], others[j]] = [others[j], others[i]]; }
+    const chosen = [ca, cb, ...others.slice(0, 4)];
+    for (let i = chosen.length - 1; i > 0; i--) { const j = randInt(r, 0, i); [chosen[i], chosen[j]] = [chosen[j], chosen[i]]; }
+    const names = chosen.map((c) => MEETING_COLOURS[c]);
+    const secret = [chosen.indexOf(ca), chosen.indexOf(cb)].sort((x, y) => x - y) as [number, number];
     const imp = new Set<number>(secret);
     const n = names.length;
-    const r = lcg(777 + v * 31);
     const kinds: Claim['kind'][] = ['not', 'exactlyOne', 'atLeastOne', 'neither', 'same'];
-    const said: Said[] = [];
-    for (let step = 0; step < 60; step++) {
-      const speaker = step % n;
-      const want = !imp.has(speaker);
-      let claim: Claim | null = null;
-      for (let tries = 0; tries < 200 && !claim; tries++) {
-        const kind = kinds[randInt(r, 0, kinds.length - 1)];
-        const x = randInt(r, 0, n - 1);
-        const y = randInt(r, 0, n - 1);
-        if (x === speaker || y === speaker || (kind !== 'not' && x === y)) continue;
-        const c: Claim = kind === 'not' ? { kind, x } : { kind, x, y };
-        if (claimTrue(c, imp) === want) claim = c;
+    let said: Said[] = [];
+    // Deterministically retry (same seeded stream) until the transcript has exactly one solution.
+    for (let attempt = 0; attempt < 50; attempt++) {
+      said = [];
+      for (let step = 0; step < 60; step++) {
+        const speaker = step % n;
+        const want = !imp.has(speaker);
+        let claim: Claim | null = null;
+        for (let tries = 0; tries < 200 && !claim; tries++) {
+          const kind = kinds[randInt(r, 0, kinds.length - 1)];
+          const x = randInt(r, 0, n - 1);
+          const y = randInt(r, 0, n - 1);
+          if (x === speaker || y === speaker || (kind !== 'not' && x === y)) continue;
+          const c: Claim = kind === 'not' ? { kind, x } : { kind, x, y };
+          if (claimTrue(c, imp) === want) claim = c;
+        }
+        if (!claim) continue;
+        said.push({ speaker, claim });
+        if (said.length >= n && consistentPairs(n, said).length === 1) break;
       }
-      if (!claim) continue;
-      said.push({ speaker, claim });
-      if (said.length >= n && consistentPairs(n, said).length === 1) break;
+      if (consistentPairs(n, said).length === 1) break;
     }
     const sol = consistentPairs(n, said);
     if (sol.length !== 1 || sol[0][0] !== secret[0] || sol[0][1] !== secret[1]) throw new Error('logic puzzle not uniquely solvable');
     const answer = [names[secret[0]], names[secret[1]]].sort().join(' ');
-    const room = ['Cafeteria', 'Admin', 'Weapons', 'Lower Engine'][v];
+    const ROOMS = ['Cafeteria', 'Admin', 'Weapons', 'Lower Engine', 'Upper Engine', 'Medbay', 'Navigation', 'Shields', 'Storage', 'Electrical', 'O2', 'Security'];
+    const room = ROOMS[seed % ROOMS.length];
     const log = `EMERGENCY MEETING TRANSCRIPT - ${room}
 Crew present: ${names.join(', ')}
 
@@ -341,14 +408,14 @@ ${said.map((s, i) => `${String(i + 1).padStart(2, ' ')}. ${names[s.speaker]}: "$
 `;
     return {
       title: `Who vented in ${room}?`,
-      statement: `An emergency meeting was called in ${room}. Six crewmates spoke; exactly two of them are imposters. Crewmates always tell the truth and imposters always lie (every single statement an imposter makes is false). The full transcript is in log.txt.\n\nOnly one pair of imposters is consistent with every statement. Find it before the vote ends.`,
+      statement: `An emergency meeting was called in ${room}. Six crewmates spoke (${names.join(', ')}); exactly two of them are imposters. Crewmates always tell the truth and imposters always lie (every single statement an imposter makes is false). The full transcript is in log.txt.\n\nOnly one pair of imposters is consistent with every statement. Find it before the vote ends.`,
       workspace: 'MISC',
       runLanguage: null,
       files: [{ name: 'log.txt', language: 'text', content: log, readOnly: true }],
       answerFormat: 'Type the two imposter colours in alphabetical order separated by a single space, e.g. "BLACK RED". Comparison is case-insensitive; extra spaces are ignored.',
       validation: { mode: 'EXACT_TEXT', answer, caseSensitive: false, collapseWhitespace: true },
       hint: 'There are only 15 possible pairs. For each pair, mark those two as liars and check whether every statement has the right truth value; a single contradiction eliminates the pair.',
-      solution: { explanation: `Checking all 15 pairs, only ${answer} makes every crewmate statement true and every imposter statement false.`, answer },
+      solution: { explanation: `Checking all 15 pairs against the ${said.length} statements, only ${answer} makes every crewmate statement true and every imposter statement false.`, answer },
     };
   },
 };

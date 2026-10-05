@@ -1,5 +1,5 @@
 /**
- * Shared AMONG BUGS UI kit — ported from the published Figma Make design
+ * Shared AMONG BUG UI kit — ported from the published Figma Make design
  * (crewmate, buttons, coin, labels, timer, badges, access card, ship).
  */
 import { AnimatePresence, motion } from 'motion/react';
@@ -155,7 +155,7 @@ export function AccessCard({ name, crewId, color, commander = false, small = fal
       <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full border-[20px] border-white/[.025]" />
       <div className="flex items-center justify-between">
         <IdeaLabMark />
-        <span className="font-display text-[10px] font-bold text-[#afd2cc]">DEBUG + RUN</span>
+        <span className="font-display text-[10px] font-bold text-[#afd2cc]">AAROHAN 2026</span>
       </div>
       <div className="my-3 border-t border-white/15" />
       <Label className={commander ? '!text-[#e5cf8f]' : '!text-primary'}>{commander ? 'ADMIN COMMAND CARD' : 'CREW ACCESS CARD'}</Label>
@@ -206,11 +206,11 @@ export function ShipSilhouette() {
 }
 
 // ---------------------------------------------------------------------------
-// Modal shell ("AMONG BUGS / SHIP SYSTEM INTERFACE") with focus trap + Esc
+// Modal shell ("AMONG BUG / SHIP SYSTEM INTERFACE") with focus trap + Esc
 // ---------------------------------------------------------------------------
 
 export function ShipDialog({
-  open, onClose, children, label, wide = false, variant = 'default', closeOnBackdrop = true, header = 'AMONG BUGS / SHIP SYSTEM INTERFACE',
+  open, onClose, children, label, wide = false, variant = 'default', closeOnBackdrop = true, header = 'AMONG BUG / SHIP SYSTEM INTERFACE',
 }: {
   open: boolean; onClose: () => void; children: ReactNode; label: string; wide?: boolean | 'full'; variant?: 'default' | 'imposter' | 'void'; closeOnBackdrop?: boolean; header?: string;
 }) {

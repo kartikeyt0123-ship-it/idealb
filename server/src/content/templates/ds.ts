@@ -2,22 +2,31 @@ import type { CodeTest, TaskTemplate } from '../types.js';
 
 /**
  * COMMS / Data Structures & Algorithms (workspace DS, all CODE_TESTS).
- * Test inputs are generated deterministically per variant with a seeded LCG;
- * expected outputs come from the TypeScript reference implementations below.
+ * `variant(seed)` works for any integer seed >= 0: names are decoded from the
+ * seed (seed % 8 and floor(seed / 8) % 8, so seeds 0..63 get distinct
+ * statements), parameters and test inputs come from a seeded LCG, and expected
+ * outputs come from the TypeScript reference implementations below.
  */
 
 const src = String.raw;
 
 function rng(seed: number): () => number {
-  let s = Math.imul(seed + 1, 2654435761) >>> 0 || 1;
+  let s = Math.imul((seed >>> 0) + 1, 2654435761) >>> 0 || 1;
   return () => {
     s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
     return s / 4294967296;
   };
 }
+/** Mix a seed, a per-template salt and an attempt counter into one LCG seed. */
+function mix(seed: number, salt: number, attempt = 0): number {
+  return (Math.imul(seed >>> 0, 1000003) + Math.imul(salt, 7919) + Math.imul(attempt, 104729)) >>> 0;
+}
 function ri(r: () => number, lo: number, hi: number): number {
   return lo + Math.floor(r() * (hi - lo + 1));
 }
+const at = <T>(arr: readonly T[], i: number): T => arr[((i % arr.length) + arr.length) % arr.length];
+/** Ship / station names; combined with an 8-entry list indexed by seed % 8 this gives 64 distinct statements. */
+const SHIPS = ['the Skeld', 'Polus', 'Mira HQ', 'the Airship', 'the Fungle', 'Dleks', 'Nebula Outpost', 'Orbital Lab 9'];
 
 // ---------------------------------------------------------------------------
 // EASY · JavaScript — bracket matcher forgets to check leftovers on the stack
@@ -38,12 +47,15 @@ const bracketAirlock: TaskTemplate = {
   key: 'ds-bracket-airlock',
   domain: 'ds',
   difficulty: 'EASY',
-  variant: (v) => {
-    const sector = ['Upper Engine', 'Lower Engine', 'Specimen Room', 'Electrical'][v];
-    const r = rng(700 + v * 17);
+  variant: (seed) => {
+    const sector = at(['Upper Engine', 'Lower Engine', 'Specimen Room', 'Electrical', 'Reactor', 'Security', 'Navigation', 'O2'], seed);
+    const ship = at(SHIPS, Math.floor(seed / 8));
+    const r = rng(mix(seed, 700));
     const open = '([{';
     const close = ')]}';
-    const filler = 'abxyz';
+    const filler = at(['abxyz', 'qrst', 'mnop', 'uvw', 'ghjk', 'xyz7', 'k9a', 'pq#'], seed + Math.floor(seed / 8));
+    const nCodes = ri(r, 8, 14);
+    const deep = ri(r, 1, 4);
     const gen = (pairs: number): string => {
       const st: number[] = [];
       let out = '';
@@ -62,7 +74,7 @@ const bracketAirlock: TaskTemplate = {
       return out;
     };
     const codes: string[] = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < nCodes; i++) {
       let s = gen(ri(r, 1, 5));
       const kind = i % 4;
       if (kind === 1) s = open[ri(r, 0, 2)] + s; // unclosed prefix
@@ -77,9 +89,9 @@ const bracketAirlock: TaskTemplate = {
     const toInput = (list: string[]) => `${list.length}\n${list.join('\n')}\n`;
     const sets: [string, string[]][] = [
       ['airlock-codes', codes],
-      ['unclosed-only', ['(', '(([]', `{${'[]'.repeat(v + 1)}`]],
-      ['empty-and-filler', ['', `a(b[c]d)e${'x'.repeat(v)}`, ')(']],
-      ['single', [['[', '()', '}', '{}'][v]]],
+      ['unclosed-only', [at(['(', '[', '{'], seed), '(([]', `{${'[]'.repeat(deep)}`, gen(ri(r, 1, 3)) + at(['(', '[', '{'], seed + 1)]],
+      ['empty-and-filler', ['', `${filler[0]}(${filler[1]}[c]d)e${filler.slice(2)}`, ')(', gen(ri(r, 2, 4))]],
+      ['single', [at(['[', '()', '}', '{}', '([)]', '{[()]}', ']', '(('], seed + deep)]],
       ['no-codes', []],
     ];
     const tests: CodeTest[] = sets.map(([name, list]) => ({
@@ -116,7 +128,7 @@ console.log(out.join('\n'));
     const fixed = starter.replace("out.push(ok ? 'YES' : 'NO');", "out.push(ok && stack.length === 0 ? 'YES' : 'NO');");
     return {
       title: `${sector} airlock codes`,
-      statement: `The ${sector} airlock only opens for codes whose brackets are balanced: every ( [ { must be closed by the matching ) ] } in the correct order. Any other characters in a code are ignored, and an empty code is balanced.\n\nmain.js reads T, then T codes (one per line) from standard input and prints YES or NO for each code on its own line. An impostor tweaked it: codes like "((" now open the airlock.\n\nFix main.js. It is verified against hidden code lists.`,
+      statement: `The ${sector} airlock on ${ship} only opens for codes whose brackets are balanced: every ( [ { must be closed by the matching ) ] } in the correct order. Any other characters in a code are ignored, and an empty code is balanced.\n\nmain.js reads T, then T codes (one per line) from standard input and prints YES or NO for each code on its own line. An impostor tweaked it: codes like "((" now open the airlock.\n\nFix main.js. It is verified against hidden code lists.`,
       workspace: 'DS',
       runLanguage: 'javascript',
       runEntry: 'main.js',
@@ -146,10 +158,13 @@ const dockingLowerBound: TaskTemplate = {
   key: 'ds-docking-lower-bound',
   domain: 'ds',
   difficulty: 'EASY',
-  variant: (v) => {
-    const port = ['Alpha', 'Bravo', 'Charlie', 'Delta'][v];
-    const mkArr = (seed: number, n: number): number[] => {
-      const r = rng(seed);
+  variant: (seed) => {
+    const port = at(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Gamma', 'Helix'], seed);
+    const ship = at(SHIPS, Math.floor(seed / 8));
+    const r0 = rng(mix(seed, 800));
+    const v = ri(r0, 0, 40);
+    const mkArr = (salt: number, n: number): number[] => {
+      const r = rng(mix(seed, salt));
       const a: number[] = [];
       let x = ri(r, 1, 10);
       for (let i = 0; i < n; i++) {
@@ -158,8 +173,8 @@ const dockingLowerBound: TaskTemplate = {
       }
       return a;
     };
-    const mkQueries = (seed: number, a: number[], q: number): number[] => {
-      const r = rng(seed);
+    const mkQueries = (salt: number, a: number[], q: number): number[] => {
+      const r = rng(mix(seed, salt));
       const hi = a.length ? a[a.length - 1] : 20;
       const qs: number[] = [];
       for (let i = 0; i < q; i++) qs.push(ri(r, 0, hi + 5));
@@ -167,13 +182,16 @@ const dockingLowerBound: TaskTemplate = {
       if (a.length) qs.push(a[0]);
       return qs;
     };
-    const main = mkArr(800 + v * 5, 12 + v);
+    const main = mkArr(801, ri(r0, 10, 18));
+    const d = ri(r0, 1, 20);
+    const second = mkArr(803, ri(r0, 5, 9));
     const cases: [string, number[], number[]][] = [
-      ['schedule', main, mkQueries(850 + v, main, 8)],
-      ['duplicates', [4, 4, 4, 7, 7, 9 + v], [4, 5, 7, 8, 9 + v, 10 + v, 1]],
-      ['single-slot', [10 + v], [5, 10 + v, 99]],
-      ['empty-schedule', [], [3, 0]],
-      ['all-later', [2, 3, 5 + v], [100, 6 + v]],
+      ['schedule', main, mkQueries(802, main, ri(r0, 6, 10))],
+      ['second-schedule', second, mkQueries(804, second, 5)],
+      ['duplicates', [d, d, d, d + 3, d + 3, d + 5 + (v % 7)], [d, d + 1, d + 3, d + 4, d + 5 + (v % 7), d + 6 + (v % 7), d - 1]],
+      ['single-slot', [10 + v], [5, 10 + v, 99 + v]],
+      ['empty-schedule', [], [3 + (v % 5), 0]],
+      ['all-later', [2, 3, 5 + v], [100 + v, 6 + v]],
     ];
     const tests: CodeTest[] = cases.map(([name, a, qs]) => ({
       name,
@@ -204,7 +222,7 @@ print('\n'.join(str(lower_bound(slots, t)) for t in queries))
     const fixed = starter.replace('lo, hi = 0, len(slots) - 1', 'lo, hi = 0, len(slots)');
     return {
       title: `Docking port ${port} scheduler`,
-      statement: `Docking port ${port} keeps its free arrival slots as a sorted list of integers (duplicates allowed). For every ship request time t, the scheduler must print the index of the FIRST slot whose value is >= t. If every slot is earlier than t, it must print n (the number of slots).\n\nInput on stdin:\n\`\`\`\nn q\nslot_1 ... slot_n      (this line is empty when n = 0)\nt_1 ... t_q\n\`\`\`\nOutput: q lines, one index per request.\n\nmain.py uses binary search, but late ships keep getting assigned to the last slot. Fix main.py; it is verified against hidden schedules.`,
+      statement: `Docking port ${port} on ${ship} keeps its free arrival slots as a sorted list of integers (duplicates allowed). For every ship request time t, the scheduler must print the index of the FIRST slot whose value is >= t. If every slot is earlier than t, it must print n (the number of slots).\n\nInput on stdin:\n\`\`\`\nn q\nslot_1 ... slot_n      (this line is empty when n = 0)\nt_1 ... t_q\n\`\`\`\nOutput: q lines, one index per request.\n\nmain.py uses binary search, but late ships keep getting assigned to the last slot. Fix main.py; it is verified against hidden schedules.`,
       workspace: 'DS',
       runLanguage: 'python',
       runEntry: 'main.py',
@@ -241,10 +259,14 @@ const cargoQueue: TaskTemplate = {
   key: 'ds-cargo-queue',
   domain: 'ds',
   difficulty: 'MEDIUM',
-  variant: (v) => {
-    const bay = ['Cargo Bay A', 'Storage Deck', 'Loading Ramp', 'Supply Hold'][v];
-    const mk = (seed: number, n: number): string[] => {
-      const r = rng(seed);
+  variant: (seed) => {
+    const bay = at(['Cargo Bay A', 'Storage Deck', 'Loading Ramp', 'Supply Hold', 'Freight Lift', 'Ore Silo', 'Parcel Chute', 'Cold Store'], seed);
+    const ship = at(SHIPS, Math.floor(seed / 8));
+    const r0 = rng(mix(seed, 900));
+    const v = ri(r0, 0, 50);
+    const w = ri(r0, 1, 99);
+    const mk = (salt: number, n: number): string[] => {
+      const r = rng(mix(seed, salt));
       const ops: string[] = [];
       for (let i = 0; i < n; i++) {
         const x = r();
@@ -256,11 +278,12 @@ const cargoQueue: TaskTemplate = {
       return ops;
     };
     const sets: [string, string[]][] = [
-      ['manifest', mk(900 + v * 23, 24 + v)],
-      ['interleaved', ['PUSH 1', `PUSH ${2 + v}`, 'POP', 'PUSH 3', 'SIZE', 'POP', 'PEEK', 'POP', 'POP']],
+      ['manifest', mk(901, ri(r0, 20, 30))],
+      ['second-manifest', mk(902, ri(r0, 12, 18))],
+      ['interleaved', [`PUSH ${w}`, `PUSH ${2 + v}`, 'POP', `PUSH ${3 + ((v + w) % 90)}`, 'SIZE', 'POP', 'PEEK', 'POP', 'POP']],
       ['empty-hold', ['POP', 'PEEK', 'SIZE']],
       ['single-crate', [`PUSH ${40 + v}`, 'PEEK', 'SIZE', 'POP', 'SIZE']],
-      ['duplicates', ['PUSH 5', 'PUSH 5', 'POP', `PUSH ${6 + v}`, 'PUSH 5', 'POP', 'POP', 'SIZE', 'POP']],
+      ['duplicates', [`PUSH ${w}`, `PUSH ${w}`, 'POP', `PUSH ${6 + v}`, `PUSH ${w}`, 'POP', 'POP', 'SIZE', 'POP']],
     ];
     const tests: CodeTest[] = sets.map(([name, ops]) => ({ name, stdin: ops.join('\n') + '\n', expected: runQueue(ops) }));
     const starter = src`// Cargo crates must leave in the same order they arrived (FIFO),
@@ -306,12 +329,12 @@ console.log(out.join('\n'));
       .replace('    return this.inbox.length;', '    return this.inbox.length + this.outbox.length;');
     return {
       title: `${bay} crate queue`,
-      statement: `Crates in the ${bay} must leave in exactly the order they arrived (first in, first out). The hold's software builds that queue out of two stacks (inbox and outbox) in main.js. It reads one command per line from stdin:\n\n\`\`\`\nPUSH x   add crate x to the back of the queue (prints nothing)\nPOP      remove the front crate and print it, or print EMPTY\nPEEK     print the front crate without removing it, or EMPTY\nSIZE     print how many crates are in the queue\n\`\`\`\n\nCrates come out in the wrong order once pushes and pops are interleaved, and SIZE lies. Keep the two-stack design but fix it. main.js is verified against hidden command lists.`,
+      statement: `Crates in the ${bay} of ${ship} must leave in exactly the order they arrived (first in, first out). The hold's software builds that queue out of two stacks (inbox and outbox) in main.js. It reads one command per line from stdin:\n\n\`\`\`\nPUSH x   add crate x to the back of the queue (prints nothing)\nPOP      remove the front crate and print it, or print EMPTY\nPEEK     print the front crate without removing it, or EMPTY\nSIZE     print how many crates are in the queue\n\`\`\`\n\nCrates come out in the wrong order once pushes and pops are interleaved, and SIZE lies. Keep the two-stack design but fix it. main.js is verified against hidden command lists.`,
       workspace: 'DS',
       runLanguage: 'javascript',
       runEntry: 'main.js',
       files: [{ name: 'main.js', language: 'javascript', content: starter }],
-      sampleStdin: tests[1].stdin,
+      sampleStdin: tests[2].stdin,
       answerFormat: 'Submit your repaired main.js. It runs against hidden inputs on stdin; stdout must match exactly (trailing whitespace ignored).',
       validation: { mode: 'CODE_TESTS', language: 'javascript', entry: 'main.js', tests },
       hint: 'Crates already in the outbox are older than everything in the inbox. When is it safe to pour the inbox into the outbox? And where do crates live besides the inbox?',
@@ -356,11 +379,14 @@ const ventBfs: TaskTemplate = {
   key: 'ds-vent-bfs',
   domain: 'ds',
   difficulty: 'MEDIUM',
-  variant: (v) => {
-    const map = ['Skeld vents', 'Polus tunnels', 'Mira corridors', 'Airship ducts'][v];
-    const mk = (seed: number, R: number, C: number, wantReachable: boolean): string[] => {
+  variant: (seed) => {
+    const passage = at(['vents', 'tunnels', 'corridors', 'ducts', 'crawlspaces', 'maintenance shafts', 'service tubes', 'air shafts'], seed);
+    const map = `${passage} of ${at(SHIPS, Math.floor(seed / 8))}`;
+    const r0 = rng(mix(seed, 1000));
+    const v = ri(r0, 0, 3);
+    const mk = (salt: number, R: number, C: number, wantReachable: boolean): string[] => {
       for (let k = 0; k < 400; k++) {
-        const r = rng(seed + k * 101);
+        const r = rng(mix(seed, salt, k));
         const g: string[][] = Array.from({ length: R }, () => Array.from({ length: C }, () => (r() < 0.28 ? '#' : '.')));
         const si = ri(r, 0, R - 1);
         const sj = ri(r, Math.ceil(C / 2), C - 1);
@@ -375,11 +401,11 @@ const ventBfs: TaskTemplate = {
       throw new Error('ds-vent-bfs: grid generation failed');
     };
     const grids: [string, string[]][] = [
-      ['vent-map', mk(1000 + v * 7, 6 + (v % 2), 8 + v, true)],
-      ['second-map', mk(1100 + v * 7, 5, 7, true)],
-      ['blocked', mk(1200 + v * 7, 5, 6, false)],
-      ['adjacent-west', ['ES']],
-      ['single-column', ['E', '.', v % 2 ? '.' : 'S', ...(v % 2 ? ['S'] : [])]],
+      ['vent-map', mk(1001, ri(r0, 5, 7), ri(r0, 7, 10), true)],
+      ['second-map', mk(1002, ri(r0, 4, 6), ri(r0, 6, 8), true)],
+      ['blocked', mk(1003, 5, ri(r0, 6, 7), false)],
+      ['adjacent-west', ['E' + 'S' + '.'.repeat(v)]],
+      ['single-column', ['E', ...Array.from({ length: ri(r0, 1, 4) }, () => '.'), 'S']],
       ['detour', ['E#S', '.#.', '...']],
     ];
     const tests: CodeTest[] = grids.map(([name, grid]) => ({
@@ -464,10 +490,12 @@ const relayDijkstra: TaskTemplate = {
   key: 'ds-relay-dijkstra',
   domain: 'ds',
   difficulty: 'HARD',
-  variant: (v) => {
-    const net = ['Skeld relay mesh', 'Polus comms array', 'Mira HQ uplink grid', 'Airship signal web'][v];
-    const mkGraph = (seed: number, n: number, extra: number, isolate: boolean): [number, [number, number, number][]] => {
-      const r = rng(seed);
+  variant: (seed) => {
+    const net = `${at(SHIPS, Math.floor(seed / 8)).replace(/^the /, '')} ${at(['relay mesh', 'comms array', 'uplink grid', 'signal web', 'beacon chain', 'antenna lattice', 'sensor net', 'transponder ring'], seed)}`;
+    const r0 = rng(mix(seed, 1300));
+    const v = ri(r0, 0, 30);
+    const mkGraph = (salt: number, n: number, extra: number, isolate: boolean): [number, [number, number, number][]] => {
+      const r = rng(mix(seed, salt));
       const edges: [number, number, number][] = [];
       const last = isolate ? n - 1 : n;
       for (let i = 2; i <= last; i++) {
@@ -483,11 +511,11 @@ const relayDijkstra: TaskTemplate = {
       return [n, edges];
     };
     type Case = [string, number, [number, number, number][], number];
-    const [n1, e1] = mkGraph(1300 + v * 41, 7 + v, 5 + v, true);
-    const [n2, e2] = mkGraph(1400 + v * 41, 6, 4, false);
+    const [n1, e1] = mkGraph(1301, ri(r0, 7, 10), ri(r0, 5, 8), true);
+    const [n2, e2] = mkGraph(1302, ri(r0, 5, 7), ri(r0, 3, 5), false);
     const cases: Case[] = [
       ['relay-mesh', n1, e1, 1],
-      ['other-source', n2, e2, 1 + (v % 3) + 1],
+      ['other-source', n2, e2, ri(r0, 2, n2)],
       ['single-relay', 1, [], 1],
       ['detour-cheaper', 4, [[1, 2, 2], [2, 3, 2], [1, 3, 10 + v], [4, 3, 1], [3, 3, 4], [1, 2, 9]], 1],
       ['reverse-written', 3, [[2, 1, 3 + v], [3, 2, 4]], 1],

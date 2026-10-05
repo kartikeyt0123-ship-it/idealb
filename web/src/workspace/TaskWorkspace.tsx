@@ -1,14 +1,14 @@
 /**
- * AMONG BUGS — task workspace ("engineering terminal").
+ * AMONG BUG — task workspace ("engineering terminal").
  *
  * Toolbar · two resizable panels (Problem/Code | Preview/Console/Output/...) ·
  * verification form + paid hint below. All scoring is server-side; this
  * component never decides correctness, never fakes run output and never puts
  * an unpurchased hint in the DOM.
  */
-import { AlertTriangle, ArrowLeft, Bug, Clock, Eraser, FileText, Flag, Lock, PauseCircle, RefreshCw, RotateCcw, ScrollText, Save, ShieldX } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Bug, Clock, Eraser, FileText, Lock, PauseCircle, RefreshCw, RotateCcw, ScrollText, Save, ShieldX } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
-import { ApiError, api, serverNow, type SubmitResult, type TaskDetail } from '../lib/api';
+import { ApiError, api, serverNow, V1, type Metric, type QuestionDetail, type SubmitResult } from '../lib/api';
 import { Badge, Button, Coin, Crewmate, Label, StatePanel, Timer, useToast } from '../components/ui';
 import './monacoSetup';
 import { CodeEditor } from './CodeEditor';
@@ -17,24 +17,34 @@ import { CsvTable, Modal, SplitPanels, Statement, Tabs, useMediaQuery } from './
 import { PreviewFrame, type PreviewConsoleLevel } from './PreviewFrame';
 import { RunButtons, RunConsole, useServerRun } from './serverRun';
 import {
-  buildPreviewDoc, CLOSED_CODES, ELIMINATED_CODES, errCode, errMessage, isCsv, readDraft, rightKind, SOLVED_CODES, writeDraft, type DraftScope,
+  buildPreviewDoc, CLOSED_CODES, ELIMINATED_CODES, errCode, errMessage, friendlyError, isCsv, readDraft, rightKind, SOLVED_CODES, writeDraft, type DraftScope,
 } from './util';
 import { VerifyPanel } from './VerifyPanel';
 
 export interface WorkspaceProps {
-  target: { type: 'TASK' | 'IMPOSTER'; id: string };
+  /** Question instance id (GET /api/v1/question-instances/:id). */
+  questionId: string;
+  /** Emergency bonus ("IMPOSTER DETECTED") styling. */
+  bonus: boolean;
   crew: { crewId: string; name: string; color: string };
   /** Current wallet from the parent snapshot (refreshes live). */
   wallet: number;
+  /** Sprint rank. */
   rank: number | null;
-  /** e.g. "GAME 1 · SPRINT 2" */
+  metric: Metric;
+  /** e.g. "SLOT 1 · SPRINT 2/4" */
   contextLabel: string;
-  /** Authoritative sprint deadline (ISO, server time). Imposters prefer the detail's solveDeadlineAt. */
+  /** Authoritative sprint deadline while RUNNING (ISO, server time). */
   deadlineAt: string | null;
-  paused: boolean;
-  /** Parent sets true when a realtime event says another crew won this task. */
-  externallySolved: boolean;
-  /** Back to the Task Deck (drafts are preserved). */
+  /** Frozen remaining seconds while the sprint is PAUSED (null otherwise). */
+  pausedRemaining: number | null;
+  /** True while the slot sprint is RUNNING or PAUSED. */
+  live: boolean;
+  /** Set when the crew is eliminated / disqualified (read-only). */
+  readOnlyReason: string | null;
+  /** Solver name when a realtime event / the snapshot says another crew won this question. */
+  solvedElsewhereBy: string | null;
+  /** Back to the station / bonus console (drafts are preserved). */
   onExit: () => void;
   onSolved: (r: { reward: number; wallet: number }) => void;
   /** Ask the parent to refetch its snapshot (after hint purchase etc.). */
@@ -42,17 +52,17 @@ export interface WorkspaceProps {
 }
 
 const CLOSED_TEXT = 'Time is up — this system is closed.';
-const SOLVED_ELSEWHERE_TEXT = 'This problem has already been solved by another crew. Move on to the next task.';
+const NOT_LIVE_TEXT = 'No sprint is running — Run and Submit open when the organizers start the sprint.';
 
-const basePath = (t: WorkspaceProps['target']) => (t.type === 'TASK' ? `/api/game/tasks/${encodeURIComponent(t.id)}` : `/api/game/imposter/${encodeURIComponent(t.id)}`);
+const basePath = (id: string) => `${V1}/question-instances/${encodeURIComponent(id)}`;
 
 // ---------------------------------------------------------------------------
 // Loader shell
 // ---------------------------------------------------------------------------
 
 export function TaskWorkspace(props: WorkspaceProps) {
-  const { target, onExit } = props;
-  const [detail, setDetail] = useState<TaskDetail | null>(null);
+  const { questionId, onExit } = props;
+  const [detail, setDetail] = useState<QuestionDetail | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const ctl = useRef<AbortController | null>(null);
@@ -64,7 +74,7 @@ export function TaskWorkspace(props: WorkspaceProps) {
     setLoading(true);
     setError(null);
     try {
-      const d = await api.get<TaskDetail>(basePath(target), ac.signal);
+      const d = await api.get<QuestionDetail>(basePath(questionId), ac.signal);
       if (!ac.signal.aborted) setDetail(d);
     } catch (e) {
       if ((e as Error)?.name === 'AbortError') return;
@@ -72,7 +82,7 @@ export function TaskWorkspace(props: WorkspaceProps) {
     } finally {
       if (!ac.signal.aborted) setLoading(false);
     }
-  }, [target.type, target.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [questionId]);
 
   useEffect(() => {
     setDetail(null);
@@ -82,7 +92,7 @@ export function TaskWorkspace(props: WorkspaceProps) {
 
   const back = (
     <Button secondary onClick={onExit}>
-      <ArrowLeft size={14} /> Back to Task Deck
+      <ArrowLeft size={14} /> Back
     </Button>
   );
 
@@ -95,17 +105,17 @@ export function TaskWorkspace(props: WorkspaceProps) {
       );
     }
     const code = errCode(error);
-    if (code === 'TASK_NOT_RELEASED') {
+    if (code === 'QUESTION_NOT_RELEASED' || code === 'NOT_FOUND') {
       return (
         <Shell>
-          <StatePanel kind="empty" title="This system is still locked" message="It will be released later in the sprint. Check the Task Deck." action={back} />
+          <StatePanel kind="empty" title="This system is not available" message={errMessage(error)} action={back} />
         </Shell>
       );
     }
     if (ELIMINATED_CODES.has(code)) {
       return (
         <Shell>
-          <StatePanel kind="error" title="Your crew was ejected" message={errMessage(error)} action={back} />
+          <StatePanel kind="error" title="Your crew cannot compete" message={errMessage(error)} action={back} />
         </Shell>
       );
     }
@@ -114,7 +124,7 @@ export function TaskWorkspace(props: WorkspaceProps) {
       <Shell>
         <StatePanel
           kind="error"
-          title={code === 'NETWORK' ? 'Ship comms are down' : code === 'NOT_FOUND' ? 'System not found' : 'Terminal unavailable'}
+          title={code === 'NETWORK' ? 'Ship comms are down' : 'Terminal unavailable'}
           message={errMessage(error)}
           action={
             <div className="flex flex-wrap justify-center gap-3">
@@ -149,16 +159,17 @@ interface ConsoleLine {
 }
 type SaveState = { state: 'idle' | 'pending' | 'saved' | 'failed'; at: number | null };
 
-function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: () => Promise<void>; reloading: boolean }) {
-  const { detail, target, crew, onExit, onSolved, onChanged, paused, externallySolved, reload, reloading } = props;
+function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reload: () => Promise<void>; reloading: boolean }) {
+  const { detail, crew, onExit, onSolved, onChanged, live, solvedElsewhereBy, readOnlyReason, reload, reloading } = props;
   const notify = useToast();
-  const imposter = target.type === 'IMPOSTER';
+  const imposter = props.bonus || detail.kind === 'BONUS';
+  const paused = props.pausedRemaining !== null;
   const stacked = useMediaQuery('(max-width: 899px)');
   const kind = rightKind(detail);
   const files = detail.files;
   const editable = useMemo(() => files.filter((f) => !f.readOnly), [files]);
-  const scope = useMemo<DraftScope>(() => ({ crewId: crew.crewId, targetType: target.type, targetId: detail.id, generation: detail.generation }), [crew.crewId, target.type, detail.id, detail.generation]);
-  const modelPrefix = `ab/${encodeURIComponent(crew.crewId)}/${target.type}/${detail.id}/g${detail.generation}`;
+  const scope = useMemo<DraftScope>(() => ({ crewId: crew.crewId, questionId: detail.id, generation: detail.generation }), [crew.crewId, detail.id, detail.generation]);
+  const modelPrefix = `ab/${encodeURIComponent(crew.crewId)}/${detail.id}/g${detail.generation}`;
 
   // ---- editor contents & drafts -------------------------------------------------
   const [contents, setContents] = useState<Record<string, string>>(() => {
@@ -214,15 +225,11 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
   });
 
   // ---- status ---------------------------------------------------------------------
-  const initiallySolvedByYou = detail.status === 'SOLVED_BY_YOU' || (imposter && detail.reservationStatus === 'SOLVED');
-  const [solvedByYou, setSolvedByYou] = useState(initiallySolvedByYou);
-  const [solvedElsewhere, setSolvedElsewhere] = useState(!imposter && detail.status === 'SOLVED');
+  const [solvedByYou, setSolvedByYou] = useState(detail.status === 'SOLVED_BY_YOU');
+  const [solvedElsewhere, setSolvedElsewhere] = useState<string | null>(detail.status === 'SOLVED' ? (detail.solvedBy ?? 'another crew') : null);
   const [closed, setClosed] = useState<string | null>(() => {
-    if (initiallySolvedByYou) return null;
-    if (!imposter && detail.status === 'CLOSED') return "This system's repair window has closed.";
-    if (imposter && ['EXPIRED', 'CANCELLED'].includes(detail.status)) return 'This imposter protocol has ended.';
-    if (imposter && detail.status === 'SOLVED') return 'This imposter has already been eliminated.';
-    if (imposter && detail.reservationStatus && detail.reservationStatus !== 'ACTIVE') return 'Your imposter protocol is no longer active.';
+    if (detail.status === 'EXPIRED') return 'This system expired with its sprint.';
+    if (detail.status === 'DISABLED') return 'The organizers disabled this system.';
     return null;
   });
   const [stale, setStale] = useState(false);
@@ -231,13 +238,14 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
   const [walletOverride, setWalletOverride] = useState<number | null>(null);
   useEffect(() => setWalletOverride(null), [props.wallet]);
   const wallet = walletOverride ?? props.wallet;
+  const crewOut = eliminated ?? readOnlyReason;
 
   useEffect(() => {
-    if (externallySolved && !solvedByYou && !submitting) setSolvedElsewhere(true);
-  }, [externallySolved, solvedByYou, submitting]);
+    if (solvedElsewhereBy && !solvedByYou && !submitting) setSolvedElsewhere(solvedElsewhereBy);
+  }, [solvedElsewhereBy, solvedByYou, submitting]);
 
   // ---- countdown -------------------------------------------------------------------
-  const deadline = imposter ? (detail.solveDeadlineAt ?? props.deadlineAt) : (props.deadlineAt ?? detail.sprintDeadlineAt ?? null);
+  const deadline = props.deadlineAt ?? (live && !paused ? detail.sprintDeadlineAt : null);
   const calc = useCallback(() => {
     const t = deadline ? Date.parse(deadline) : NaN;
     return Number.isFinite(t) ? Math.max(0, (t - serverNow()) / 1000) : null;
@@ -250,43 +258,35 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
   }, [calc]);
   const timeUp = remaining !== null && remaining <= 0 && !paused;
 
-  const locked = !!closed || timeUp || !!eliminated || solvedElsewhere;
-  const lockReason = eliminated ?? (solvedElsewhere ? SOLVED_ELSEWHERE_TEXT : closed || timeUp ? CLOSED_TEXT : null);
+  const locked = !!closed || timeUp || !!crewOut || !!solvedElsewhere || !live;
+  const lockReason = crewOut ?? (solvedElsewhere ? `Fixed by ${solvedElsewhere}.` : (closed ?? (timeUp ? CLOSED_TEXT : !live ? NOT_LIVE_TEXT : null)));
   const submitDisabled = locked || solvedByYou || paused || stale;
-  const submitReason = lockReason ?? (paused ? 'The commander paused the sprint. Hold position.' : stale ? 'This system was reset. Reload it before submitting.' : null);
+  const submitReason = lockReason ?? (paused ? 'The organizers paused the sprint. Hold position.' : stale ? 'This system was reset. Reload it before submitting.' : null);
 
   // ---- shared error handling -------------------------------------------------------
-  const handleError = useCallback(
-    (code: string, message: string): string | null => {
-      if (SOLVED_CODES.has(code)) {
-        setSolvedElsewhere(true);
-        return null;
-      }
-      if (CLOSED_CODES.has(code) || code === 'IMPOSTER_NOT_OWNER' || code === 'IMPOSTER_CLAIMED') {
-        setClosed(message || CLOSED_TEXT);
-        return `${CLOSED_TEXT} (${message})`;
-      }
-      if (code === 'STALE_TASK') {
-        setStale(true);
-        return 'This system was reset by the commander. Reload it to get the new version.';
-      }
-      if (ELIMINATED_CODES.has(code)) {
-        setEliminated(message);
-        return message;
-      }
-      if (code === 'SPRINT_PAUSED') return 'The commander paused the sprint. Hold position — try again when it resumes.';
-      if (code === 'IMPOSTER_MODE_ACTIVE') return 'Your crew is on an imposter protocol. Finish or abandon it before repairing regular systems.';
-      if (code === 'RATE_LIMITED') return message || 'Too many attempts. Wait a few seconds.';
-      if (code === 'RUNNER_UNAVAILABLE' || code === 'RUNNER_BUSY' || code === 'RUNTIME_UNAVAILABLE')
-        return `The verification runner could not judge your code: ${message} Nothing was scored — try again shortly.`;
-      if (code === 'NETWORK') return `${message} Your submission may not have arrived; resubmitting is safe.`;
+  const handleError = useCallback((code: string, message: string): string | null => {
+    if (SOLVED_CODES.has(code)) {
+      setSolvedElsewhere((s) => s ?? 'another crew');
+      return null;
+    }
+    if (CLOSED_CODES.has(code)) {
+      const m = friendlyError(code, message);
+      setClosed(m);
+      return m;
+    }
+    if (code === 'STALE_QUESTION') {
+      setStale(true);
+      return friendlyError(code, message);
+    }
+    if (ELIMINATED_CODES.has(code)) {
+      setEliminated(message);
       return message;
-    },
-    [],
-  );
+    }
+    return friendlyError(code, message);
+  }, []);
 
   // ---- server run ------------------------------------------------------------------
-  const runner = useServerRun(target);
+  const runner = useServerRun(detail.id);
   const editableFiles = useCallback(() => Object.fromEntries(editable.map((f) => [f.name, contents[f.name] ?? f.content])), [editable, contents]);
   const canServerRun = !!detail.runLanguage && kind !== 'WEB';
   const doRun = () => void runner.run(editableFiles(), stdin);
@@ -329,9 +329,6 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
 
   // ---- dialogs ---------------------------------------------------------------------
   const [confirmReset, setConfirmReset] = useState(false);
-  const [confirmAbandon, setConfirmAbandon] = useState(false);
-  const [abandoning, setAbandoning] = useState(false);
-
   const resetToStarter = () => {
     setConfirmReset(false);
     setContents((c) => {
@@ -343,21 +340,7 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
     notify('Code reset to the original bugged program.', 'info');
   };
 
-  const abandon = async () => {
-    setAbandoning(true);
-    try {
-      await api.post(`${basePath(target)}/abandon`, {});
-      setConfirmAbandon(false);
-      notify('Imposter protocol abandoned.', 'alert');
-      onChanged();
-      onExit();
-    } catch (e) {
-      notify(errMessage(e), 'alert');
-    } finally {
-      setAbandoning(false);
-    }
-  };
-
+  const [ackSolved, setAckSolved] = useState(false);
   const [hintText, setHintText] = useState<string | null>(detail.hint.unlocked ? detail.hint.text : null);
   const onCorrect = (r: SubmitResult) => {
     setSolvedByYou(true);
@@ -423,7 +406,7 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
       />
       <div className="flex shrink-0 items-center gap-2 border-b border-[#904e46]/30 bg-[#904e46]/10 px-3 py-1.5 font-mono text-[8px] tracking-wider text-[#e4a18d]">
         <Bug size={11} />
-        {solvedByYou ? 'SYSTEM RESTORED / BUG EJECTED' : imposter ? 'IMPOSTER DETECTED / ELIMINATE IT' : 'BUG DETECTED / REPAIR REQUIRED'}
+        {solvedByYou ? 'SYSTEM RESTORED / BUG EJECTED' : imposter ? 'IMPOSTER DETECTED / EMERGENCY BONUS — FIRST CORRECT WINS' : 'BUG DETECTED / REPAIR REQUIRED'}
       </div>
       <div className="relative min-h-0 flex-1">
         <div role="tabpanel" className={leftTab === 'statement' ? 'h-full overflow-y-auto p-4' : 'hidden'}>
@@ -608,14 +591,14 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
 
   // ---- layout ----------------------------------------------------------------------
   return (
-    <div onKeyDown={onKeyDown} className={`relative flex w-full flex-col gap-3 p-3 sm:p-4 ${imposter ? 'bg-[#1d1520]/40' : ''}`} data-workspace={target.type}>
+    <div onKeyDown={onKeyDown} className={`relative flex w-full flex-col gap-3 p-3 sm:p-4 ${imposter ? 'bg-[#1d1520]/40' : ''}`} data-workspace={detail.kind}>
       {/* Toolbar */}
       <header className={`flex flex-wrap items-center gap-x-5 gap-y-3 rounded-xl border-2 px-4 py-3 ${imposter ? 'border-[#c67c6b] bg-[#392e3c]' : 'border-[#4e6b79] bg-[#15303c]'}`}>
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <Crewmate color={crew.color} size={34} state={solvedByYou ? 'celebrating' : locked ? 'warning' : 'working'} />
           <div className="min-w-0">
             <Label className={imposter ? '!text-[#e8ae94]' : '!text-primary'}>
-              {imposter ? 'IMPOSTER PROTOCOL' : 'ENGINEERING TERMINAL'} · {props.contextLabel}
+              {imposter ? 'EMERGENCY BONUS' : 'ENGINEERING TERMINAL'} · {props.contextLabel}
             </Label>
             <div className="mt-0.5 flex min-w-0 items-center gap-2">
               {detail.domain && (
@@ -624,6 +607,7 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
                   {detail.domain.name}
                 </span>
               )}
+              {detail.kind === 'RESERVE' && <span className="shrink-0 rounded border border-[#e5cf8f]/40 px-1.5 font-mono text-[8px] tracking-widest text-[#e5cf8f]">RESERVE</span>}
               <h2 className="truncate font-display text-lg font-bold sm:text-xl">
                 <span className={accentText}>{detail.label}</span> / {detail.title}
               </h2>
@@ -636,7 +620,7 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
             <Coin size={16} /> +{detail.reward}
           </span>
           {props.rank != null && (
-            <span className="font-mono text-sm text-primary" title="Your rank">
+            <span className="font-mono text-sm text-primary" title="Your sprint rank">
               #{props.rank}
             </span>
           )}
@@ -645,10 +629,10 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
             {wallet.toLocaleString()}
           </span>
           <div className="min-w-[72px]">
-            <Label className="!text-[7px]">{imposter ? 'PROTOCOL TIME' : 'ROUND TIME'}</Label>
+            <Label className="!text-[7px]">SPRINT TIME</Label>
             {paused ? (
-              <span className="flex items-center gap-1 font-mono text-lg font-semibold text-[#ebd68c]">
-                <PauseCircle size={15} /> PAUSED
+              <span className="flex items-center gap-1 font-mono text-lg font-semibold text-[#ebd68c]" title="Sprint paused">
+                <PauseCircle size={15} /> <Timer seconds={props.pausedRemaining ?? 0} className="text-lg !text-[#ebd68c]" />
               </span>
             ) : remaining === null ? (
               <span className="font-mono text-lg text-muted">--:--</span>
@@ -656,39 +640,33 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
               <Timer seconds={remaining} className="text-lg" />
             )}
           </div>
-          {imposter && detail.reservationStatus === 'ACTIVE' && !solvedByYou && (
-            <Button danger className="!px-3 !py-2 !text-[10px]" onClick={() => setConfirmAbandon(true)}>
-              <Flag size={13} /> Abandon protocol
-            </Button>
-          )}
           <Button secondary className="!px-3 !py-2 !text-[10px]" onClick={onExit}>
-            <ArrowLeft size={13} /> Back to Task Deck
+            <ArrowLeft size={13} /> {imposter ? 'Back to console' : 'Back to station'}
           </Button>
         </div>
       </header>
 
       {/* Status strip */}
-      {(stale || paused || eliminated || (locked && !solvedElsewhere)) && (
+      {(stale || paused || crewOut || (locked && !solvedElsewhere && !solvedByYou)) && (
         <div role="status" className="flex flex-wrap items-center gap-3 rounded-lg border-2 border-[#9d635a] bg-[#442b34]/80 px-4 py-2 text-xs text-[#ffd8c7]">
           {stale ? (
             <>
-              <AlertTriangle size={15} /> This system was reset by the commander. Your edits are kept as a draft for the old version.
+              <AlertTriangle size={15} /> This system was reset by the organizers. Your edits are kept as a draft for the old version.
               <Button className="!px-3 !py-1.5 !text-[10px]" disabled={reloading} onClick={() => void reload()}>
                 <RefreshCw size={12} className={reloading ? 'animate-spin' : ''} /> Reload system
               </Button>
             </>
-          ) : eliminated ? (
+          ) : crewOut ? (
             <>
-              <ShieldX size={15} /> {eliminated}
+              <ShieldX size={15} /> {crewOut}
             </>
           ) : locked ? (
             <>
-              <Clock size={15} /> {CLOSED_TEXT}
-              {closed && closed !== CLOSED_TEXT ? <span className="text-[#c9a99f]">{closed}</span> : null}
+              <Clock size={15} /> {lockReason ?? CLOSED_TEXT}
             </>
           ) : (
             <>
-              <PauseCircle size={15} /> Sprint paused by the commander. You can keep editing; Run and Submit resume when the sprint does.
+              <PauseCircle size={15} /> Sprint paused by the organizers. You can keep editing; Run and Submit resume when the sprint does.
             </>
           )}
         </div>
@@ -703,7 +681,7 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
       <div className="grid gap-3 min-[900px]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <VerifyPanel
           detail={detail}
-          url={`${basePath(target)}/submit`}
+          url={`${basePath(detail.id)}/submissions`}
           getFiles={editableFiles}
           answer={answer}
           onAnswer={setAnswer}
@@ -716,28 +694,34 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
           imposter={imposter}
         />
         <HintPanel
-          url={`${basePath(target)}/hint`}
+          url={`${basePath(detail.id)}/hint-purchases`}
           seed={`${detail.id}:${detail.generation}`}
           cost={detail.hint.cost}
           wallet={wallet}
           text={hintText}
           onUnlocked={onHint}
-          onSolvedElsewhere={() => setSolvedElsewhere(true)}
+          onSolvedElsewhere={() => setSolvedElsewhere((s) => s ?? 'another crew')}
           locked={locked || solvedByYou || paused}
           lockedReason={solvedByYou ? 'System already restored — no hint needed.' : paused ? 'Hints are paused with the sprint.' : lockReason}
           imposter={imposter}
+          metric={props.metric}
         />
       </div>
 
       {/* Dialogs */}
-      <Modal open={solvedElsewhere} onClose={onExit} label="Task already solved" imposter={imposter} closeOnBackdrop={false}>
+      <Modal open={!!solvedElsewhere && !solvedByYou && !ackSolved} onClose={() => setAckSolved(true)} label="Task already solved" imposter={imposter} closeOnBackdrop={false}>
         <div className="text-center">
           <Bug size={36} className="mx-auto mb-4 text-[#edab8d]" />
           <Label className="!text-[#edab8d]">SYSTEM ALREADY RESTORED</Label>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#e4eee8]">{SOLVED_ELSEWHERE_TEXT}</p>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#e4eee8]">
+            {imposter ? 'Another crew answered this emergency bonus first' : 'This problem has already been solved by another crew'} — {solvedElsewhere}. Move on to the next task.
+          </p>
           <p className="mt-2 text-xs text-muted">Your draft is kept on this device.</p>
-          <div className="mt-6 flex justify-center">
-            <Button onClick={onExit}>Acknowledge</Button>
+          <div className="mt-6 flex justify-center gap-3">
+            <Button secondary onClick={() => setAckSolved(true)}>
+              Stay and review
+            </Button>
+            <Button onClick={onExit}>Back</Button>
           </div>
         </div>
       </Modal>
@@ -752,20 +736,6 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: TaskDetail; reload: (
           </Button>
           <Button danger onClick={resetToStarter}>
             <RotateCcw size={14} /> Reset code
-          </Button>
-        </div>
-      </Modal>
-
-      <Modal open={confirmAbandon} onClose={() => !abandoning && setConfirmAbandon(false)} label="Abandon imposter protocol" imposter>
-        <Label className="!text-[#f0b8a2]">ABANDON PROTOCOL</Label>
-        <h3 className="mt-2 font-display text-xl font-bold">Let the imposter go?</h3>
-        <p className="mt-3 text-sm leading-6 text-muted">Your crew releases this imposter problem and returns to regular systems. You cannot reclaim it.</p>
-        <div className="mt-6 flex flex-wrap justify-end gap-3">
-          <Button secondary disabled={abandoning} onClick={() => setConfirmAbandon(false)}>
-            Stay on protocol
-          </Button>
-          <Button danger disabled={abandoning} onClick={() => void abandon()}>
-            <Flag size={14} /> {abandoning ? 'Abandoning…' : 'Abandon protocol'}
           </Button>
         </div>
       </Modal>

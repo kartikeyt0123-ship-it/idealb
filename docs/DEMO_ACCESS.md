@@ -1,72 +1,45 @@
 # Demo access (developer-only)
 
-> **Private / demo-only.** These sample accounts exist only in a database seeded with
-> `DEMO_MODE=true npm run seed:demo`. Never seed them into an event database.
-> Before the real event, use `npm run bootstrap -w server` with your own admin credentials
-> and real crews. All names, emails and institutions below are fictitious
-> (`.local` and the reserved `.test` domain).
+These accounts exist **only** in a database seeded with `npm run seed:demo` / `npm run reset:demo -- --yes`
+(both refuse unless `DEMO_MODE=true`). They are demo bootstrap data: hashed with scrypt in the
+database, never compared in frontend code, never returned by any API, and never created by the
+production bootstrap. The landing page does not show them.
 
-## Commander (super admin)
+| Who | Login | Password | Slot |
+|---|---|---|---|
+| Organizer (SUPER_ADMIN) | `admin@crm.local` | `idealab` | — |
+| **Nexora** (public demo crew) | `nexora@example.test` or `CRW-001` | `CrewDemo123!` | Slot 1 · Day 1 · 8 Oct 2026 |
+| Crews CRW-002 … CRW-040 | captain email or crew id | `Crew-NNN-Demo!` (e.g. `Crew-017-Demo!`) | CRW-001–010 → Slot 1, 011–020 → Slot 2, 021–030 → Slot 3, 031–040 → Slot 4 |
 
-| Email | Password | Role |
-|---|---|---|
-| `admin@crm.local` | `idealab` | `SUPER_ADMIN` · display name *IDEALab Commander* |
+Captain emails are the team name in lowercase without spaces `@example.test`
+(e.g. `byteforce@example.test`, `kernelpanic@example.test`).
 
-The password is hashed with scrypt like every other account. It is not shown in the
-login UI, not returned by any API and not present in the browser bundle.
+Seeded crews already have credentials (status ISSUED) and are **not** forced to change their
+password, so rehearsals can start immediately. Crews you import yourself have no credentials
+until you use **Send credentials**. In demo mode the mail is captured in Console → Credentials →
+*Demo mail inbox*.
 
-## Public demo crew
+## What the seed contains
 
-| Crew | Crew ID | Login | Password | Days |
-|---|---|---|---|---|
-| NEXORA | `CRW-042` | `nexora@example.test` (or `CRW-042`) | `CrewDemo123!` | Day 1 + Day 2 |
+| | |
+|---|---|
+| Event | AMONG BUG · IDEALab.h · AAROHAN 2026 · SGSITS Indore (demo) — every rule **UNCONFIRMED** |
+| Days | Day 1 = 2026-10-08 (Slot 1 at 10:00, Slot 2 at 14:30), Day 2 = 2026-10-09 (Slot 3, Slot 4). Times are informational only. |
+| Sprints | 4 per slot, 30 active minutes (STANDARD); switch to REHEARSAL (120 s) in Rules review |
+| Question bank | 1,296 PUBLISHED demo questions from 34 seedable templates (30 regular, 4 bonus) |
+| Release plans | per slot: 4 × 60 initial (fresh per sprint) + 20 reserves + 10 bonuses = **270 instances**. 4 slots = 960 initial + 120 extras = **1,080 instances**, no question version shared between slots |
+| Prizes | 3 placeholder labels (no amounts invented) |
 
-## Other seeded crews
+## Quick rehearsal
 
-Login = `<slug>@example.test` or the crew ID. Password = `Demo-<Slug>-2026`, with the first
-letter of the slug capitalised. For example, `byteforce@example.test` uses `Demo-Byteforce-2026`.
+1. Sign in at `/command` with the organizer account.
+2. Rules review: set preset **REHEARSAL** (2-minute sprints), confirm rules as you like.
+3. Slots: Slot 1 → **Start sprint 1**.
+4. In another browser (or a private window) sign in as Nexora. Solve, buy a hint, and watch the
+   HUD (sprint score, cumulative, wallet, sprint rank, slot rank).
+5. Displays: create a projector link and open it on a second screen.
+6. Let the sprint expire (the worker closes it at the deadline), start sprints 2–4, then
+   **Finalize slot**. Repeat for Slots 2–4 (only one slot may run at a time), then
+   **Finalize overall results**.
 
-| # | Crew | Crew ID | Login | Password | Approved days | Requested |
-|---|---|---|---|---|---|---|
-| 1 | BYTEFORCE | CRW-001 | byteforce@example.test | Demo-Byteforce-2026 | Day 1 | Day 1 |
-| 2 | CODEX | CRW-002 | codex@example.test | Demo-Codex-2026 | Day 1 | Day 1 |
-| 3 | DEBUGGERS | CRW-003 | debuggers@example.test | Demo-Debuggers-2026 | Day 1 | Both |
-| 4 | NULLPTR | CRW-004 | nullptr@example.test | Demo-Nullptr-2026 | Day 1 | Day 1 |
-| 5 | STACKSMASH | CRW-005 | stacksmash@example.test | Demo-Stacksmash-2026 | Day 1 | Day 1 |
-| 6 | SEGFAULT | CRW-006 | segfault@example.test | Demo-Segfault-2026 | Day 2 | Day 2 |
-| 7 | BITSHIFT | CRW-007 | bitshift@example.test | Demo-Bitshift-2026 | Day 2 | Day 2 |
-| 8 | KERNEL PANIC | CRW-008 | kernelpanic@example.test | Demo-Kernelpanic-2026 | Day 2 | Both |
-| 9 | LAMBDA LEGION | CRW-009 | lambdalegion@example.test | Demo-Lambdalegion-2026 | Day 2 | Day 2 |
-| 10 | HEAPSTERS | CRW-010 | heapsters@example.test | Demo-Heapsters-2026 | Day 2 | Day 2 |
-| 11 | NEXORA | CRW-042 | nexora@example.test | CrewDemo123! | Day 1 + 2 | Both |
-| 12 | SYNTAX SQUAD | CRW-012 | syntaxsquad@example.test | Demo-Syntaxsquad-2026 | Day 1 + 2 | Both |
-| 13 | QUANTUM QUILLS | CRW-013 | quantumquills@example.test | Demo-Quantumquills-2026 | Day 1 + 2 | Both |
-| 14 | LOOP TROOP | CRW-014 | looptroop@example.test | Demo-Looptroop-2026 | Day 1 + 2 | Both |
-| 15 | RECURSIA | CRW-015 | recursia@example.test | Demo-Recursia-2026 | Day 1 + 2 | Both |
-| 16 | VOID WALKERS | CRW-016 | voidwalkers@example.test | Demo-Voidwalkers-2026 | pending | Day 1 |
-| 17 | PIXEL PIRATES | CRW-017 | pixelpirates@example.test | Demo-Pixelpirates-2026 | pending | Day 2 |
-| 18 | CACHE CREW | CRW-018 | cachecrew@example.test | Demo-Cachecrew-2026 | pending | Both |
-| 19 | ASYNC ARMADA | CRW-019 | asyncarmada@example.test | Demo-Asyncarmada-2026 | pending | Both |
-| 20 | GLITCH GUILD | CRW-020 | glitchguild@example.test | Demo-Glitchguild-2026 | pending | Day 1 |
-
-This gives 10 eligible crews per game. The demo eliminates 2 after Sprint 1 and 3 after Sprint 2,
-so each game goes 10 → 8 → 5.
-
-## Demo game setup
-
-- Event day selection: **MANUAL**, Day 1 selected. Switch days in Command Console → Game & Sprint → Event day.
-- Game 1 is mapped to Day 1 and Game 2 to Day 2. Both start in `WAITING` and no sprint runs automatically.
-- The ranking rule is `NET_COINS`, and the commander must confirm it before Sprint 1 can start.
-- Sprints run for 30 minutes (STANDARD preset). The **REHEARSAL** preset (120 s) is one click away.
-- Rewards are 150 / 400 / 700 and hint costs 30 / 80 / 140 by difficulty. Wallets start at 0.
-- Each sprint has 30 regular tasks: 6 domains × 5, split 2 easy / 2 medium / 1 hard.
-- Variants are assigned so no answer repeats: v0 → G1S1, v1 → G1S2, v2 → G2S1, v3 → G2S2.
-- There is one imposter draft per sprint (IMPOSTER-A1/B1/A2/B2). Each pays 900 with a hint cost of 100.
-  The claim window is 60 s and the solve window 480 s (STANDARD), or 20 s and 70 s (REHEARSAL).
-- Prize labels are placeholders ("organizer to confirm prize"). No amounts are invented.
-
-## Private solutions
-
-Reference solutions live server-side in `server/src/content/templates/*.ts` (`solution` fields).
-Commanders with the `SUPER_ADMIN` or `CONTENT_EDITOR` role can see them in Command Console → Problem Library.
-They are never sent to participants.
+To start over: `npm run reset:demo -- --yes`.

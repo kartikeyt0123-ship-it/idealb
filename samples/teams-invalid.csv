@@ -1,0 +1,10 @@
+team_name,crew_id,captain_email,member1_name,member2_name,member3_name,member4_name,slot,account_enabled,checked_in
+Valid Crew,,valid.crew@example.test,A One,B Two,C Three,,,yes,no
+Two Members,,two.members@example.test,A One,B Two,,,,yes,no
+Bad Email,,not-an-email,A One,B Two,C Three,,,yes,no
+Valid Crew,,another@example.test,A One,B Two,C Three,,,yes,no
+Dup Email,,valid.crew@example.test,A One,B Two,C Three,,,yes,no
+Ghost Slot,,ghost.slot@example.test,A One,B Two,C Three,,9,yes,no
+Maybe Enabled,,maybe@example.test,A One,B Two,C Three,,,perhaps,no
+Bad Crew Id,CRW-X1,bad.crew.id@example.test,A One,B Two,C Three,,,yes,no
+=HYPERLINK("x"),,formula@example.test,A One,B Two,C Three,,,yes,no

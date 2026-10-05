@@ -1,0 +1,4 @@
+team_name,crew_id,captain_email,member1_name,member1_institution,member1_year,member1_branch,member1_student_id,member2_name,member2_institution,member2_year,member2_branch,member2_student_id,member3_name,member3_institution,member3_year,member3_branch,member3_student_id,member4_name,member4_institution,member4_year,member4_branch,member4_student_id,slot,account_enabled,checked_in
+Orbit Breakers,,orbit.breakers@example.test,Asha Verma,SGSITS Indore,3rd year,CSE,S-101,Rohit Jain,SGSITS Indore,3rd year,CSE,,Meera Iyer,SGSITS Indore,2nd year,IT,,,,,,,,yes,no
+Null Island,,null.island@example.test,Kunal Shah,SGSITS Indore,4th year,ECE,S-102,Priya Nair,SGSITS Indore,4th year,ECE,,Dev Patel,SGSITS Indore,3rd year,EE,,Tanya Bose,SGSITS Indore,2nd year,CSE,,,yes,no
+Semicolon & Co,,semicolon.co@example.test,Ira Kulkarni,"IET DAVV, Indore",2nd year,IT,,Neel Rao,"IET DAVV, Indore",2nd year,IT,,Sara Khan,"IET DAVV, Indore",1st year,CSE,,,,,,,,true,false

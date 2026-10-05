@@ -1,5 +1,5 @@
 /** Pure helpers for the task workspace (drafts, preview document, CSV, languages, errors). */
-import { ApiError, type TaskDetail, type TaskFile } from '../lib/api';
+import { ApiError, type QuestionDetail, type TaskFile } from '../lib/api';
 
 // ---------------------------------------------------------------------------
 // Drafts (localStorage; best effort, never throws)
@@ -7,13 +7,12 @@ import { ApiError, type TaskDetail, type TaskFile } from '../lib/api';
 
 export interface DraftScope {
   crewId: string;
-  targetType: 'TASK' | 'IMPOSTER';
-  targetId: string;
+  questionId: string;
   generation: number;
 }
 
-const PREFIX = 'amongbugs:draft:v1';
-export const draftKey = (s: DraftScope, name: string) => `${PREFIX}:${s.crewId}:${s.targetType}:${s.targetId}:g${s.generation}:${name}`;
+const PREFIX = 'amongbug:draft:v2';
+export const draftKey = (s: DraftScope, name: string) => `${PREFIX}:${s.crewId}:${s.questionId}:g${s.generation}:${name}`;
 
 export function readDraft(s: DraftScope, name: string): string | null {
   try {
@@ -72,7 +71,7 @@ export const isHtml = (f: Pick<TaskFile, 'name'>) => /\.html?$/i.test(f.name);
 
 export type RightKind = 'WEB' | 'DATA' | 'RUN' | 'EVIDENCE';
 
-export function rightKind(d: Pick<TaskDetail, 'workspace' | 'runLanguage' | 'files'>): RightKind {
+export function rightKind(d: Pick<QuestionDetail, 'workspace' | 'runLanguage' | 'files'>): RightKind {
   const hasIndex = d.files.some((f) => f.name.toLowerCase() === 'index.html');
   if (d.workspace === 'WEB' || (d.workspace === 'DESIGN' && hasIndex)) return 'WEB';
   if (d.workspace === 'DATA') return 'DATA';
@@ -231,6 +230,42 @@ export function decoyText(seed: string, words = 46): string {
 export const errCode = (e: unknown) => (e instanceof ApiError ? e.code : 'UNKNOWN');
 export const errMessage = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong.');
 
-export const CLOSED_CODES = new Set(['SPRINT_CLOSED', 'TASK_WINDOW_CLOSED', 'IMPOSTER_WINDOW_CLOSED', 'SPRINT_NOT_RUNNING', 'TASK_DISABLED']);
-export const SOLVED_CODES = new Set(['TASK_ALREADY_SOLVED']);
-export const ELIMINATED_CODES = new Set(['TEAM_ELIMINATED', 'TEAM_DISQUALIFIED']);
+/** The question can no longer be scored (sprint over, expired, disabled, withdrawn). */
+export const CLOSED_CODES = new Set(['SPRINT_CLOSED', 'SPRINT_NOT_RUNNING', 'QUESTION_EXPIRED', 'QUESTION_DISABLED', 'QUESTION_NOT_RELEASED']);
+export const SOLVED_CODES = new Set(['QUESTION_ALREADY_SOLVED']);
+/** The crew itself can no longer compete. */
+export const ELIMINATED_CODES = new Set(['TEAM_ELIMINATED', 'TEAM_DISQUALIFIED', 'ACCOUNT_DISABLED', 'TEAM_ARCHIVED', 'SLOT_UNASSIGNED']);
+
+/** Friendly copy for the error codes a crew can hit while repairing a system. */
+export function friendlyError(code: string, message: string): string {
+  switch (code) {
+    case 'QUESTION_ALREADY_SOLVED':
+      return 'Another crew fixed this system first. Move on to the next one.';
+    case 'QUESTION_EXPIRED':
+      return 'This system expired with its sprint.';
+    case 'SPRINT_CLOSED':
+      return 'Time is up — the sprint has closed.';
+    case 'SPRINT_NOT_RUNNING':
+      return 'No sprint is running in your slot right now.';
+    case 'SPRINT_PAUSED':
+      return 'The organizers paused the sprint. Hold position — try again when it resumes.';
+    case 'INSUFFICIENT_FUNDS':
+      return message || 'Not enough IdeaCoins in your wallet.';
+    case 'QUESTION_DISABLED':
+      return 'The organizers disabled this system.';
+    case 'QUESTION_NOT_RELEASED':
+      return 'This system is not available to your crew.';
+    case 'STALE_QUESTION':
+      return 'This system was reset by the organizers. Reload it to get the new version.';
+    case 'RATE_LIMITED':
+      return message || 'Too many attempts. Wait a few seconds.';
+    case 'RUNNER_UNAVAILABLE':
+    case 'RUNNER_BUSY':
+    case 'RUNTIME_UNAVAILABLE':
+      return `The verification runner could not judge your code: ${message} Nothing was scored — try again shortly.`;
+    case 'NETWORK':
+      return `${message} Your submission may not have arrived; resubmitting is safe.`;
+    default:
+      return message;
+  }
+}

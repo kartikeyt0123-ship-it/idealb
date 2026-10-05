@@ -4,20 +4,15 @@
  */
 import { KeyRound, Loader2, Lock, ShieldAlert, Unlock } from 'lucide-react';
 import { useState } from 'react';
-import { api, newKey } from '../lib/api';
+import { api, newKey, type HintResult, type Metric } from '../lib/api';
 import { Button, Coin, Label, useToast } from '../components/ui';
 import { Modal } from './parts';
-import { decoyText, errCode, errMessage, SOLVED_CODES } from './util';
+import { decoyText, errCode, errMessage, friendlyError, SOLVED_CODES } from './util';
 
-export interface HintResponse {
-  hint: string;
-  cost: number;
-  charged: boolean;
-  wallet: number;
-}
+export type HintResponse = HintResult;
 
 export function HintPanel({
-  url, seed, cost, wallet, text, onUnlocked, onSolvedElsewhere, locked, lockedReason, imposter,
+  url, seed, cost, wallet, text, onUnlocked, onSolvedElsewhere, locked, lockedReason, imposter, metric,
 }: {
   url: string;
   seed: string;
@@ -29,6 +24,7 @@ export function HintPanel({
   locked: boolean;
   lockedReason: string | null;
   imposter: boolean;
+  metric: Metric;
 }) {
   const notify = useToast();
   const [confirm, setConfirm] = useState(false);
@@ -51,8 +47,7 @@ export function HintPanel({
       if (SOLVED_CODES.has(code)) onSolvedElsewhere();
       if (code === 'INSUFFICIENT_FUNDS') setError(`Not enough IdeaCoins — this hint costs ${cost}. Repair other systems to earn more.`);
       else if (code === 'HINT_UNAVAILABLE') setError(errMessage(e) || 'Hints are unavailable for this system right now.');
-      else if (code === 'IMPOSTER_MODE_ACTIVE') setError('Your crew is on an imposter protocol. Regular hints are locked until it ends.');
-      else setError(errMessage(e));
+      else setError(friendlyError(code, errMessage(e)));
       // A definitive server rejection ends this attempt; a network failure keeps the key so a retry is idempotent.
       if (code !== 'NETWORK') setIdemKey(newKey('hint'));
     } finally {
@@ -93,6 +88,9 @@ export function HintPanel({
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Unlock size={14} />}
             {cost > 0 ? `Decrypt hint — ${cost} IdeaCoins` : 'Decrypt hint — free'}
           </Button>
+          <p className="mt-2 text-[10px] leading-4 text-[#9fb8bf]">
+            {metric === 'GROSS_EARNED' ? 'Hints reduce your wallet only — your ranking score is unaffected.' : 'Hints reduce your wallet and your score (score = earned − spent).'}
+          </p>
           {short && !locked && <p className="mt-2 text-[11px] leading-5 text-[#f3ad92]">Your wallet holds {wallet} IdeaCoins — not enough for this {cost}-coin hint.</p>}
           {locked && lockedReason && <p className="mt-2 text-[11px] leading-5 text-muted">{lockedReason}</p>}
         </>
@@ -108,7 +106,8 @@ export function HintPanel({
         <Label className={accent}>DECRYPT SYSTEM HINT</Label>
         <h3 className="mt-2 font-display text-xl font-bold">Spend {cost} IdeaCoins?</h3>
         <p className="mt-3 text-sm leading-6 text-muted">
-          The hint is charged once and stays decrypted for your crew. Wallet after purchase: <b className="text-[#e8cf91]">{Math.max(0, wallet - cost)}</b> IdeaCoins.
+          The hint is charged once and stays decrypted for every device of your crew. Wallet after purchase: <b className="text-[#e8cf91]">{Math.max(0, wallet - cost)}</b> IdeaCoins.
+          {metric === 'GROSS_EARNED' ? ' Your ranking score is not affected.' : ' Your score drops by the same amount.'}
         </p>
         <div className="mt-6 flex flex-wrap justify-end gap-3">
           <Button secondary onClick={() => setConfirm(false)}>

@@ -1,7 +1,7 @@
-/** Non-scoring server "Run" (POST /api/game/run, poll while RUNNING, cancel). Never fakes output. */
+/** Non-scoring server "Run" (POST /api/v1/question-instances/:id/run-jobs, poll while RUNNING, cancel). Never fakes output. */
 import { Loader2, Play, Square } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, type RunResult } from '../lib/api';
+import { api, V1, type RunResult } from '../lib/api';
 import { Button } from '../components/ui';
 import { errCode, errMessage } from './util';
 
@@ -15,10 +15,11 @@ const RUNNER_MESSAGES: Record<string, string> = {
   RUNNER_UNAVAILABLE: 'The code runner is offline. This is a real error — no output was produced.',
   RUNNER_BUSY: 'The code runner is at capacity. Wait a few seconds and run again.',
   RUNTIME_UNAVAILABLE: 'This system has no server-side runtime.',
+  SPRINT_NOT_RUNNING: 'Code can only be run while your slot sprint is running.',
   RATE_LIMITED: 'Runner cooling down — too many runs. Wait a few seconds.',
 };
 
-export function useServerRun(target: { type: 'TASK' | 'IMPOSTER'; id: string }) {
+export function useServerRun(questionId: string) {
   const [state, setState] = useState<RunState>({ phase: 'idle' });
   const alive = useRef(true);
   const token = useRef(0);
@@ -36,14 +37,14 @@ export function useServerRun(target: { type: 'TASK' | 'IMPOSTER'; id: string }) 
       const live = () => alive.current && token.current === my;
       setState({ phase: 'running', jobId: null, startedAt: Date.now() });
       try {
-        let r = await api.post<RunResult>('/api/game/run', { target, files, stdin });
+        let r = await api.post<RunResult>(`${V1}/question-instances/${encodeURIComponent(questionId)}/run-jobs`, { files, stdin });
         const deadline = Date.now() + 60_000;
         while (live() && (r.status === 'RUNNING' || r.status === 'QUEUED')) {
           setState({ phase: 'running', jobId: r.jobId, startedAt: Date.now() });
           if (Date.now() > deadline) throw Object.assign(new Error('The run did not finish in time. Try again.'), { code: 'TIMEOUT' });
           await new Promise((res) => setTimeout(res, 900));
           if (!live()) return;
-          r = await api.get<RunResult>(`/api/game/run/${encodeURIComponent(r.jobId)}`);
+          r = await api.get<RunResult>(`${V1}/run-jobs/${encodeURIComponent(r.jobId)}`);
         }
         if (live()) setState({ phase: 'done', run: r });
       } catch (e) {
@@ -52,7 +53,7 @@ export function useServerRun(target: { type: 'TASK' | 'IMPOSTER'; id: string }) 
         setState({ phase: 'error', code, message: RUNNER_MESSAGES[code] ? `${RUNNER_MESSAGES[code]} (${errMessage(e)})` : errMessage(e) });
       }
     },
-    [target],
+    [questionId],
   );
 
   const cancel = useCallback(async () => {
@@ -63,7 +64,7 @@ export function useServerRun(target: { type: 'TASK' | 'IMPOSTER'; id: string }) 
       return;
     }
     try {
-      const r = await api.post<RunResult>(`/api/game/run/${encodeURIComponent(jobId)}/cancel`, {});
+      const r = await api.post<RunResult>(`${V1}/run-jobs/${encodeURIComponent(jobId)}/cancel`, {});
       if (alive.current) setState({ phase: 'done', run: r });
     } catch (e) {
       if (alive.current) setState({ phase: 'error', code: errCode(e), message: errMessage(e) });

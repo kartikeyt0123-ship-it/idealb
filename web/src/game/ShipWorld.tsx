@@ -5,13 +5,13 @@
  */
 import { motion } from 'motion/react';
 import { forwardRef, memo, type Ref, type RefObject } from 'react';
-import type { DomainDto, Standing } from '../lib/api';
+import type { BoardRow, DomainDto } from '../lib/api';
 import { Crewmate } from '../components/ui';
 
-export const ROOM_NAMES = ['COMMAND BRIDGE', 'MAIN LOBBY', 'TASK DECK', 'CREW RANKINGS'];
-export const ROOM_SHORT = ['COMMAND', 'LOBBY', 'TASKS', 'RANKINGS'];
+export const ROOM_NAMES = ['EMERGENCY BRIDGE', 'MAIN LOBBY', 'TASK DECK', 'CREW RANKINGS'];
+export const ROOM_SHORT = ['BRIDGE', 'LOBBY', 'TASKS', 'RANKINGS'];
 export const ROOM_LINES = [
-  'The captain’s seat comes with responsibility.',
+  'Emergency broadcasts land here. Watch for the imposter.',
   'Your adventure starts here. Make yourself at home.',
   'A broken system is an opportunity in disguise.',
   'Every repair brings your crew closer to the stars.',
@@ -25,7 +25,7 @@ export const DEFAULT_DOMAINS: DomainDto[] = [
   { slug: 'basic', name: 'Basic Programming', room: 'REACTOR', color: '#8ae4bf', symbol: '>_', prefix: 'REACTOR', workspace: 'BASIC' },
   { slug: 'design', name: 'Designing', room: 'DESIGN LAB', color: '#dea4ca', symbol: '✧', prefix: 'DESIGN', workspace: 'DESIGN' },
   { slug: 'misc', name: 'Miscellaneous', room: 'STORAGE', color: '#e3a178', symbol: '{}', prefix: 'MISC', workspace: 'MISC' },
-].map((d) => ({ ...d, counts: { total: 0, available: 0, locked: 0, solvedByYou: 0, solvedByOthers: 0, closed: 0 } }));
+].map((d) => ({ ...d, counts: { total: 0, available: 0, solvedByYou: 0, solvedByOthers: 0, expired: 0 } }));
 
 export interface Interactable {
   id: string;
@@ -40,7 +40,7 @@ const COLS = [370, 800, 1230];
 export function interactables(roomWidth: number, domains: DomainDto[]): Interactable[] {
   const k = roomWidth / 1600;
   return [
-    { id: 'command', label: 'ACCESS COMMAND CONSOLE', room: 0, x: roomWidth * 0.5, y: 670 },
+    { id: 'command', label: 'OPEN EMERGENCY CONSOLE', room: 0, x: roomWidth * 0.5, y: 670 },
     { id: 'manifest', label: 'VIEW CREW ACCESS CARD', room: 1, x: roomWidth * 1.5, y: 580 },
     ...domains.slice(0, 6).map((d, i) => ({ id: `station-${i}`, label: `OPEN ${d.room}`, room: 2, x: 2 * roomWidth + COLS[i % 3] * k, y: i < 3 ? 568 : 650 })),
     { id: 'rankings', label: 'VIEW CREW RANKINGS', room: 3, x: roomWidth * 3.5, y: 665 },
@@ -145,12 +145,14 @@ function Station({ index, domain, active, locked, onInteract }: { index: number;
   const c = domain.counts;
   const done = c.solvedByYou > 0;
   const status = locked
-    ? c.locked > 0
-      ? `${c.locked} SYSTEMS LOCKED`
+    ? c.expired > 0
+      ? 'SPRINT CLOSED'
       : 'AWAITING SPRINT'
-    : done && c.available === 0
-      ? '✓ TASK COMPLETE'
-      : `${c.available} SYSTEMS AVAILABLE`;
+    : c.total === 0
+      ? 'NO SYSTEMS YET'
+      : done && c.available === 0
+        ? `✓ ${c.solvedByYou} REPAIRED`
+        : `${c.available}/${c.total} SYSTEMS OPEN`;
   return (
     <g
       role="button"
@@ -278,7 +280,7 @@ function Lobby({ name, crewId, onInteract }: { name: string; crewId: string; onI
         <path d="M635 317H965" stroke="#496b66" strokeWidth="2" />
       </g>
       <text x="225" y="370" textAnchor="middle" fill="#93a6b2" fontFamily="monospace" fontSize="10" letterSpacing="3">
-        ← COMMAND
+        ← BRIDGE
       </text>
       <text x="1380" y="370" textAnchor="middle" fill="#a1cfb6" fontFamily="monospace" fontSize="10" letterSpacing="3">
         TASK DECK →
@@ -286,7 +288,7 @@ function Lobby({ name, crewId, onInteract }: { name: string; crewId: string; onI
       <Benches x={285} y={480} />
       <Benches x={1005} y={430} />
       <Monitor x={1370} y={246} width={100} text="O₂ NORMAL" />
-      <Monitor x={133} y={246} width={106} text="ADMIN ONLY" color="#e2ba80" />
+      <Monitor x={133} y={246} width={106} text="EMERGENCY" color="#e2ba80" />
       <g role="button" tabIndex={0} aria-label="Approach crew manifest" onClick={() => onInteract('manifest')} onKeyDown={(e) => e.key === 'Enter' && onInteract('manifest')} className="cursor-pointer" transform="translate(645 399)">
         <path d="M0 65L25 0H277L302 65V106H0Z" fill="#496570" stroke="#091c27" strokeWidth="7" />
         <path d="M16 61H283L267 16H33Z" fill="#34525d" stroke="#7f9595" strokeWidth="3" />
@@ -322,20 +324,21 @@ function Lobby({ name, crewId, onInteract }: { name: string; crewId: string; onI
   );
 }
 
-function Bridge({ active, onInteract }: { active: boolean; onInteract: (id: string) => void }) {
+function Bridge({ active, alert, onInteract }: { active: boolean; alert: boolean; onInteract: (id: string) => void }) {
   return (
     <>
       <SpaceWindow x={210} y={180} width={1180} height={260} panorama />
       <text x="800" y="222" textAnchor="middle" fontFamily="Chakra Petch, sans-serif" fontSize="24" fill="#bdd9d8" fontWeight="700" letterSpacing="9">
-        COMMAND BRIDGE
+        EMERGENCY BRIDGE
       </text>
-      <g role="button" tabIndex={0} aria-label="Approach command control panel" onClick={() => onInteract('command')} onKeyDown={(e) => e.key === 'Enter' && onInteract('command')} className="cursor-pointer">
+      <g role="button" tabIndex={0} aria-label={`Approach emergency console${alert ? ': imposter detected' : ''}`} onClick={() => onInteract('command')} onKeyDown={(e) => e.key === 'Enter' && onInteract('command')} className="cursor-pointer">
+        {alert && <path d="M380 550L445 411H1155L1220 550V602H380Z" fill="#c4544f" opacity=".25" className="animate-[monitor_1.2s_ease-in-out_infinite]" />}
         <path d="M380 550L445 411H1155L1220 550V602H380Z" fill="#385562" stroke="#081b27" strokeWidth="9" />
         <path d="M394 549L455 425H1145L1205 549Z" fill="#4a6975" stroke="#799796" strokeWidth="3" />
         <Monitor x={475} y={445} width={170} text="SHIP TELEMETRY" />
-        <Monitor x={955} y={445} width={170} text="ROUND CONTROL" color="#e2b879" />
+        <Monitor x={955} y={445} width={170} text={alert ? 'IMPOSTER DETECTED' : 'ALL CLEAR'} color={alert ? '#f08f80' : '#e2b879'} />
         <g transform="translate(800 485)">
-          <ellipse rx="100" ry="53" fill="#0c343b" stroke={active ? '#8ae4cf' : '#567c82'} strokeWidth="4" />
+          <ellipse rx="100" ry="53" fill={alert ? '#3b1f27' : '#0c343b'} stroke={alert ? '#f08f80' : active ? '#8ae4cf' : '#567c82'} strokeWidth="4" />
           <ellipse rx="77" ry="39" fill="none" stroke="#6baa9f" strokeWidth="2" />
           <ellipse rx="46" ry="24" fill="none" stroke="#6baa9f" strokeWidth="2" />
           <path d="M-75 0H75M0 -42V42" stroke="#638d8a" />
@@ -343,20 +346,20 @@ function Bridge({ active, onInteract }: { active: boolean; onInteract: (id: stri
             <circle key={n} cx={cx} cy={cy} r="5" fill={n === 2 ? '#eaaa82' : '#8ae4cf'} />
           ))}
         </g>
-        <text x="800" y="578" textAnchor="middle" fontFamily="monospace" fontSize="12" letterSpacing="4" fill={active ? '#8ae4cf' : '#a5b6bc'}>
-          COMMAND CONTROL PANEL
+        <text x="800" y="578" textAnchor="middle" fontFamily="monospace" fontSize="12" letterSpacing="4" fill={alert ? '#f5b8a6' : active ? '#8ae4cf' : '#a5b6bc'}>
+          {alert ? 'EMERGENCY BONUS OPEN' : 'EMERGENCY CONSOLE'}
         </text>
       </g>
       <Benches x={490} y={715} />
       <Benches x={960} y={715} />
       <text x="190" y="480" fontFamily="monospace" fontSize="10" fill="#a3bbc1" letterSpacing="2">
-        AUTHORIZED CREW ONLY
+        EMERGENCY BONUS PROTOCOL
       </text>
     </>
   );
 }
 
-function RankingsRoom({ standings, meCrewId, active, onInteract }: { standings: Standing[]; meCrewId: string; active: boolean; onInteract: (id: string) => void }) {
+function RankingsRoom({ standings, meCrewId, active, onInteract }: { standings: BoardRow[]; meCrewId: string; active: boolean; onInteract: (id: string) => void }) {
   const top = standings.slice(0, 5);
   return (
     <g role="button" tabIndex={0} aria-label="Approach rankings hologram" onClick={() => onInteract('rankings')} onKeyDown={(e) => e.key === 'Enter' && onInteract('rankings')} className="cursor-pointer">
@@ -369,7 +372,7 @@ function RankingsRoom({ standings, meCrewId, active, onInteract }: { standings: 
       <path d="M475 294H1125" stroke="#4b8b8e" strokeWidth="2" />
       {top.length === 0 && (
         <text x="800" y="420" textAnchor="middle" fontSize="14" fontFamily="monospace" fill="#7dabae">
-          NO ACTIVE CREWS YET
+          STANDINGS APPEAR WHEN A SPRINT STARTS
         </text>
       )}
       {top.map((s, n) => (
@@ -393,7 +396,7 @@ function RankingsRoom({ standings, meCrewId, active, onInteract }: { standings: 
         </motion.g>
       ))}
       <text x="800" y="592" textAnchor="middle" fontFamily="monospace" fontSize="10" letterSpacing="3" fill="#72b4b5">
-        LIVE CREW TELEMETRY · APPROACH TO EXPAND
+        SLOT STANDINGS · APPROACH TO EXPAND
       </text>
       <path d="M635 681H970L1000 725H610Z" fill="#537783" stroke="#0a1a28" strokeWidth="7" />
       <rect x="664" y="682" width="274" height="23" rx="7" fill="#89d1c3" opacity=".3" />
@@ -408,9 +411,10 @@ export interface ShipWorldProps {
   width: number;
   roomWidth: number;
   domains: DomainDto[];
-  standings: Standing[];
-  identity: { name: string; crewId: string; color: string; commander: boolean };
+  standings: BoardRow[];
+  identity: { name: string; crewId: string; color: string };
   tasksLocked: boolean;
+  bonusAlert: boolean;
   near: string | null;
   onInteract: (id: string) => void;
   playerRef: RefObject<SVGGElement | null>;
@@ -422,7 +426,7 @@ export const ShipWorld = memo(
   forwardRef(function ShipWorld(p: ShipWorldProps, ref: Ref<SVGGElement>) {
     const domains = p.domains.length ? p.domains : DEFAULT_DOMAINS;
     return (
-      <svg viewBox={`0 0 ${p.width} 900`} preserveAspectRatio="none" className="h-full w-full select-none" aria-label="Playable spaceship: command bridge, lobby, task deck, rankings">
+      <svg viewBox={`0 0 ${p.width} 900`} preserveAspectRatio="none" className="h-full w-full select-none" aria-label="Playable spaceship: emergency bridge, lobby, task deck, rankings">
         <defs>
           <linearGradient id="wall" x2="0" y2="1">
             <stop stopColor="#203642" />
@@ -442,7 +446,7 @@ export const ShipWorld = memo(
             <g key={i} transform={`translate(${i * p.roomWidth} 0) scale(${p.roomWidth / 1600} 1)`}>
               <Room index={i}>
                 {i === 0 ? (
-                  <Bridge active={p.near === 'command'} onInteract={p.onInteract} />
+                  <Bridge active={p.near === 'command'} alert={p.bonusAlert} onInteract={p.onInteract} />
                 ) : i === 1 ? (
                   <Lobby name={p.identity.name} crewId={p.identity.crewId} onInteract={p.onInteract} />
                 ) : i === 2 ? (
@@ -464,13 +468,13 @@ export const ShipWorld = memo(
             </g>
           ))}
           {[1, 2, 3].map((i) => (
-            <Door key={i} x={i * p.roomWidth} open={p.doorOpen.includes(i)} label={['', 'COMMAND / LOBBY', 'TASK DECK', 'CREW RANKINGS'][i]} />
+            <Door key={i} x={i * p.roomWidth} open={p.doorOpen.includes(i)} label={['', 'BRIDGE / LOBBY', 'TASK DECK', 'CREW RANKINGS'][i]} />
           ))}
           <g ref={p.playerRef} data-testid="player">
             <ellipse cx="0" cy="0" rx="38" ry="11" fill="#03101a" opacity=".4" />
             <g ref={p.walkingRef}>
               <g transform="translate(-44 -103)">
-                <Crewmate color={p.identity.color} size={88} state="still" accessory={p.identity.commander} />
+                <Crewmate color={p.identity.color} size={88} state="still" />
               </g>
             </g>
             <path d="M-5 -122L0 -116L5 -122" fill="#b3efd8" />

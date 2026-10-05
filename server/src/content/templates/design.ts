@@ -8,6 +8,10 @@ import { webHarness } from './web.js';
  * number (the expected value is computed here from the variant parameters,
  * following the CSS spec), or a JS design-utility function verified with
  * hidden tests through the shared web harness.
+ *
+ * `variant(seed)` works for any integer seed >= 0: themes come from pools
+ * indexed by the seed, numbers/colours from a pure-arithmetic PRNG seeded by
+ * (seed, template salt), and answers from reference implementations below.
  */
 
 function mustReplace(src: string, from: string, to: string): string {
@@ -22,6 +26,38 @@ function round2(n: number): number {
 /** Formats a number for display in statements/answers without float noise. */
 function fmt(n: number): string {
   return String(round2(n));
+}
+
+/** Deterministic PRNG (mulberry32 mixing) seeded by the variant seed and a per-template salt. */
+function rngFor(seed: number, salt: number) {
+  let a = (Math.imul((seed % 4294967296) >>> 0, 0x9e3779b1) ^ Math.imul(salt + 1, 0x85ebca6b) ^ 0x6d2b79f5) >>> 0;
+  const next = (): number => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const int = (lo: number, hi: number): number => lo + Math.floor(next() * (hi - lo + 1));
+  const pick = <T>(arr: readonly T[]): T => arr[Math.floor(next() * arr.length)];
+  const shuffle = <T>(arr: readonly T[]): T[] => {
+    const c = arr.slice();
+    for (let i = c.length - 1; i > 0; i--) {
+      const j = Math.floor(next() * (i + 1));
+      [c[i], c[j]] = [c[j], c[i]];
+    }
+    return c;
+  };
+  return { next, int, pick, shuffle };
+}
+
+/** Injective map of seeds 0..p-1 onto 0..p-1 (p prime, mul not a multiple of p). */
+function perm(seed: number, mul: number, add: number, p: number): number {
+  return ((seed % p) * mul + add) % p;
+}
+
+function bySeed<T>(pool: readonly T[], seed: number): T {
+  return pool[seed % pool.length];
 }
 
 const BASE_CSS = `body { font-family: sans-serif; background: #1b1424; color: #f1e6ee; padding: 16px; margin: 0; }
@@ -43,19 +79,24 @@ function jsFiles(html: string, css: string, script: string): StarterFile[] {
 /* EASY: content-box width computation                                 */
 /* ------------------------------------------------------------------ */
 
+const CARDS = ['crew-card', 'vote-card', 'task-card', 'map-card', 'chat-card', 'skin-card', 'pet-card', 'hat-card'];
+
 const boxWidth: TaskTemplate = {
   key: 'design-box-width',
   domain: 'design',
   difficulty: 'EASY',
-  variant: (v) => {
-    const card = ['crew-card', 'vote-card', 'task-card', 'map-card'][v];
-    const p = [
-      { width: 280, padL: 16, padR: 24, border: 3, margin: 20 },
-      { width: 320, padL: 12, padR: 12, border: 5, margin: 14 },
-      { width: 250, padL: 30, padR: 18, border: 2, margin: 32 },
-      { width: 360, padL: 20, padR: 28, border: 4, margin: 10 },
-    ][v];
-    const answer = p.width + p.padL + p.padR + 2 * p.border;
+  variant: (seed) => {
+    const r = rngFor(seed, 101);
+    const card = bySeed(CARDS, seed);
+    const padL = r.int(4, 40);
+    const padR = r.int(4, 40);
+    const padV = r.int(4, 24);
+    const border = r.int(1, 6);
+    const margin = r.int(6, 40);
+    // Distinct answer for seeds 0..256.
+    const answer = 240 + perm(seed, 97, 31, 257);
+    const width = answer - padL - padR - 2 * border;
+    const slot = answer - r.int(6, 30);
     const html = `<!doctype html>
 <html>
 <head><link rel="stylesheet" href="style.css"></head>
@@ -67,16 +108,16 @@ const boxWidth: TaskTemplate = {
 `;
     const css = `${BASE_CSS}* { box-sizing: content-box; }
 .${card} {
-  width: ${p.width}px;
-  padding: 10px ${p.padR}px 10px ${p.padL}px;
-  border: ${p.border}px solid #dea4ca;
-  margin: 0 ${p.margin}px;
+  width: ${width}px;
+  padding: ${padV}px ${padR}px ${padV}px ${padL}px;
+  border: ${border}px solid #dea4ca;
+  margin: 0 ${margin}px;
   background: #2c2238;
 }
 `;
     return {
       title: `How wide is .${card}?`,
-      statement: `The Design Lab mock-up for the .${card} component overflows its slot on the ship's tablet. Before resizing anything, the crew needs the exact rendered width.\n\nUsing style.css (box-sizing is content-box for every element), what is the rendered width of .${card} in pixels — the width of its border box (content + padding + border, NOT margin), i.e. what getBoundingClientRect().width reports?`,
+      statement: `The Design Lab mock-up for the .${card} component (declared width: ${width}px) overflows its ${slot}px slot on the ship's tablet. Before resizing anything, the crew needs the exact rendered width.\n\nUsing style.css (box-sizing is content-box for every element), what is the rendered width of .${card} in pixels — the width of its border box (content + padding + border, NOT margin), i.e. what getBoundingClientRect().width reports?`,
       workspace: 'DESIGN',
       runLanguage: null,
       files: previewFiles(html, css),
@@ -84,7 +125,7 @@ const boxWidth: TaskTemplate = {
       validation: { mode: 'NUMERIC', answer, tolerance: 0 },
       hint: 'With content-box, `width` only sets the content area. Add the left and right padding and both borders; margins sit outside the box.',
       solution: {
-        explanation: `${p.width} (content) + ${p.padL} + ${p.padR} (padding) + 2 x ${p.border} (border) = ${answer}px. The ${p.margin}px margins are outside the border box.`,
+        explanation: `${width} (content) + ${padL} + ${padR} (left/right padding) + 2 x ${border} (border) = ${answer}px. The ${margin}px margins are outside the border box, and the ${padV}px vertical padding does not affect width.`,
         answer: String(answer),
       },
     };
@@ -100,18 +141,37 @@ function refHexToRgb(hex: string): string {
   return `rgb(${parseInt(h.slice(0, 2), 16)}, ${parseInt(h.slice(2, 4), 16)}, ${parseInt(h.slice(4, 6), 16)})`;
 }
 
+/** What the buggy starter computes (blue = slice(3, 5)). */
+function buggyHexToRgb(hex: string): string {
+  const h = hex.replace('#', '');
+  return `rgb(${parseInt(h.slice(0, 2), 16)}, ${parseInt(h.slice(2, 4), 16)}, ${parseInt(h.slice(3, 5), 16)})`;
+}
+
+type Rng = ReturnType<typeof rngFor>;
+
+function randHex(r: Rng, upper = false): string {
+  const s = '#' + [0, 1, 2].map(() => r.int(0, 255).toString(16).padStart(2, '0')).join('');
+  return upper ? s.toUpperCase() : s;
+}
+
+/** Random colour whose buggy conversion differs from the correct one. */
+function revealingHex(r: Rng, upper = false): string {
+  for (;;) {
+    const c = randHex(r, upper);
+    if (buggyHexToRgb(c) !== refHexToRgb(c)) return c;
+  }
+}
+
+const PALETTES = ['Skeld Neon', 'Polus Frost', 'Mira Sunset', 'Airship Brass', 'Fungle Moss', 'Reactor Glow', 'Vent Shadow', 'Comet Dust'];
+
 const hexToRgb: TaskTemplate = {
   key: 'design-hex-to-rgb',
   domain: 'design',
   difficulty: 'EASY',
-  variant: (v) => {
-    const palette = ['Skeld Neon', 'Polus Frost', 'Mira Sunset', 'Airship Brass'][v];
-    const colors = [
-      ['#c51111', '#132ed1', '#117f2d', '#ed54ba'],
-      ['#ef7d0d', '#f5f557', '#3f474e', '#d6e0f0'],
-      ['#6b2fbb', '#71491e', '#38fedc', '#50ef39'],
-      ['#ffffff', '#ec7578', '#b5a2ec', '#e8cf8e'],
-    ][v];
+  variant: (seed) => {
+    const r = rngFor(seed, 202);
+    const palette = bySeed(PALETTES, seed);
+    const colors = [revealingHex(r), randHex(r), randHex(r, r.next() < 0.5), randHex(r)];
     const html = `<!doctype html>
 <html>
 <head><link rel="stylesheet" href="style.css"></head>
@@ -149,11 +209,16 @@ if (typeof document !== 'undefined') {
 }
 `;
     const fixed = mustReplace(script, 'const b = parseInt(h.slice(3, 5), 16);', 'const b = parseInt(h.slice(4, 6), 16);');
-    const cases = [colors, ['#000000', '#FFFFFF'], [`#0a0b0${v}`, '#ABCDEF'], [colors[v], '#123456']];
+    const cases = [
+      colors,
+      ['#000000', '#FFFFFF'],
+      [revealingHex(r, true), randHex(r), `#0${r.int(0, 9)}0${r.int(0, 9)}0${r.int(1, 9)}`],
+      [colors[r.int(0, 3)].toUpperCase(), revealingHex(r)],
+    ];
     const tests = cases.map((c, i) => ({ name: `hex-${i + 1}`, stdin: JSON.stringify({ hexes: c }), expected: c.map(refHexToRgb).join('\n') }));
     return {
       title: `${palette} swatches look wrong`,
-      statement: `The ${palette} palette preview in the Design Lab shows every swatch in a slightly wrong tint — ${colors[0]} does not come out as ${refHexToRgb(colors[0])}.\n\nFix hexToRgb(hex) in script.js so "#rrggbb" (upper or lower case) converts to the string "rgb(r, g, b)" with decimal channel values, e.g. "#ff8000" -> "rgb(255, 128, 0)". Use Refresh Preview to compare the swatches. Final verification calls hexToRgb() with hidden colors.`,
+      statement: `The ${palette} palette preview in the Design Lab shows swatches in a slightly wrong tint — ${colors[0]} comes out as ${buggyHexToRgb(colors[0])} instead of ${refHexToRgb(colors[0])}.\n\nFix hexToRgb(hex) in script.js so "#rrggbb" (upper or lower case) converts to the string "rgb(r, g, b)" with decimal channel values, e.g. "#ff8000" -> "rgb(255, 128, 0)". Use Refresh Preview to compare the swatches. Final verification calls hexToRgb() with hidden colors.`,
       workspace: 'DESIGN',
       runLanguage: 'javascript',
       runEntry: 'script.js',
@@ -176,28 +241,37 @@ if (typeof document !== 'undefined') {
 /* MEDIUM: grid fr track width                                         */
 /* ------------------------------------------------------------------ */
 
+const PANELS = ['admin-map', 'vitals-panel', 'cams-grid', 'log-board', 'nav-chart', 'fuel-gauge', 'crew-roster', 'sample-rack'];
+
 const gridTrack: TaskTemplate = {
   key: 'design-grid-track',
   domain: 'design',
   difficulty: 'MEDIUM',
-  variant: (v) => {
-    const panel = ['admin-map', 'vitals-panel', 'cams-grid', 'log-board'][v];
-    // Tracks: number = fixed px, string 'Nfr' = flexible.
-    const p = [
-      { width: 960, pad: 24, border: 2, gap: 16, tracks: [180, '1fr', '2fr'] as (number | string)[], target: 2 },
-      { width: 1100, pad: 30, border: 4, gap: 20, tracks: ['3fr', 220, '2fr', 120] as (number | string)[], target: 0 },
-      { width: 840, pad: 18, border: 3, gap: 12, tracks: [150, '1fr', 150, '3fr'] as (number | string)[], target: 3 },
-      { width: 1024, pad: 32, border: 1, gap: 24, tracks: ['1fr', '1fr', 200, '4fr'] as (number | string)[], target: 3 },
-    ][v];
-    const inner = p.width - 2 * p.pad - 2 * p.border; // box-sizing: border-box
-    const fixedSum = p.tracks.reduce<number>((s, t) => s + (typeof t === 'number' ? t : 0), 0);
-    const frSum = p.tracks.reduce<number>((s, t) => s + (typeof t === 'string' ? parseFloat(t) : 0), 0);
-    const free = inner - fixedSum - p.gap * (p.tracks.length - 1);
-    const target = p.tracks[p.target];
-    if (typeof target !== 'string' || free <= 0) throw new Error('bad grid params');
+  variant: (seed) => {
+    const r = rngFor(seed, 313);
+    const panel = bySeed(PANELS, seed);
+    const n = r.int(3, 4);
+    // Tracks: number = fixed px, string 'Nfr' = flexible. At least one of each.
+    let kinds: boolean[];
+    do {
+      kinds = Array.from({ length: n }, () => r.next() < 0.5);
+    } while (!kinds.includes(true) || !kinds.includes(false));
+    const tracks: (number | string)[] = kinds.map((isFr) => (isFr ? `${r.int(1, 4)}fr` : r.int(8, 26) * 10));
+    const frIdx = tracks.map((t, i) => (typeof t === 'string' ? i : -1)).filter((i) => i >= 0);
+    const targetIdx = r.pick(frIdx);
+    const pad = r.int(8, 36);
+    const border = r.int(1, 5);
+    const gap = r.int(4, 14) * 2;
+    const fixedSum = tracks.reduce<number>((s, t) => s + (typeof t === 'number' ? t : 0), 0);
+    const frSum = tracks.reduce<number>((s, t) => s + (typeof t === 'string' ? parseFloat(t) : 0), 0);
+    // Free space >= 360px, so every fr track is far wider than its one-digit content.
+    const free = 360 + perm(seed, 53, 11, 401);
+    const width = free + fixedSum + gap * (n - 1) + 2 * pad + 2 * border;
+    const inner = width - 2 * pad - 2 * border; // box-sizing: border-box
+    const target = tracks[targetIdx] as string;
     const answer = round2((free * parseFloat(target)) / frSum);
-    const template = p.tracks.map((t) => (typeof t === 'number' ? `${t}px` : t)).join(' ');
-    const cells = p.tracks.map((_, i) => `    <div class="cell c${i + 1}">${i + 1}</div>`).join('\n');
+    const template = tracks.map((t) => (typeof t === 'number' ? `${t}px` : t)).join(' ');
+    const cells = tracks.map((_, i) => `    <div class="cell c${i + 1}">${i + 1}</div>`).join('\n');
     const html = `<!doctype html>
 <html>
 <head><link rel="stylesheet" href="style.css"></head>
@@ -211,19 +285,19 @@ ${cells}
 `;
     const css = `${BASE_CSS}.${panel} {
   box-sizing: border-box;
-  width: ${p.width}px;
-  padding: ${p.pad}px;
-  border: ${p.border}px solid #dea4ca;
+  width: ${width}px;
+  padding: ${pad}px;
+  border: ${border}px solid #dea4ca;
   display: grid;
   grid-template-columns: ${template};
-  gap: ${p.gap}px;
+  gap: ${gap}px;
 }
 .cell { background: #2c2238; min-height: 60px; text-align: center; }
 `;
-    const ordinal = ['1st', '2nd', '3rd', '4th'][p.target];
+    const ordinal = ['1st', '2nd', '3rd', '4th'][targetIdx];
     return {
       title: `Grid track width in .${panel}`,
-      statement: `The ${panel.replace('-', ' ')} layout on the bridge display uses a CSS grid (see style.css). The engineers need the exact width of the ${ordinal} column (.c${p.target + 1}) to export icons at the right size.\n\nGiven the container's width, box-sizing, padding, border, gap and grid-template-columns: ${template}, what is the width in pixels of the ${ordinal} column track? (The cells contain only a short number, so content never forces a track wider.)`,
+      statement: `The ${panel.replace('-', ' ')} layout on the bridge display uses a ${width}px-wide CSS grid (see style.css). The engineers need the exact width of the ${ordinal} column (.c${targetIdx + 1}) to export icons at the right size.\n\nGiven the container's width, box-sizing, padding, border, gap and grid-template-columns: ${template}, what is the width in pixels of the ${ordinal} column track? (The cells contain only a short number, so content never forces a track wider.)`,
       workspace: 'DESIGN',
       runLanguage: null,
       files: previewFiles(html, css),
@@ -231,7 +305,7 @@ ${cells}
       validation: { mode: 'NUMERIC', answer, tolerance: 0.01 },
       hint: 'With border-box, padding and border come out of the declared width first. Then subtract the fixed tracks and every gap between columns; only what remains is shared by the fr units.',
       solution: {
-        explanation: `Content width = ${p.width} - 2x${p.pad} - 2x${p.border} = ${inner}. Free space = ${inner} - ${fixedSum} (fixed) - ${p.tracks.length - 1}x${p.gap} (gaps) = ${free}. 1fr = ${free}/${frSum}; ${target} = ${answer}px.`,
+        explanation: `Content width = ${width} - 2x${pad} - 2x${border} = ${inner}. Free space = ${inner} - ${fixedSum} (fixed) - ${n - 1}x${gap} (gaps) = ${free}. 1fr = ${free}/${frSum}; ${target} = ${fmt(answer)}px.`,
         answer: fmt(answer),
       },
     };
@@ -266,43 +340,34 @@ function refLevel(ratio: number, large: boolean): string {
   return 'FAIL';
 }
 
+const SCREENS = ['Emergency Button', 'Vote Screen', 'Task List', 'Kill Cooldown HUD', 'Chat Panel', 'Map Overlay', 'Lobby Menu', 'Settings Page'];
+
 const contrastCheck: TaskTemplate = {
   key: 'design-contrast-check',
   domain: 'design',
   difficulty: 'MEDIUM',
-  variant: (v) => {
-    const screen = ['Emergency Button', 'Vote Screen', 'Task List', 'Kill Cooldown HUD'][v];
+  variant: (seed) => {
+    const r = rngFor(seed, 404);
+    const screen = bySeed(SCREENS, seed);
     type Pair = { fg: string; bg: string; large: boolean };
-    const pairs: Pair[][] = [
-      [
-        { fg: '#1b1424', bg: '#dea4ca', large: false },
-        { fg: '#ffffff', bg: '#c51111', large: true },
-        { fg: '#777777', bg: '#ffffff', large: false },
-        { fg: '#f5f557', bg: '#3f474e', large: false },
-        { fg: '#5a5a5a', bg: '#9a9a9a', large: true },
-      ],
-      [
-        { fg: '#ffffff', bg: '#132ed1', large: false },
-        { fg: '#e8cf8e', bg: '#10202b', large: true },
-        { fg: '#666666', bg: '#eeeeee', large: false },
-        { fg: '#888888', bg: '#ffffff', large: true },
-        { fg: '#2b2b2b', bg: '#6a6a6a', large: false },
-      ],
-      [
-        { fg: '#38fedc', bg: '#1b1424', large: false },
-        { fg: '#ffffff', bg: '#117f2d', large: false },
-        { fg: '#959595', bg: '#ffffff', large: true },
-        { fg: '#ec7578', bg: '#ffffff', large: true },
-        { fg: '#000000', bg: '#545454', large: false },
-      ],
-      [
-        { fg: '#ef7d0d', bg: '#000000', large: true },
-        { fg: '#ffffff', bg: '#6b2fbb', large: false },
-        { fg: '#757575', bg: '#ffffff', large: false },
-        { fg: '#b5a2ec', bg: '#2c2238', large: true },
-        { fg: '#444444', bg: '#8f8f8f', large: true },
-      ],
-    ];
+    const grey = () => {
+      const g = r.int(0, 255).toString(16).padStart(2, '0');
+      return `#${g}${g}${g}`;
+    };
+    const colour = () => (r.next() < 0.3 ? grey() : randHex(r));
+    // Five pairs: one dark-on-light (fg darker than bg, so the unordered ratio drops below 1),
+    // one light-on-dark, three random. Large flags random.
+    const pairs: Pair[] = [];
+    for (let i = 0; i < 5; i++) {
+      let fg = colour();
+      let bg = colour();
+      while (refLum(fg) === refLum(bg)) bg = colour();
+      const lf = refLum(fg);
+      const lb = refLum(bg);
+      if ((i === 0 && lf > lb) || (i === 1 && lf < lb)) [fg, bg] = [bg, fg];
+      pairs.push({ fg, bg, large: r.next() < 0.4 });
+    }
+    const pairs0 = pairs;
     const html = `<!doctype html>
 <html>
 <head><link rel="stylesheet" href="style.css"></head>
@@ -317,7 +382,7 @@ const contrastCheck: TaskTemplate = {
 td { padding: 6px 10px; border: 1px solid #4b3a5a; }
 `;
     const script = `// ${screen} accessibility audit (WCAG 2.x contrast)
-const PAIRS = ${JSON.stringify(pairs[v])};
+const PAIRS = ${JSON.stringify(pairs0)};
 
 // sRGB channel 0..255 -> linear value
 function channel(c) {
@@ -368,19 +433,22 @@ if (typeof document !== 'undefined') {
       "const aa = largeText ? 3 : 4.5;\n  const aaa = largeText ? 4.5 : 7;",
     );
     const fmtRow = (p: Pair) => {
-      const r = refContrast(p.fg, p.bg);
-      return `${r.toFixed(2)} ${refLevel(r, p.large)}`;
+      const ratio = refContrast(p.fg, p.bg);
+      return `${ratio.toFixed(2)} ${refLevel(ratio, p.large)}`;
     };
     const cases: Pair[][] = [
-      pairs[v],
-      [{ fg: '#000000', bg: '#ffffff', large: false }, { fg: '#ffffff', bg: '#000000', large: true }],
-      [pairs[v][2], { ...pairs[v][2], large: !pairs[v][2].large }],
-      [{ fg: pairs[v][0].bg, bg: pairs[v][0].fg, large: true }, { fg: '#808080', bg: '#808080', large: false }],
+      pairs0,
+      // Black text on white: the unordered ratio is ~0.05, so the starter always fails this case.
+      [{ fg: '#000000', bg: '#ffffff', large: false }, { fg: '#ffffff', bg: '#000000', large: true }, { fg: colour(), bg: colour(), large: r.next() < 0.5 }],
+      [pairs0[2], { ...pairs0[2], large: !pairs0[2].large }],
+      [{ fg: pairs0[1].bg, bg: pairs0[1].fg, large: true }, { fg: pairs0[3].fg, bg: pairs0[3].fg, large: false }],
     ];
     const tests = cases.map((c, i) => ({ name: `contrast-${i + 1}`, stdin: JSON.stringify({ pairs: c }), expected: c.map(fmtRow).join('\n') }));
+    const p0 = pairs0[0];
+    const shownBuggy = ((refLum(p0.fg) + 0.05) / (refLum(p0.bg) + 0.05)).toFixed(2);
     return {
       title: `${screen} contrast audit`,
-      statement: `The accessibility audit for the ${screen} reports nonsense: some colour pairs score below 1:1, and large headings are judged more strictly than body text.\n\nFix script.js:\n- contrastRatio(fg, bg) must return the WCAG contrast ratio (L_lighter + 0.05) / (L_darker + 0.05), so it is always >= 1 no matter which colour is passed first;\n- wcagLevel(ratio, largeText) must return 'AAA', 'AA' or 'FAIL' using: normal text AA >= 4.5, AAA >= 7; large text AA >= 3, AAA >= 4.5.\n\nThe luminance formula itself is correct. Final verification audits hidden colour pairs.`,
+      statement: `The accessibility audit for the ${screen} reports nonsense: the pair ${p0.fg} on ${p0.bg} scores ${shownBuggy}:1 (below 1:1!), and large headings are judged more strictly than body text.\n\nFix script.js:\n- contrastRatio(fg, bg) must return the WCAG contrast ratio (L_lighter + 0.05) / (L_darker + 0.05), so it is always >= 1 no matter which colour is passed first;\n- wcagLevel(ratio, largeText) must return 'AAA', 'AA' or 'FAIL' using: normal text AA >= 4.5, AAA >= 7; large text AA >= 3, AAA >= 4.5.\n\nThe luminance formula itself is correct. Final verification audits hidden colour pairs.`,
       workspace: 'DESIGN',
       runLanguage: 'javascript',
       runEntry: 'script.js',
@@ -397,7 +465,7 @@ if (typeof document !== 'undefined') {
       },
       hint: 'WCAG puts the LIGHTER luminance on top of the fraction — the code assumes the foreground is lighter. Then re-read the thresholds: large text is allowed a LOWER ratio.',
       solution: {
-        explanation: 'contrastRatio must use max/min of the two luminances, and wcagLevel had the normal/large thresholds swapped.',
+        explanation: `contrastRatio must use max/min of the two luminances (${p0.fg} on ${p0.bg} is really ${fmtRow(p0)}), and wcagLevel had the normal/large thresholds swapped.`,
         files: { 'script.js': fixed },
       },
     };
@@ -408,30 +476,49 @@ if (typeof document !== 'undefined') {
 /* HARD: flex-shrink distribution                                      */
 /* ------------------------------------------------------------------ */
 
+const BARS = ['task-bar', 'chat-dock', 'vote-strip', 'hud-row', 'tool-belt', 'map-legend', 'emote-tray', 'alert-rail'];
+
 const flexShrink: TaskTemplate = {
   key: 'design-flex-shrink',
   domain: 'design',
   difficulty: 'HARD',
-  variant: (v) => {
-    const bar = ['task-bar', 'chat-dock', 'vote-strip', 'hud-row'][v];
-    const p = [
-      { width: 600, pad: 20, border: 2, gap: 12, basis: [240, 180, 200], shrink: [1, 2, 1], mx: [0, 8, 0], target: 1 },
-      { width: 720, pad: 24, border: 4, gap: 16, basis: [300, 260, 180], shrink: [3, 1, 2], mx: [6, 0, 6], target: 0 },
-      { width: 480, pad: 16, border: 1, gap: 8, basis: [200, 150, 150], shrink: [1, 1, 3], mx: [0, 5, 0], target: 2 },
-      { width: 840, pad: 30, border: 3, gap: 20, basis: [260, 220, 180, 160], shrink: [2, 1, 1, 3], mx: [0, 0, 10, 0], target: 3 },
-    ][v];
-    const n = p.basis.length;
-    const inner = p.width - 2 * p.pad - 2 * p.border; // border-box container
-    const outerSum = p.basis.reduce((s, b, i) => s + b + 2 * p.mx[i], 0);
-    const free = inner - outerSum - p.gap * (n - 1);
-    const scaled = p.basis.map((b, i) => b * p.shrink[i]);
-    const scaledSum = scaled.reduce((s, x) => s + x, 0);
-    const widths = p.basis.map((b, i) => b + (free * scaled[i]) / scaledSum);
+  variant: (seed) => {
+    const r = rngFor(seed, 505);
+    const bar = bySeed(BARS, seed);
+    const n = r.int(3, 4);
+    const pad = r.int(10, 32);
+    const border = r.int(1, 4);
+    const gap = r.int(4, 12) * 2;
+    const target = r.int(0, n - 1);
+    const overflow = 60 + perm(seed, 61, 17, 211) % 140; // 60..199 px of negative free space
+    let basis: number[];
+    let shrink: number[];
+    let mx: number[];
+    let widths: number[];
+    let free: number;
+    let scaled: number[];
+    let scaledSum: number;
+    let outerSum: number;
+    // Retry (deterministically) until shrink factors differ and every pod stays comfortably positive.
+    for (;;) {
+      basis = Array.from({ length: n }, () => r.int(12, 32) * 10);
+      shrink = Array.from({ length: n }, () => r.int(1, 4));
+      mx = Array.from({ length: n }, () => (r.next() < 0.35 ? r.int(2, 10) : 0));
+      if (!mx.some((m) => m > 0)) mx[r.int(0, n - 1)] = r.int(2, 10);
+      outerSum = basis.reduce((s, b, i) => s + b + 2 * mx[i], 0);
+      free = -overflow;
+      scaled = basis.map((b, i) => b * shrink[i]);
+      scaledSum = scaled.reduce((s, x) => s + x, 0);
+      widths = basis.map((b, i) => b + (free * scaled[i]) / scaledSum);
+      if (new Set(shrink).size > 1 && widths.every((w) => w >= 40)) break;
+    }
+    const width = outerSum + gap * (n - 1) + free + 2 * pad + 2 * border;
+    const inner = width - 2 * pad - 2 * border; // border-box container
     if (free >= 0 || widths.some((w) => w <= 0)) throw new Error('bad flex params');
-    const answer = round2(widths[p.target]);
-    const items = p.basis.map((_, i) => `    <div class="pod p${i + 1}">pod ${i + 1}</div>`).join('\n');
-    const itemCss = p.basis
-      .map((b, i) => `.p${i + 1} { flex: 0 ${p.shrink[i]} ${b}px;${p.mx[i] ? ` margin: 0 ${p.mx[i]}px;` : ''} }`)
+    const answer = round2(widths[target]);
+    const items = basis.map((_, i) => `    <div class="pod p${i + 1}">pod ${i + 1}</div>`).join('\n');
+    const itemCss = basis
+      .map((b, i) => `.p${i + 1} { flex: 0 ${shrink[i]} ${b}px;${mx[i] ? ` margin: 0 ${mx[i]}px;` : ''} }`)
       .join('\n');
     const html = `<!doctype html>
 <html>
@@ -446,11 +533,11 @@ ${items}
 `;
     const css = `${BASE_CSS}.${bar} {
   box-sizing: border-box;
-  width: ${p.width}px;
-  padding: ${p.pad}px;
-  border: ${p.border}px solid #dea4ca;
+  width: ${width}px;
+  padding: ${pad}px;
+  border: ${border}px solid #dea4ca;
   display: flex;
-  gap: ${p.gap}px;
+  gap: ${gap}px;
 }
 .pod {
   box-sizing: border-box;
@@ -465,7 +552,7 @@ ${itemCss}
 `;
     return {
       title: `Squeezed pods in .${bar}`,
-      statement: `The .${bar} on the cockpit HUD holds ${n} pods whose flex-basis values add up to more than the space available, so the browser shrinks them. A designer guessed every pod shrinks by the same amount — the screenshots say otherwise.\n\nUsing style.css (container: border-box with padding, border and gap; pods: flex-grow 0, individual flex-shrink and flex-basis, some with horizontal margins, min-width 0, no padding or border), what is the final rendered width in pixels of .p${p.target + 1}?\n\nRemember how CSS flexbox distributes negative free space: it is not split equally, nor purely by flex-shrink.`,
+      statement: `The ${width}px-wide .${bar} on the cockpit HUD holds ${n} pods whose flex-basis values add up to more than the space available, so the browser shrinks them. A designer guessed every pod shrinks by the same amount — the screenshots say otherwise.\n\nUsing style.css (container: border-box with padding, border and gap; pods: flex-grow 0, individual flex-shrink and flex-basis, some with horizontal margins, min-width 0, no padding or border), what is the final rendered width in pixels of .p${target + 1}?\n\nRemember how CSS flexbox distributes negative free space: it is not split equally, nor purely by flex-shrink.`,
       workspace: 'DESIGN',
       runLanguage: null,
       files: previewFiles(html, css),
@@ -473,7 +560,7 @@ ${itemCss}
       validation: { mode: 'NUMERIC', answer, tolerance: 0.01 },
       hint: 'Negative free space = content width - (sum of flex-basis + margins) - gaps. Each item absorbs a share proportional to flex-shrink x flex-basis (its "scaled shrink factor").',
       solution: {
-        explanation: `Container content = ${p.width} - 2x${p.pad} - 2x${p.border} = ${inner}. Used = ${outerSum} (bases + margins) + ${n - 1}x${p.gap} (gaps), so free space = ${free}. Scaled shrink factors (shrink x basis) = [${scaled.join(', ')}], total ${scaledSum}. .p${p.target + 1} = ${p.basis[p.target]} + (${free}) x ${scaled[p.target]}/${scaledSum} = ${fmt(widths[p.target])}px.`,
+        explanation: `Container content = ${width} - 2x${pad} - 2x${border} = ${inner}. Used = ${outerSum} (bases + margins) + ${n - 1}x${gap} (gaps), so free space = ${free}. Scaled shrink factors (shrink x basis) = [${scaled.join(', ')}], total ${scaledSum}. .p${target + 1} = ${basis[target]} + (${free}) x ${scaled[target]}/${scaledSum} = ${fmt(widths[target])}px.`,
         answer: fmt(answer),
       },
     };

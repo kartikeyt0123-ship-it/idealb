@@ -1,34 +1,37 @@
 /**
  * OPT-IN REHEARSAL / LOAD SIMULATOR — never runs in normal mode.
  *
- *   npm run rehearsal:sim -w server -- --yes [--crews 100] [--sessions 4] [--duration 60] [--base http://127.0.0.1:4000] [--start]
+ *   npm run rehearsal:sim -w server -- --yes [--slot 1] [--sessions 4] [--duration 60] [--think 8] [--all] [--start] [--base http://127.0.0.1:4000]
  *
- * Creates clearly-named "SIM ####" crews through the real admin API (enabled for the
- * current day), signs each in from several sessions, and drives realistic traffic
- * through the real API: snapshot polling, wrong answers, correct solves, hint
- * purchases and runs, while one observer socket measures standings propagation.
- * Reports p50/p95/max latency per operation. Requires DEMO_MODE=true.
- * The simulated crews are real database rows: run it only on a rehearsal database
- * (npm run reset:demo -- --yes afterwards).
+ * Signs in the demo crews of one slot (CRW-001…CRW-040 seeded by `npm run seed:demo`)
+ * from several devices each and drives realistic traffic through the real
+ * /api/v1 endpoints: snapshot polling, question detail, wrong answers, correct
+ * solves, hint purchases, rankings, while an observer socket in the same slot
+ * measures solve → broadcast latency. `--all` also signs in the 30 crews of the
+ * other slots (polling only — they must see nothing of the running slot).
+ * `--start` makes the organizer start the slot's next sprint first.
+ * Requires DEMO_MODE=true. It writes real rows (sessions, submissions, ledger):
+ * run it on a rehearsal database and `npm run reset:demo -- --yes` afterwards.
  */
 import { io } from 'socket.io-client';
 import { loadConfig } from '../config.js';
-import { imposterTemplates, regularTemplates } from '../content/index.js';
 import { createPool, many } from '../db.js';
+import { demoCrewPassword } from '../seed/demo.js';
 
 const argv = process.argv.slice(2);
 const arg = (k: string, d: string) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : d);
-const CREWS = Number(arg('crews', '100'));
+const SLOT = Number(arg('slot', '1'));
 const SESSIONS = Number(arg('sessions', '4'));
 const DURATION = Number(arg('duration', '60'));
+const THINK = Number(arg('think', '8'));
 const BASE = arg('base', 'http://127.0.0.1:4000').replace(/\/$/, '');
 const START = argv.includes('--start');
-/** Seconds between a simulated device's actions (real crews read/think between attempts). */
-const THINK = Number(arg('think', '8'));
+const ALL = argv.includes('--all');
+const V = '/api/v1';
 
 const cfg = loadConfig();
 if (!cfg.demoMode || !argv.includes('--yes')) {
-  console.error('[sim] Opt-in only: requires DEMO_MODE=true and --yes. Creates SIM crews in the database.');
+  console.error('[sim] Opt-in only: requires DEMO_MODE=true and --yes. Writes sessions, submissions and ledger rows.');
   process.exit(1);
 }
 
@@ -36,19 +39,24 @@ class Jar {
   cookie = '';
   async req(method: string, path: string, body?: unknown, key?: string) {
     const t0 = performance.now();
-    const res = await fetch(BASE + path, {
-      method,
-      headers: {
-        ...(this.cookie ? { cookie: this.cookie } : {}),
-        ...(method !== 'GET' ? { 'content-type': 'application/json', 'x-requested-with': 'amongbugs' } : {}),
-        ...(key ? { 'idempotency-key': key } : {}),
-      },
-      body: method !== 'GET' ? JSON.stringify(body ?? {}) : undefined,
-    });
+    let res: Response;
+    try {
+      res = await fetch(BASE + path, {
+        method,
+        headers: {
+          ...(this.cookie ? { cookie: this.cookie } : {}),
+          ...(method !== 'GET' ? { 'content-type': 'application/json', 'x-requested-with': 'amongbugs', origin: BASE } : {}),
+          ...(key ? { 'idempotency-key': key } : {}),
+        },
+        body: method !== 'GET' ? JSON.stringify(body ?? {}) : undefined,
+      });
+    } catch {
+      return { status: 0, body: null as any, ms: performance.now() - t0 }; // eslint-disable-line @typescript-eslint/no-explicit-any
+    }
     const sc = res.headers.get('set-cookie');
     if (sc?.startsWith('ab_sid=')) this.cookie = sc.split(';')[0];
     const json = await res.json().catch(() => null);
-    return { status: res.status, body: json as any, ms: performance.now() - t0 };
+    return { status: res.status, body: json as any, ms: performance.now() - t0 }; // eslint-disable-line @typescript-eslint/no-explicit-any
   }
 }
 
@@ -64,135 +72,119 @@ const pct = (a: number[], p: number) => {
   return s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))];
 };
 const key = () => `sim-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
   const db = createPool(cfg.databaseUrl, 4);
-  const admin = new Jar();
-  const adminEmail = process.env.SIM_ADMIN_EMAIL ?? 'admin@crm.local';
-  const adminPw = process.env.SIM_ADMIN_PASSWORD ?? 'idealab';
-  const al = await admin.req('POST', '/api/auth/login', { mode: 'COMMANDER', identifier: adminEmail, password: adminPw });
-  if (al.status !== 200) throw new Error(`admin login failed: ${JSON.stringify(al.body)}`);
-  const ov = await admin.req('GET', '/api/admin/overview');
-  const dayNo = ov.body.currentDay?.day_number;
-  if (!dayNo) throw new Error('No current day configured.');
-  const game = ov.body.games.find((g: { dayId: string }) => g.dayId === ov.body.currentDay.id);
-  console.log(`[sim] day ${dayNo}, ${game.name}, phase ${game.phase}`);
-
-  // 1) create SIM crews through the admin API
-  const stamp = Date.now().toString(36).slice(-4).toUpperCase();
-  const creds: { email: string; password: string }[] = [];
-  for (let i = 0; i < CREWS; i += 50) {
-    const batch = Array.from({ length: Math.min(50, CREWS - i) }, (_, j) => {
-      const n = i + j + 1;
-      return {
-        teamName: `SIM ${stamp} ${String(n).padStart(3, '0')}`,
-        captainEmail: `sim-${stamp.toLowerCase()}-${n}@example.test`,
-        members: [1, 2, 3].map((m) => ({ name: `Sim Member ${m}`, institution: 'Simulation', year: '1st year', branch: 'SIM' })),
-        requestedDays: 'BOTH',
-        color: '#7dace9',
-        activeDays: [dayNo],
-      };
-    });
-    const r = await admin.req('POST', '/api/admin/crews', { crews: batch, via: 'IMPORT' });
-    if (r.status !== 201) throw new Error(`crew creation failed: ${JSON.stringify(r.body)}`);
-    for (const c of r.body.created) creds.push({ email: c.email, password: c.temporaryPassword });
-  }
-  console.log(`[sim] created ${creds.length} SIM crews`);
-
-  if (START && ['WAITING', 'DRAFT', 'READY'].includes(game.phase)) {
-    await admin.req('PATCH', `/api/admin/games/${game.id}/config`, { rankingMetricConfirmed: true });
-    const s = await admin.req('POST', `/api/admin/games/${game.id}/start-sprint`, { sprint: 1, acknowledgeZeroElimination: true });
-    console.log(`[sim] start sprint 1 → ${s.status} ${s.status !== 200 ? JSON.stringify(s.body).slice(0, 300) : ''}`);
+  const org = new Jar();
+  const ol = await org.req('POST', `${V}/auth/organizer-login`, { email: process.env.SIM_ORGANIZER_EMAIL ?? 'admin@crm.local', password: process.env.SIM_ORGANIZER_PASSWORD ?? 'idealab' });
+  if (ol.status !== 200) throw new Error(`organizer login failed: ${JSON.stringify(ol.body)}`);
+  const ov = await org.req('GET', `${V}/admin/overview`);
+  const slot = ov.body.slots.find((s: { number: number }) => s.number === SLOT);
+  if (!slot) throw new Error(`Slot ${SLOT} not found.`);
+  console.log(`[sim] ${slot.name} (${slot.date}) phase ${slot.phase}, sprint ${slot.currentSprint}/4`);
+  if (START && slot.nextSprint) {
+    const s = await org.req('POST', `${V}/admin/slots/${slot.id}/sprints/${slot.nextSprint}/start`, {});
+    console.log(`[sim] start sprint ${slot.nextSprint} → ${s.status} ${s.status !== 200 ? JSON.stringify(s.body).slice(0, 300) : ''}`);
   }
 
-  // 2) sessions
-  const jars: Jar[] = [];
+  const crews = Array.from({ length: 40 }, (_, i) => i + 1).filter((n) => ALL || Math.ceil(n / 10) === SLOT);
+  const jars: { jar: Jar; n: number; mine: boolean }[] = [];
   await Promise.all(
-    creds.map(async (c) => {
+    crews.map(async (n) => {
       for (let s = 0; s < SESSIONS; s++) {
         const j = new Jar();
-        const r = await j.req('POST', '/api/auth/login', { mode: 'CREW', identifier: c.email, password: c.password });
+        const r = await j.req('POST', `${V}/auth/crew-login`, { identifier: `CRW-${String(n).padStart(3, '0')}`, password: demoCrewPassword(n) });
         record('login', r.ms, r.status);
-        if (r.status === 200) jars.push(j);
+        if (r.status === 200) jars.push({ jar: j, n, mine: Math.ceil(n / 10) === SLOT });
       }
     }),
   );
-  console.log(`[sim] ${jars.length} sessions signed in`);
+  console.log(`[sim] ${jars.length} sessions signed in (${crews.length} crews × ${SESSIONS})`);
 
-  // Solutions for correct solves (simulator-only, read from server templates + DB mapping).
-  const tasks = await many<{ id: string; source_template: string; source_variant: number; generation: number }>(
-    db,
-    `SELECT ti.id, pv.source_template, pv.source_variant, ti.generation FROM task_instance ti JOIN problem_version pv ON pv.id=ti.problem_version_id
-      WHERE ti.game_id=$1 AND ti.sprint_id=(SELECT id FROM sprint WHERE game_id=$1 AND status='RUNNING' LIMIT 1)`,
-    [game.id],
+  // Simulator-only answer key, read directly from the private solutions.
+  const solutions = new Map(
+    (
+      await many<{ id: string; generation: number; validation: { mode: string }; solution: { answer?: string; files?: Record<string, string> } }>(
+        db,
+        `SELECT qi.id, qi.generation, qv.validation, qv.solution FROM question_instance qi JOIN question_version qv ON qv.id=qi.question_version_id WHERE qi.slot_id=$1`,
+        [slot.id],
+      )
+    ).map((r) => [r.id, r.validation.mode === 'CODE_TESTS' ? { generation: r.generation, files: r.solution.files } : { generation: r.generation, answer: String(r.solution.answer) }]),
   );
-  const solution = (t: (typeof tasks)[number]) => {
-    const tpl = [...regularTemplates, ...imposterTemplates].find((x) => x.key === t.source_template)!;
-    const v = tpl.variant(t.source_variant as 0 | 1 | 2 | 3);
-    const files = Object.fromEntries(v.files.map((f) => [f.name, f.content]));
-    return v.validation.mode === 'CODE_TESTS' ? { generation: t.generation, files: { ...files, ...v.solution.files } } : { generation: t.generation, answer: v.solution.answer };
-  };
 
-  // 3) observer socket for propagation latency
+  // Observer in the slot: solve → broadcast latency. A crew of another slot must see nothing.
   const pending = new Map<string, number>();
   const prop: number[] = [];
-  const obs = io(BASE, { path: '/socket.io', transports: ['websocket'], extraHeaders: { cookie: jars[0]?.cookie ?? '' } });
-  obs.on('task.solved', (m: { taskId: string }) => {
-    const t = pending.get(m.taskId);
+  let leaked = 0;
+  const observer = jars.find((j) => j.mine)!;
+  const obs = io(BASE, { path: '/socket.io', transports: ['websocket'], extraHeaders: { cookie: observer.jar.cookie, origin: BASE } });
+  obs.on('question.solved', (m: { instanceId: string }) => {
+    const t = pending.get(m.instanceId);
     if (t) {
       prop.push(performance.now() - t);
-      pending.delete(m.taskId);
+      pending.delete(m.instanceId);
     }
   });
+  const outsider = jars.find((j) => !j.mine);
+  const out = outsider ? io(BASE, { path: '/socket.io', transports: ['websocket'], extraHeaders: { cookie: outsider.jar.cookie, origin: BASE } }) : null;
+  out?.on('question.solved', (m: { slotId: string }) => {
+    if (m.slotId === slot.id) leaked++;
+  });
 
-  // 4) traffic
   const end = Date.now() + DURATION * 1000;
   let solves = 0;
   await Promise.all(
-    jars.map(async (j, idx) => {
-      await new Promise((r) => setTimeout(r, Math.random() * 3000));
+    jars.map(async ({ jar, mine }, idx) => {
+      await sleep(Math.random() * 3000);
       while (Date.now() < end) {
-        const st = await j.req('GET', '/api/game/state');
+        const st = await jar.req('GET', `${V}/slots/mine/state`);
         record('state', st.ms, st.status);
-        const avail = (st.body?.tasks?.tasks ?? []).filter((t: { state: string }) => t.state === 'AVAILABLE');
-        if (avail.length && st.body?.game?.phase === 'RUNNING') {
+        if (!mine) {
+          if (st.body?.slot?.id === slot.id) leaked++;
+          await sleep(THINK * 1000);
+          continue;
+        }
+        const avail = [...(st.body?.questions ?? [])].filter((t: { state: string }) => t.state === 'AVAILABLE');
+        if (avail.length && st.body?.sprint?.status === 'RUNNING') {
           const t = avail[Math.floor(Math.random() * avail.length)];
           const roll = Math.random();
-          if (roll < 0.35) {
-            const d = await j.req('GET', `/api/game/tasks/${t.id}`);
-            record('open_task', d.ms, d.status);
-          } else if (roll < 0.5) {
-            const r = await j.req('POST', `/api/game/tasks/${t.id}/submit`, { generation: t.generation, answer: 'definitely-wrong', files: {} }, key());
+          if (roll < 0.3) {
+            const d = await jar.req('GET', `${V}/question-instances/${t.id}`);
+            record('open_question', d.ms, d.status);
+          } else if (roll < 0.45) {
+            const r = await jar.req('POST', `${V}/question-instances/${t.id}/submissions`, { generation: t.generation, answer: 'definitely-wrong', files: {} }, key());
             record('submit_wrong', r.ms, r.status);
-          } else if (roll < 0.62 && idx % SESSIONS === 0) {
-            const row = tasks.find((x) => x.id === t.id);
-            if (row) {
-              const before = performance.now();
-              pending.set(t.id, before);
-              const r = await j.req('POST', `/api/game/tasks/${t.id}/submit`, solution(row), key());
+          } else if (roll < 0.58 && idx % SESSIONS === 0) {
+            const sol = solutions.get(t.id);
+            if (sol) {
+              pending.set(t.id, performance.now());
+              const r = await jar.req('POST', `${V}/question-instances/${t.id}/submissions`, sol, key());
               record('submit_correct_attempt', r.ms, r.status);
               if (r.body?.correct) solves++;
             }
-          } else if (roll < 0.7) {
-            const r = await j.req('POST', `/api/game/tasks/${t.id}/hint`, {}, key());
+          } else if (roll < 0.66) {
+            const r = await jar.req('POST', `${V}/question-instances/${t.id}/hint-purchases`, {}, key());
             record('hint', r.ms, r.status);
-          } else if (roll < 0.75) {
-            const r = await j.req('POST', '/api/game/run', { target: { type: 'TASK', id: t.id }, files: {}, stdin: '' });
-            record('run', r.ms, r.status);
+          } else if (roll < 0.74) {
+            const r = await jar.req('GET', `${V}/leaderboards?scope=${['sprint', 'cumulative', 'event'][Math.floor(Math.random() * 3)]}`);
+            record('leaderboard', r.ms, r.status);
           }
         }
-        await new Promise((r) => setTimeout(r, THINK * 1000 * (0.6 + Math.random() * 0.8)));
+        await sleep(THINK * 1000 * (0.6 + Math.random() * 0.8));
       }
     }),
   );
   obs.close();
+  out?.close();
 
-  console.log(`\n[sim] SIMULATED REHEARSAL REPORT — ${jars.length} sessions (${creds.length} crews × ${SESSIONS}), ${DURATION}s, ${solves} correct solves`);
+  console.log(`\n[sim] SIMULATED REHEARSAL REPORT — ${slot.name}, ${jars.length} sessions, ${DURATION}s, ${solves} correct solves`);
   console.log('op'.padEnd(26), 'count'.padStart(6), 'p50ms'.padStart(8), 'p95ms'.padStart(8), 'maxms'.padStart(8), '5xx'.padStart(5));
   for (const [op, a] of Object.entries(lat)) {
     console.log(op.padEnd(26), String(a.length).padStart(6), pct(a, 50).toFixed(0).padStart(8), pct(a, 95).toFixed(0).padStart(8), Math.max(...a).toFixed(0).padStart(8), String(errs[op] ?? 0).padStart(5));
   }
   console.log('solve→broadcast'.padEnd(26), String(prop.length).padStart(6), pct(prop, 50).toFixed(0).padStart(8), pct(prop, 95).toFixed(0).padStart(8), (prop.length ? Math.max(...prop) : 0).toFixed(0).padStart(8));
+  console.log(`cross-slot leaks observed: ${leaked}${ALL ? '' : ' (run with --all to check other slots)'}`);
   await db.end();
   process.exit(0);
 }

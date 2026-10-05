@@ -57,7 +57,7 @@ let stopping = false;
 const stopAll = () => {
   if (stopping) return;
   stopping = true;
-  console.log('Stopping AMONG BUGS stack…');
+  console.log('Stopping AMONG BUG stack…');
   // Stop the database last so the API/worker can shut down cleanly.
   [...children].reverse().forEach(killTree);
   setTimeout(() => process.exit(0), 1500);
@@ -106,7 +106,7 @@ if (LIVE) {
     const m = d.toString().match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
     if (m && !announced) {
       announced = true;
-      console.log(`\n  ===============================================================\n  AMONG BUGS IS LIVE  ->  ${m[0]}\n  (local: http://127.0.0.1:${PORT})   Ctrl+C stops everything\n  ===============================================================\n`);
+      console.log(`\n  ===============================================================\n  AMONG BUG IS LIVE  ->  ${m[0]}\n  (local: http://127.0.0.1:${PORT})   Ctrl+C stops everything\n  ===============================================================\n`);
     }
   };
   tunnel.stdout.on('data', scan);
@@ -115,5 +115,5 @@ if (LIVE) {
   tunnel.on('exit', (code) => !stopping && console.log(`[live] tunnel exited (${code})`));
 } else {
   if (!args.has('--no-web')) run('web', 'npx', ['vite', '--host', '127.0.0.1', '--port', '5173'], join(root, 'web'), 0);
-  console.log('\n  AMONG BUGS is starting →  http://127.0.0.1:5173   (API http://127.0.0.1:4000)\n');
+  console.log('\n  AMONG BUG is starting →  http://127.0.0.1:5173   (API http://127.0.0.1:4000)\n');
 }

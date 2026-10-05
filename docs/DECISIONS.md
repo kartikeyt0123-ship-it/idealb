@@ -1,44 +1,77 @@
-# Rules, conflicts and decisions
+# Rules, conflicts and decisions (four-slot format)
 
-## Conflict resolutions (as specified, implemented)
+The source of truth for the format is the four-slot brief `AMONG_BUG_Four_Slots_Claude_Code_Prompt.md`
+(supplied by the organizers, not stored in this repo). It supersedes
+the earlier two-game / two-sprint brief. This file records how conflicts were resolved and which
+defaults are **demo defaults that organizers must confirm**.
 
-| Earlier source said | Implemented |
+## Format
+
+| Item | Implemented |
 |---|---|
-| Four-sprint event | Two independent games (Game 1 → Day 1, Game 2 → Day 2; mapping configurable), each with Sprint 1 and Sprint 2. |
-| Five domains | Six data-driven domains: Web Development, Data, Data Structures, Basic Programming, Designing, Miscellaneous. |
-| Regular tasks lock on selection | Regular tasks are open to every eligible crew. Opening never reserves. The first correct, server-accepted solution wins. |
-| Next round starts automatically | Crews wait in the lobby. Sprint 2 starts only when a commander presses **Activate Sprint 2**. |
-| Free hints | Hints cost IdeaCoins and are unlocked only by a successful server-side purchase. The hint text never reaches the browser before that. |
-| Member accounts | One shared crew identity, card and character. The 3–4 member roster is stored without individual accounts. |
-| Static safe / uncertain / danger percentages | Zones are derived from the configured elimination count K for the running sprint and labelled provisional. |
-| Access denied returns to the command room | A denied swipe closes the reader and returns the crew to the safe lobby. No admin data is requested. |
+| Name | Display name **AMONG BUG** (centralised in `event.name`, editable in the console). Organizer IDEALab.h, edition AAROHAN 2026, venue SGSITS Indore, timezone Asia/Kolkata. |
+| Days and slots | 2 days (demo dates **8 and 9 October 2026**), 2 slots per day: Slot 1, Slot 2 on day 1 and Slot 3, Slot 4 on day 2. Every crew is enrolled in **exactly one** slot (`slot_enrollment.team_id` is unique). |
+| Sprints | 4 sprints per slot, 30 active minutes each (STANDARD). The organizer **explicitly starts every sprint**; dates and clock times never start anything. |
+| Concurrency | One running slot at a time (rule `singleRunningSlot`, enforced in preflight under an advisory lock). |
+| First solve | The first correct, server-accepted answer closes a question **within its slot only**. Slots never share question versions, so there is no cross-slot answer leakage. |
+| Leaderboards | Sprint board (starts at zero each sprint: only ledger rows attributed to that sprint count), slot cumulative board (sum of the four sprints), overall board across slots (**PROVISIONAL** until the event is finalized). |
+| Registration | No public registration. Crews are imported from CSV/XLSX by organizers. The old `/api/auth/register` does not exist (404). |
+| Credentials | Never sent on import. **Send Credentials** is an explicit organizer action with a preview. Demo mode captures mail locally ("demo mail, not delivered externally"). With a local SMTP sink (Mailpit, `MAIL_SINK=true`) the console says so too. Without a transport, sending is refused (`MAIL_NOT_CONFIGURED`), never reported as delivered. |
 
-## Provisional rules — organizers must confirm before the real event
+## Demo defaults — UNCONFIRMED until confirmed in Rules review
 
-| Topic | Provisional default (demo) | Where to change |
+Every rule below is listed in the console's **Rules review** with an UNCONFIRMED badge. Demo
+mode may start on unconfirmed rules (preflight shows a warning). **A non-demo event cannot start
+a sprint until every rule is confirmed.** Changing a rule clears its confirmation. Rules freeze
+when the first sprint of any slot starts.
+
+| Rule key | Demo default | Alternatives |
 |---|---|---|
-| Sprint durations | 30 min (STANDARD). REHEARSAL preset is 120 s. | Console → Game & Sprint |
-| Elimination counts | Demo only: 2 after Sprint 1 and 3 after Sprint 2 (10 → 8 → 5). The real counts must be set for the real roster; preflight blocks impossible plans. | Game & Sprint |
-| Score basis | `NET_COINS` (earned − spent; buying hints lowers score). `GROSS_EARNED` is available. It must be explicitly confirmed and is frozen at Sprint 1. | Game & Sprint |
-| Prize places | 3 places with placeholder labels. No monetary amounts were invented. | Game & Sprint → prizes |
-| Rewards / hint costs | 150 / 400 / 700 and 30 / 80 / 140 by difficulty. Imposters pay 900 with a hint cost of 100. | Problem Library (per version), Imposters |
-| Ties at the elimination cutoff | Confirmation stops. Organizers choose: retain the tied group, eliminate the tied group, or record a manual published tiebreak (note required). | Elimination |
-| Ties at prize places | Confirmation stops. Organizers choose: share the place, or a manual published order (note required). | Elimination → Results |
-| Hint bought, then another crew wins the task | No refund. The purchase stays visible in game history; no new hints can be bought on a solved task. | Rule text |
-| Cutoff | A solve counts only if the server accepts it **before** the authoritative deadline (DB clock, under lock). Code judging must finish before the deadline. | Fixed |
-| Sprint-2 task policy | Fresh Sprint-2 tasks. `recycleEliminatedSolves` is off. If enabled, only tasks solved by ejected crews reopen as a new generation. | Game & Sprint |
-| Problem reuse | Day 2 uses different variants (v2 / v3) from Day 1 (v0 / v1). No exposed answer is reused. | Library / assignment |
-| Session limit | 4 devices per crew. A 5th sign-in evicts the least recently used device (or use `REJECT`). Drafts are per device. | Game & Sprint → event |
-| Imposter mode | RESERVE (first claim wins exclusive access). While a crew holds it, that crew's regular submissions and hints are blocked server-side. OPEN (first correct wins) is available. | Game & Sprint |
-| Imposter windows | Claim 60 s, solve 480 s (STANDARD); claim 20 s, solve 70 s (REHEARSAL). The effective solve deadline is the earlier of the solve window and the sprint end. Timeouts expire with no award; re-arm creates a new generation. | Imposters |
-| Starting coins | 0. Grants are wallet funding, not score. | Game & Sprint |
-| Disqualification | GAME scope affects one game; EVENT scope blocks both days. History is kept; corrections are audited. | Crew |
+| `questionScope` | FRESH_PER_SPRINT: a fresh release of 60 questions each sprint (10 per domain), expiring at sprint end | SLOT_POOL: one 60-question pool per slot carried across the four sprints (solves count for the sprint in which they are accepted) |
+| `initialPerDomain` | 5 easy / 3 medium / 2 hard per domain (30 / 18 / 12 across six domains) | any counts |
+| `extraPools` | 20 reserves + 10 bonuses **per slot**, separate from the initial questions | PER_SPRINT scope |
+| `rewards` | 150 / 400 / 700, bonus 900 IdeaCoins | |
+| `hintCosts` | 30 / 80 / 140, bonus 100; starting wallet 0 | |
+| `rankingMetric` | **GROSS_EARNED**: score = coins earned; hints reduce the spendable wallet only | NET_COINS: earned − spent |
+| `bonusPolicy` | Open to every active crew in the slot; first correct verified answer wins. No claim / reserve step. | |
+| `elimination` | **Disabled** (the latest format does not restate elimination) | Optional per-sprint counts; ties at the cutoff need a published decision |
+| `tiePolicy` | Shared rank. Ties involving prize places need a published decision (share the place, or a manual order with a note). Never broken by team ID. | |
+| `sessions` | Up to 4 concurrent devices per crew, one shared wallet; the oldest device is signed out | REJECT extra sign-ins |
+| `recycling` | Off: solved or expired questions never reopen | |
+| `schedule` | 4 × 30 active minutes. Reserves 5 per sprint. Bonuses 3 / 3 / 2 / 2 at active minutes [8, 16, 24], [8, 16, 24], [10, 20], [10, 20]. The **REHEARSAL** preset makes a sprint 120 s and scales the offsets (8 min → 32 s). | CUSTOM minutes |
+| `singleRunningSlot` | Only one slot may run at a time | allow parallel slots |
 
-## Task pool sufficiency
+## Fairness across slots
 
-Each sprint has 30 regular tasks and every task has exactly one winner. With many crews, a large
-share will finish a sprint with zero, and zero-score ties at the cutoff become likely.
-The preflight warns about this, and the tie workflow handles it explicitly.
-The load rehearsal (100 crews) used up a whole sprint's pool within about two minutes of
-aggressive simulated play. Add tasks or use timed release windows (release / close offsets per
-task) if the roster is large. The scoring rule is never silently changed to hide this.
+- Every slot gets its plan from the **same blueprint**, so question counts, difficulty mix, release
+  times and reward budget are identical. Each slot uses different question versions.
+- Preflight compares every slot's plan with the others (counts and reward budget per sprint and
+  type). It warns "not comparable" when they differ. Raw totals are **not normalised**; the
+  overall board is therefore labelled provisional until organizers finalize it.
+- **Manual or early releases are fairness deviations.** They need a reason (≥ 8 characters for
+  manual releases), are flagged in the release plan and preflight, and are written to the audit
+  log. A sprint that closes cancels its unreleased releases; they are never replayed later.
+
+## Conflict resolutions
+
+| Earlier brief said | Now |
+|---|---|
+| Two independent games (Game 1 → Day 1, Game 2 → Day 2), two sprints each, elimination after each sprint | Four slots × four sprints; one slot per crew; elimination optional and off by default |
+| Self-registration with organizer approval per day | Organizer import only (CSV/XLSX with preview and commit) |
+| Imposter: first claim reserves it exclusively, then a solve window | Bonus questions are open to everyone in the slot; first correct wins |
+| NET_COINS default score | GROSS_EARNED default (NET_COINS optional) |
+| 4 fixed variants per template | Seedable templates (`variant(seed)`); the demo bank has 1,296 questions from 34 templates |
+| Card-swipe gate in the ship for commanders | Organizers sign in with **Organizer Login** and use `/command`; crews get ACCESS DENIED there |
+
+## Slot changes after scoring
+
+Re-importing or editing a crew never resets its password, history or slot silently. A slot change
+for a crew that already has ledger rows is **blocked** (`SLOT_CHANGE_BLOCKED`), both in the editor
+and in imports. Scores are never transferred between opponents; such a case is an audited
+correction (pause, adjust with compensating ledger entries, note in the audit log).
+
+## Question pool sufficiency
+
+With 10 crews and 60 questions per sprint, a sprint rarely runs out. If a slot does, release a
+reserve batch (no reason needed: reserves are part of the plan) before considering a manual
+override, which is a fairness deviation.

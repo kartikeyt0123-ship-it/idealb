@@ -1,231 +1,179 @@
-/** DTOs for the commander (admin) API — mirrors server/src/routes/admin.ts + services. */
-import type { GameDto, ResultRow, SprintDto, Standing } from '../lib/api';
-
-export type AdminRole = 'SUPER_ADMIN' | 'OPERATOR' | 'CONTENT_EDITOR';
+/**
+ * Organizer console DTOs. They mirror the server responses in
+ * server/src/services/{admin,lifecycle,releases,teams,content,display,rules}.ts
+ * and server/src/routes/admin.ts. Snake_case fields come straight from SQL rows.
+ */
+import type { SlotDto, SprintDto } from '../lib/api';
 
 export type Permission =
-  | 'crews.read' | 'crews.write' | 'game.control' | 'coins.adjust' | 'content.read' | 'content.write'
-  | 'content.solutions' | 'results.confirm' | 'disqualify' | 'event.config' | 'audit.read' | 'exports';
+  | 'teams.read' | 'teams.write' | 'credentials.send' | 'slots.control' | 'releases.manage' | 'coins.adjust'
+  | 'content.read' | 'content.write' | 'content.publish' | 'content.solutions' | 'results.finalize' | 'disqualify'
+  | 'rules.manage' | 'audit.read' | 'exports' | 'display.manage' | 'mail.read';
 
-/** Client mirror of server/src/http.ts ROLE_PERMS (the server enforces; this only hides controls). */
-export const ROLE_PERMS: Record<AdminRole, Permission[]> = {
-  SUPER_ADMIN: ['crews.read', 'crews.write', 'game.control', 'coins.adjust', 'content.read', 'content.write', 'content.solutions', 'results.confirm', 'disqualify', 'event.config', 'audit.read', 'exports'],
-  OPERATOR: ['crews.read', 'crews.write', 'game.control', 'coins.adjust', 'content.read', 'audit.read', 'exports'],
-  CONTENT_EDITOR: ['crews.read', 'content.read', 'content.write', 'content.solutions'],
-};
-
-export interface DayRow {
-  id: string;
-  day_number: number;
-  label: string;
-  date: string | null;
-}
+export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
+export type ReleaseType = 'INITIAL' | 'RESERVE' | 'BONUS';
+export type ReleaseStatus = 'PENDING' | 'SCHEDULED' | 'RELEASED' | 'CANCELLED';
 
 export interface Preflight {
   ok: boolean;
   blockers: string[];
   warnings: string[];
   summary: string[];
-  activeCount: number;
-  plan: { sprint: number; active: number; eliminate: number | null; survive: number | null }[];
+  unconfirmedRules: string[];
 }
 
-export interface AdminStanding extends Standing {
-  enrollmentId: string;
-  teamId: string;
-  wallet: number;
-  scoreAdjust: number;
-}
-
-export type ImposterStatus = 'DRAFT' | 'OFFERED' | 'RESERVED' | 'SOLVED' | 'EXPIRED' | 'CANCELLED';
-
-export interface AdminImposter {
+export interface ReleaseRow {
   id: string;
+  type: ReleaseType;
   label: string;
-  status: ImposterStatus;
-  mode: 'RESERVE' | 'OPEN' | null;
-  reward: number;
-  hint_cost: number;
-  claim_seconds: number;
-  solve_seconds: number;
+  status: ReleaseStatus;
+  offset_seconds: number | null;
+  manual: boolean;
+  deviation_reason: string | null;
   released_at: string | null;
-  claim_deadline_at: string | null;
-  open_deadline_at: string | null;
-  generation: number;
-  resolution_note: string | null;
-  sprint: number;
-  title: string;
-  difficulty: string;
-  reservation: { crew: string; status: string; solveDeadlineAt: string | null } | null;
+  announcement: string | null;
+  sprint: number | null;
+  questions: number;
+  solved: number;
+  expired: number;
+  available: number;
+  budget: number;
 }
 
-export interface AdminGame extends GameDto {
-  dayId: string | null;
-  rankingMetricConfirmed: boolean;
-  startingCoins: number;
-  recycleEliminatedSolves: boolean;
-  rulesFrozenAt: string | null;
+export interface OverviewSlot extends SlotDto {
+  dayNumber: number;
   sprints: SprintDto[];
-  standings: { active: AdminStanding[]; inactive: AdminStanding[] };
-  preflight: Preflight | null;
+  counts: { crews: number; enabled: number; checked_in: number; sessions: number };
+  releases: ReleaseRow[];
   nextSprint: number | null;
-  prizes: { place: number; label: string }[];
-  imposters: AdminImposter[];
-  result: { rows: ResultRow[]; note: string | null; confirmed_at: string } | null;
+  preflight: Preflight | null;
+  result: { rows: ResultPlacement[]; note: string | null; confirmed_at: string } | null;
+}
+
+export interface ResultPlacement {
+  place: number;
+  enrollmentId?: string;
+  crewId: string;
+  name: string;
+  score: number;
+  slotNumber?: number;
+  prize?: string | null;
+}
+
+export interface Rules {
+  questionScope: 'FRESH_PER_SPRINT' | 'SLOT_POOL';
+  initialPerDomain: Record<Difficulty, number>;
+  extraScope: 'PER_SLOT' | 'PER_SPRINT';
+  reservesPerSlot: number;
+  bonusesPerSlot: number;
+  rewards: Record<Difficulty | 'BONUS', number>;
+  hintCosts: Record<Difficulty | 'BONUS', number>;
+  startingWallet: number;
+  rankingMetric: 'GROSS_EARNED' | 'NET_COINS';
+  bonusPolicy: string;
+  elimination: { enabled: boolean; counts: number[] };
+  tiePolicy: string;
+  sessionLimit: number;
+  sessionLimitPolicy: 'EVICT_OLDEST' | 'REJECT';
+  recycling: false;
+  singleRunningSlot: boolean;
+  sprintsPerSlot: 4;
+  sprintMinutes: number;
+  preset: 'STANDARD' | 'REHEARSAL' | 'CUSTOM';
+  blueprint: { reservesPerSprint: number[]; bonusesPerSprint: number[]; bonusOffsetsMinutes: number[][] };
+}
+
+export interface RuleReviewRow {
+  key: string;
+  title: string;
+  fairness: boolean;
+  description: string;
+  confirmed: { by: string; byName: string; at: string } | null;
+}
+
+export interface Coverage {
+  initial: { domain: string; difficulty: Difficulty; need: number; have: number }[];
+  reserves: { need: number; have: number };
+  bonuses: { need: number; have: number };
 }
 
 export interface Overview {
   serverTime: string;
   event: {
-    id: string;
-    name: string;
-    isDemo: boolean;
-    timezone: string;
-    daySelectionMode: 'AUTO' | 'MANUAL';
-    manualDayId: string | null;
-    sessionLimit: number;
-    sessionLimitPolicy: 'EVICT_OLDEST' | 'REJECT';
+    id: string; name: string; organizer: string; edition: string; venue: string; timezone: string; isDemo: boolean;
+    phase: 'OPEN' | 'FINAL_REVIEW' | 'FINALIZED'; finalizedAt: string | null; rulesFrozenAt: string | null; version: number;
   };
-  days: DayRow[];
-  currentDay: DayRow | null;
-  games: AdminGame[];
-  me: { name: string; role: AdminRole; email: string };
+  rules: Rules;
+  ruleReview: RuleReviewRow[];
+  unconfirmed: string[];
+  days: { id: string; day_number: number; label: string; date: string }[];
+  slots: OverviewSlot[];
+  prizes: { place: number; label: string }[];
+  eventResult: { rows: ResultPlacement[]; note: string | null; confirmed_at: string } | null;
+  bank: Coverage;
+  me: { name: string; email: string; role: string; permissions: Permission[] };
 }
 
-export interface CrewMember {
-  position: number;
+/** Full board row (organizer-only reviews include enrollment ids). */
+export interface ReviewRow {
+  enrollmentId: string;
+  teamId?: string;
+  crewId: string;
+  name: string;
+  color?: string;
+  slotNumber?: number;
+  score: number;
+  cumulative: number;
+  rank: number | null;
+  solves?: number;
+}
+
+export interface TopConflict {
+  score: number;
+  enrollmentIds: string[];
+  positions: number[];
+}
+
+export interface TeamMember {
+  position?: number;
   name: string;
   institution: string;
   year: string;
   branch: string;
-  studentId: string | null;
-  isCaptain: boolean;
+  studentId?: string | null;
 }
 
-export interface CrewDisqualification {
-  id: string;
-  scope: 'GAME' | 'EVENT';
-  gameId: string | null;
-  reason: string;
-  createdAt: string;
-}
-
-export type CrewEnrollment = Standing & { enrollmentId: string; wallet: number };
-
-export interface CrewRow {
+export interface TeamRow {
   id: string;
   crew_id: string;
   name: string;
   email: string;
   captain_name: string;
   color: string;
-  requested_days: 'DAY1' | 'DAY2' | 'BOTH';
+  account_enabled: boolean;
+  checked_in_at: string | null;
   status: 'ACTIVE' | 'ARCHIVED';
+  credential_status: 'NONE' | 'ISSUED' | 'DELIVERED';
   created_via: string;
-  created_at: string;
+  has_credentials: boolean;
   must_change_password: boolean;
-  live_sessions: number;
-  members: CrewMember[] | null;
-  days: Record<string, { active: boolean; checkedInAt: string | null }> | null;
-  disqualifications: CrewDisqualification[] | null;
-  enrollments: Record<string, CrewEnrollment | null>;
+  slot_id: string | null;
+  slot_number: number | null;
+  slot_name: string | null;
+  slot_date: string | null;
+  enrollment_status: 'ACTIVE' | 'ELIMINATED' | 'DISQUALIFIED' | null;
+  enrollment_id: string | null;
+  sessions: number;
+  members: TeamMember[] | null;
+  disqualifications: { id: string; reason: string; createdAt: string }[] | null;
+  last_credential_at: string | null;
+  standing: { wallet: number; cumulative: number; perSprint: Record<string, number>; rank: number | null; solves: number } | null;
 }
 
-export interface CrewList {
-  days: DayRow[];
-  games: { id: string; number: number; name: string; dayId: string | null }[];
-  crews: CrewRow[];
-}
-
-export interface SessionRow {
-  id: string;
-  created_at: string;
-  last_seen_at: string | null;
-  expires_at: string;
-  user_agent: string | null;
-  ip: string | null;
-}
-
-export interface BulkPreview {
-  applied: boolean;
-  preview: { day: number; active: boolean; changes: { crewId: string; name: string }[]; unchanged: number; warnings: string[] };
-}
-
-export interface CreatedCrew {
-  crewId: string;
-  teamName: string;
-  email: string;
-  temporaryPassword: string;
-}
-
-export interface AdminTask {
-  id: string;
-  label: string;
-  status: string;
-  generation: number;
-  release_offset_seconds: number;
-  close_offset_seconds: number | null;
-  solved_at: string | null;
-  sprint: number;
-  domain: string;
-  title: string;
-  difficulty: string;
-  reward: number;
-  hint_cost: number;
-  version_id: string;
-  problem_key: string;
-  solved_by_crew: string | null;
-  solved_by_name: string | null;
-  hints_bought: number;
-  attempts: number;
-}
-
-export interface LedgerRow {
-  id: string | number;
-  kind: string;
-  wallet_delta: number;
-  earned_delta: number;
-  spent_delta: number;
-  grant_delta: number;
-  score_delta: number;
-  wallet_after: number;
-  source_type: string;
-  reason: string | null;
-  created_at: string;
-  crew_id: string;
-  team_name: string;
-  actor: string | null;
-}
-
-export interface TieConflict {
-  score: number;
-  tiedEnrollmentIds: string[];
-  needFromTie: number;
-  strictlyBelow: string[];
-}
-
-export type ReviewRow = Standing & { enrollmentId: string };
-
-export interface EliminationReview {
-  sprint: number;
-  finalSprint: boolean;
-  prizePlaces: number;
-  preview: { activeCount: number; eliminateCount: number; survivors: number; proposed: string[]; tie: TieConflict | null };
-  rows: ReviewRow[];
-  gameVersion: number;
-}
-
-export interface ResultsReview {
-  rows: ReviewRow[];
-  prizes: { place: number; label: string }[];
-  conflicts: { score: number; enrollmentIds: string[]; positions: number[] }[];
-  gameVersion: number;
-}
-
-export interface ProblemRow {
+export interface BankQuestion {
   id: string;
   key: string;
-  kind: 'REGULAR' | 'IMPOSTER';
+  pool: 'REGULAR' | 'BONUS';
   title: string;
   is_demo: boolean;
   archived: boolean;
@@ -233,66 +181,25 @@ export interface ProblemRow {
   domain_name: string;
   version_id: string;
   version_no: number;
-  status: 'DRAFT' | 'PUBLISHED' | string;
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
-  reward: number;
-  hint_cost: number;
+  status: 'DRAFT' | 'REVIEWED' | 'PUBLISHED' | 'ARCHIVED';
+  difficulty: Difficulty;
   workspace: string;
   run_language: string | null;
-  validation_mode: string | null;
+  validation_mode: 'EXACT_TEXT' | 'NUMERIC' | 'CODE_TESTS';
   uses: number;
-  imposter_uses: number;
 }
 
-export interface ProblemFile {
-  name: string;
-  language: string;
-  content: string;
-  readOnly?: boolean;
+export interface BankResponse {
+  questions: BankQuestion[];
+  coverage: Coverage;
 }
 
-export interface ProblemVersionDetail {
-  id: string;
-  problem_id: string;
-  version_no: number;
-  status: string;
-  title: string;
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
-  statement: string;
-  workspace: string;
-  run_language: 'javascript' | 'python' | null;
-  run_entry: string | null;
-  files: ProblemFile[];
-  sample_stdin: string | null;
-  answer_format: string;
-  validation: Record<string, unknown> & { mode?: string };
-  hint: string;
-  solution?: { explanation?: string; files?: Record<string, string>; answer?: string };
-  reward: number;
-  hint_cost: number;
-  published_at: string | null;
-  key: string;
-  kind: 'REGULAR' | 'IMPOSTER';
-  domain: string;
-}
-
-export interface HealthReport {
-  db: { ok: boolean; latencyMs: number };
-  workers: { name: string; ageSeconds: number; healthy: boolean; info: unknown }[];
-  outbox: { latestId: number | string; deliveredThrough: number; lag: number };
-  runner: { ok: boolean; runtimes?: Record<string, string | null>; error?: string };
-  sockets: number;
-  deadlines: { game: number; sprint: number; status: string; deadline_at: string }[];
-}
-
-export interface AuditRow {
-  id: string | number;
-  actor_type: string;
-  action: string;
-  target_type: string | null;
-  target_id: string | null;
-  reason: string | null;
-  details: unknown;
-  created_at: string;
-  actor_name: string | null;
-}
+export const TEAM_IMPORT_COLUMNS = [
+  'team_name', 'crew_id', 'captain_email',
+  'member1_name', 'member1_institution', 'member1_year', 'member1_branch', 'member1_student_id',
+  'member2_name', 'member2_institution', 'member2_year', 'member2_branch', 'member2_student_id',
+  'member3_name', 'member3_institution', 'member3_year', 'member3_branch', 'member3_student_id',
+  'member4_name', 'member4_institution', 'member4_year', 'member4_branch', 'member4_student_id',
+  'slot', 'account_enabled', 'checked_in',
+] as const;
+export const REQUIRED_IMPORT_COLUMNS = ['team_name', 'captain_email', 'member1_name'];

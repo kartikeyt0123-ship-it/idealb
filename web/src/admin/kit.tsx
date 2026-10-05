@@ -2,13 +2,12 @@
  * Commander console kit: shared context, data hooks, the in-console
  * confirmation dialog and small terminal-styled widgets.
  */
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, X } from 'lucide-react';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ApiError, api, serverNow } from '../lib/api';
+import { ApiError, api, serverNow, type OrganizerIdentity } from '../lib/api';
 import { Button, Label, StatePanel, Timer, useToast } from '../components/ui';
-import type { AdminGame, AdminRole, Overview, Permission } from './types';
-import { ROLE_PERMS } from './types';
+import type { Overview, Permission } from './types';
 
 // ---------------------------------------------------------------------------
 // Style tokens (Figma "Ship command terminal")
@@ -38,7 +37,7 @@ export function toApiError(e: unknown): ApiError {
 export function errText(e: unknown): string {
   const err = toApiError(e);
   const fields = Object.entries(err.fields);
-  if (err.code === 'STALE_VERSION') return 'STALE VERSION — the game changed since you loaded it. The latest state was reloaded; review it and try again.';
+  if (err.code === 'STALE_VERSION') return 'STALE VERSION — this changed since you loaded it. The latest state was reloaded; review it and try again.';
   if (fields.length && !fields.some(([, m]) => err.message.includes(m))) return `${err.message} (${fields[0][0]}: ${fields[0][1]})`;
   return err.message;
 }
@@ -57,17 +56,18 @@ export interface ConfirmOptions {
   reason?: { label: string; min: number; placeholder?: string };
   /** Checkbox the commander must tick before confirming. */
   ack?: string;
+  /** Confirm stays disabled (e.g. preflight blockers). */
+  blocked?: boolean;
 }
 export type ConfirmFn = (o: ConfirmOptions) => Promise<{ reason: string } | null>;
 
 export interface ConsoleCtxValue {
   overview: Overview;
-  role: AdminRole;
+  me: OrganizerIdentity;
   refreshKey: number;
   can: (p: Permission) => boolean;
   reloadOverview: () => Promise<void>;
   confirm: ConfirmFn;
-  standalone: boolean;
 }
 
 export const ConsoleCtx = createContext<ConsoleCtxValue | null>(null);
@@ -75,10 +75,6 @@ export function useConsole(): ConsoleCtxValue {
   const c = useContext(ConsoleCtx);
   if (!c) throw new Error('useConsole outside CommandConsole');
   return c;
-}
-
-export function canRole(role: AdminRole, p: Permission) {
-  return ROLE_PERMS[role]?.includes(p) ?? false;
 }
 
 /**
@@ -279,28 +275,6 @@ export function Segmented<T extends string | number>({ value, options, onChange,
   );
 }
 
-export function GamePicker({ value, onChange }: { value: string | null; onChange: (id: string) => void }) {
-  const { overview } = useConsole();
-  if (!overview.games.length) return null;
-  return (
-    <Segmented
-      label="Choose game"
-      value={value ?? ''}
-      onChange={onChange}
-      options={overview.games.map((g) => ({ value: g.id, label: `GAME ${g.number} · ${g.phase.replace(/_/g, ' ')}` }))}
-    />
-  );
-}
-
-/** Keeps a selected game id valid against the overview (defaults to the live one). */
-export function useSelectedGame(): [AdminGame | null, (id: string) => void] {
-  const { overview } = useConsole();
-  const [id, setId] = useState<string | null>(null);
-  const live = overview.games.find((g) => ['RUNNING', 'PAUSED', 'ELIMINATION_REVIEW', 'WAITING_NEXT_SPRINT', 'GAME_RESULT_REVIEW'].includes(g.phase));
-  const g = overview.games.find((x) => x.id === id) ?? live ?? overview.games.find((x) => x.dayId === overview.currentDay?.id) ?? overview.games[0] ?? null;
-  return [g, setId];
-}
-
 export function Check({ checked, onChange, label, disabled, title }: { checked: boolean; onChange: (v: boolean) => void; label: ReactNode; disabled?: boolean; title?: string }) {
   return (
     <label className={`inline-flex items-center gap-2 text-xs ${disabled ? 'opacity-50' : 'cursor-pointer'}`} title={title}>
@@ -401,7 +375,7 @@ function ConfirmDialog({ p, onDone }: { p: PendingConfirm; onDone: (r: { reason:
     };
   }, []);
   const reasonOk = !p.reason || reason.trim().length >= p.reason.min;
-  const ok = reasonOk && (!p.ack || ack);
+  const ok = !p.blocked && reasonOk && (!p.ack || ack);
   const onKey = (e: ReactKeyboardEvent) => {
     if (e.key === 'Escape') {
       e.stopPropagation();
@@ -427,7 +401,7 @@ function ConfirmDialog({ p, onDone }: { p: PendingConfirm; onDone: (r: { reason:
   const border = tone === 'primary' ? 'border-[#5f9c90] bg-[#1d3a46]' : tone === 'warning' ? 'border-[#a8935a] bg-[#3a3a36]' : 'border-[#bd816b] bg-[#3a303c]';
   return createPortal(
     <div className="fixed inset-0 z-[95] flex items-center justify-center overflow-y-auto bg-[#05131d]/90 p-4" onKeyDown={onKey}>
-      <section ref={ref} role="alertdialog" aria-modal="true" aria-labelledby="cmd-confirm-title" aria-describedby="cmd-confirm-body" className={`w-full max-w-lg rounded-xl border-2 p-6 text-left text-[#f2f0e7] shadow-[0_10px_0_#051521] sm:p-8 ${border}`}>
+      <section ref={ref} role="alertdialog" aria-modal="true" aria-labelledby="cmd-confirm-title" aria-describedby="cmd-confirm-body" className={`max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-xl border-2 p-6 text-left text-[#f2f0e7] shadow-[0_10px_0_#051521] sm:p-8 ${border}`}>
         <div className="mb-4 flex items-center gap-3">
           <AlertTriangle size={30} className={tone === 'primary' ? 'text-primary' : 'text-[#e5ac8e]'} aria-hidden="true" />
           <div>
@@ -468,5 +442,133 @@ function ConfirmDialog({ p, onDone }: { p: PendingConfirm; onDone: (r: { reason:
       </section>
     </div>,
     document.body,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Generic console modal (portal, Esc to close, focus restore)
+// ---------------------------------------------------------------------------
+
+export function Modal({ open, onClose, title, label = 'COMMAND PANEL', wide = false, children }: { open: boolean; onClose: () => void; title: string; label?: string; wide?: boolean; children: ReactNode }) {
+  const ref = useRef<HTMLElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.activeElement as HTMLElement | null;
+    const raf = requestAnimationFrame(() => ref.current?.querySelector<HTMLElement>('[data-autofocus], input, textarea, select, button')?.focus());
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.querySelector('[role="alertdialog"]')) closeRef.current();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener('keydown', onKey);
+      if (prev?.isConnected) prev.focus?.();
+    };
+  }, [open]);
+  if (!open) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-[#05131d]/85 p-3 sm:p-8" onMouseDown={(e) => e.target === e.currentTarget && closeRef.current()}>
+      <section ref={ref} role="dialog" aria-modal="true" aria-label={title} className={`my-auto w-full rounded-xl border-2 border-[#668991] bg-[#203b49] p-5 text-left text-[#f2f0e7] shadow-[0_10px_0_#051521] sm:p-6 ${wide ? 'max-w-5xl' : 'max-w-2xl'}`}>
+        <div className="mb-4 flex items-start justify-between gap-3 border-b border-white/15 pb-3">
+          <div>
+            <Label className="!text-[#e7c784]">{label}</Label>
+            <h2 className="mt-1 font-display text-lg font-bold">{title}</h2>
+          </div>
+          <button aria-label="Close" onClick={onClose} className="rounded-md border border-[#718e95]/40 bg-[#18333f] p-1.5 text-[#b9d2cd] hover:bg-[#3a5a63]">
+            <X size={16} />
+          </button>
+        </div>
+        {children}
+      </section>
+    </div>,
+    document.body,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Files
+// ---------------------------------------------------------------------------
+
+/** Reads a File as base64 (no data: prefix) for JSON upload bodies. */
+export function readFileBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+    r.onload = () => {
+      const s = String(r.result ?? '');
+      resolve(s.slice(s.indexOf(',') + 1));
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+export function readFileText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+    r.onload = () => resolve(String(r.result ?? ''));
+    r.readAsText(file);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Formatting
+// ---------------------------------------------------------------------------
+
+/** Active-time offset as mm:ss. */
+export function fmtOffset(seconds: number | null | undefined) {
+  if (seconds === null || seconds === undefined) return '—';
+  const s = Math.max(0, Math.round(seconds));
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
+
+export function fmtDate(iso: string | null | undefined) {
+  if (!iso) return '—';
+  const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
+  return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/** Plain table wrapper with horizontal scroll. */
+export function DataTable({ head, children, empty, label }: { head: ReactNode[]; children: ReactNode; empty?: boolean; label?: string }) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-[#344d5b]">
+      <table className="w-full min-w-max text-left text-xs" aria-label={label}>
+        <thead className={THEAD}>
+          <tr>{head.map((h, i) => <th key={i} className={TH}>{h}</th>)}</tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+      {empty && <p className="p-4 text-center text-xs text-muted">Nothing here yet.</p>}
+    </div>
+  );
+}
+
+export function Select<T extends string>({ value, onChange, options, ariaLabel, disabled, className = '' }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[]; ariaLabel: string; disabled?: boolean; className?: string }) {
+  return (
+    <select className={`input !py-2 ${className}`} value={value} aria-label={ariaLabel} disabled={disabled} onChange={(e) => onChange(e.target.value as T)}>
+      {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  );
+}
+
+/** Slot picker used by several tabs (defaults to the first slot). */
+export function useSlotPick(): [string, (id: string) => void] {
+  const { overview } = useConsole();
+  const [id, setId] = useState<string>('');
+  const valid = overview.slots.find((s) => s.id === id) ? id : (overview.slots.find((s) => ['RUNNING', 'REVIEW'].includes(s.phase)) ?? overview.slots[0])?.id ?? '';
+  return [valid, setId];
+}
+
+export function SlotPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const { overview } = useConsole();
+  return (
+    <Segmented
+      label="Choose slot"
+      value={value}
+      onChange={onChange}
+      options={overview.slots.map((s) => ({ value: s.id, label: `SLOT ${s.number} · ${fmtDate(s.date)} · ${s.phase}` }))}
+    />
   );
 }
