@@ -26,8 +26,13 @@
   window.addEventListener('message', function (ev) {
     if (ev.source !== parent || !ev.data || ev.data.type !== 'render' || typeof ev.data.doc !== 'string') return;
     sent = 0;
-    var hook = '<script>(function(){var r=' + relay.toString() + ';var MAX=200,sent=0;["log","info","warn","error"].forEach(function(l){var o=console[l];console[l]=function(){r(l,arguments);try{o.apply(console,arguments)}catch(e){}}});window.onerror=function(m,s,line,col){r("error",[m+" (line "+line+")"]);};window.addEventListener("unhandledrejection",function(e){r("error",["Unhandled promise rejection: "+(e.reason&&e.reason.message||e.reason)])});})();<\/script>';
+    var hook = '<script>(function(){var r=' + relay.toString() + ';var MAX=200,sent=0;["log","info","warn","error"].forEach(function(l){var o=console[l];console[l]=function(){r(l,arguments);try{o.apply(console,arguments)}catch(e){}}});window.alert=function(m){r("alert",[String(m)])};window.confirm=function(m){r("alert",[String(m)]);return true};window.prompt=function(m,d){r("alert",[String(m)]);return d==null?"":String(d)};window.onerror=function(m,s,line,col){r("error",[m+" (line "+line+")"]);};window.addEventListener("unhandledrejection",function(e){r("error",["Unhandled promise rejection: "+(e.reason&&e.reason.message||e.reason)])});})();<\/script>';
     var doc = ev.data.doc;
+    if (ev.data.protect === true) {
+      // Best-effort copy deterrence inside the preview (the parent cannot reach into this opaque origin).
+      // Typing in inputs still works; only clipboard export, context menu, drag and print shortcuts are blocked.
+      hook += '<script>(function(){function no(e){e.preventDefault();}["copy","cut","contextmenu","dragstart"].forEach(function(t){document.addEventListener(t,no,true)});document.addEventListener("keydown",function(e){var k=(e.key||"").toLowerCase();if(((e.ctrlKey||e.metaKey)&&["c","x","p","s","u"].indexOf(k)>=0)||((e.ctrlKey||e.metaKey)&&e.shiftKey&&["i","j","c"].indexOf(k)>=0)||e.key==="F12"){e.preventDefault();}},true);var s=document.createElement("style");s.textContent="@media print{html,body{display:none!important}}";(document.head||document.documentElement).appendChild(s);})();<\/script>';
+    }
     var i = doc.search(/<head[^>]*>/i);
     doc = i >= 0 ? doc.replace(/<head[^>]*>/i, function (m) { return m + hook; }) : hook + doc;
     document.open();

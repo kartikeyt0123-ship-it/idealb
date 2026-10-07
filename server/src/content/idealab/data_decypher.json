@@ -1,0 +1,1292 @@
+[
+  {
+    "id": "data_01",
+    "name": "The Best Seller",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The pre-loaded list `sales` contains 10,000 daily transaction amounts. Find the absolute highest sale amount in the dataset.",
+    "flag": "99984",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Python has a built-in max() function. Try print(max(sales))."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# The list 'sales' (10,000 items) is already loaded in memory.\n\n# Write your code below to find the highest number:\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHJhbmRvbQpyYW5kb20uc2VlZCg0MikKc2FsZXMgPSBbcmFuZG9tLnJhbmRpbnQoMTAwLCA5MDAwMCkgZm9yIF8gaW4gcmFuZ2UoMTAwMDApXQpzYWxlc1s0NTJdID0gOTk5ODQK"
+    }
+  },
+  {
+    "id": "data_02",
+    "name": "Invoice Cleanup",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The list `invoices` contains 5,000 strings with messy whitespace. Clean them all, then print the exact invoice string located at index 402.",
+    "flag": "INV-8890",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Strings have a .strip() method. You can clean the specific index directly: print(invoices[402].strip())."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# The list 'invoices' is loaded. Print the cleaned string at index 402.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW52b2ljZXMgPSBbZiIgIElOVi17aX0gICIgZm9yIGkgaW4gcmFuZ2UoNTAwMCldCmludm9pY2VzWzQwMl0gPSAiICAgSU5WLTg4OTAgICAiCg=="
+    }
+  },
+  {
+    "id": "data_03",
+    "name": "The Imposter",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The pre-loaded list `ids` contains 5,000 integers, but one ID was accidentally entered as a text string. Find the string!",
+    "flag": "ROGUE_ID",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Loop through the list and check the type: if type(item) == str: print(item)."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# The list 'ids' is loaded. Find and print the one string item.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aWRzID0gWzEwMF0qNTAwMAppZHNbMTIzNF0gPSAiUk9HVUVfSUQiCg=="
+    }
+  },
+  {
+    "id": "data_04",
+    "name": "Total Revenue",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: Add up all 8,000 numbers in the `revenue` list to find the exact total earnings.",
+    "flag": "80000",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "You don't need a loop. Just use the built-in sum() function: print(sum(revenue))."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# Calculate the sum of the 'revenue' list.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "cmV2ZW51ZSA9IFsxMF0gKiA4MDAwCg=="
+    }
+  },
+  {
+    "id": "data_05",
+    "name": "Customer Demographics",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The `data` string contains 5,000 customer ages separated by commas (e.g., \"22,45...\"). Split this string into a list and find the age at index 2999.",
+    "flag": "99",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use the string .split(\",\") method, save it to a list, then print index 2999."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# Split the 'data' string by comma and print index 2999.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "YWdlc19saXN0ID0gWyIyNSJdICogNTAwMAphZ2VzX2xpc3RbMjk5OV0gPSAiOTkiCmRhdGEgPSAiLCIuam9pbihhZ2VzX2xpc3QpCg=="
+    }
+  },
+  {
+    "id": "data_06",
+    "name": "The Cursed Batch",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The `prices` list has 10,000 items. Count exactly how many times the cursed number 13 appears in the dataset. Format the flag as `<count>_DATA`.",
+    "flag": "42_DATA",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Lists have a built-in .count() method. Try print(f\"{prices.count(13)}_DATA\")."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# Count occurrences of 13 in 'prices' and format as <count>_DATA.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "cHJpY2VzID0gWzEwXSAqIDUwMDAgKyBbMTNdICogNDIgKyBbMjBdICogNDk1OAo="
+    }
+  },
+  {
+    "id": "data_07",
+    "name": "Reverse Logistics",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The string `encrypted_log` is 5,000 characters of gibberish. Reverse the entire string, then print just the first 10 characters.",
+    "flag": "QRSTUVWXYZ",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Reverse the string using [::-1], then slice the first 10 characters using [:10]."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# Reverse 'encrypted_log' and print the first 10 characters.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "ZW5jcnlwdGVkX2xvZyA9ICJBIiAqIDQ5OTAgKyAiWllYV1ZVVFNSUSIK"
+    }
+  },
+  {
+    "id": "data_08",
+    "name": "Unique Visitors",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: Our website traffic log `ips` contains 20,000 IP addresses with heavy duplication. Exactly how many *unique* IPs visited today?",
+    "flag": "5001",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Converting a list into a set() automatically deletes duplicates. Then check the len()."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# Find the number of unique entries in 'ips'.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aXBzID0gWyIxOTIuMTY4LjAuMSJdICogMTUwMDAgKyBbZiIxMC4wLjAue2l9IiBmb3IgaSBpbiByYW5nZSg1MDAwKV0K"
+    }
+  },
+  {
+    "id": "data_09",
+    "name": "Inventory Lookup",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The `stock` dictionary holds 5,000 items. Retrieve the exact quantity of the key 'Quantum_Processor'.",
+    "flag": "777",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Access dictionary values using brackets and the key name: print(stock[\"Quantum_Processor\"])."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# Get the value for 'Quantum_Processor' from the 'stock' dictionary.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "c3RvY2sgPSB7ZiJJdGVtX3tpfSI6IGkgZm9yIGkgaW4gcmFuZ2UoNTAwMCl9CnN0b2NrWyJRdWFudHVtX1Byb2Nlc3NvciJdID0gNzc3Cg=="
+    }
+  },
+  {
+    "id": "data_10",
+    "name": "Discount Error",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The `transactions` list has 10,000 integers. Find the sum of all the numbers, then print the final answer as an absolute (positive) number.",
+    "flag": "404",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Sum the list first, then wrap it in the absolute value function: abs(sum(transactions))."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# Calculate the absolute sum of 'transactions'.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "dHJhbnNhY3Rpb25zID0gWy0yXSAqIDUwMDAgKyBbMV0gKiA5NTk2Cg=="
+    }
+  },
+  {
+    "id": "data_11",
+    "name": "Average Rating",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The `ratings` list has 100,000 customer scores. Calculate the exact mathematical average (mean).",
+    "flag": "3.0",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Add them all up with sum() and divide by the len() of the list."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# Find the mean of 'ratings'.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "cmF0aW5ncyA9IFs1XSAqIDUwMDAwICsgWzFdICogNTAwMDAK"
+    }
+  },
+  {
+    "id": "data_12",
+    "name": "The VIP Customer",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The `names` list has 5,000 lowercase names. However, exactly one name is already properly Capitalized. Find it!",
+    "flag": "Rahul_Data",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Loop through the names. Python strings have an .istitle() method that checks if the first letter is capitalized."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# Find the one capitalized string in 'names'.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "bmFtZXMgPSBbInVzZXIiXSAqIDQ5OTkgKyBbIlJhaHVsX0RhdGEiXQo="
+    }
+  },
+  {
+    "id": "data_13",
+    "name": "Grid Search",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The `grid` is a 100x100 2D list of data points. Retrieve the data point located at row index 47, column index 82.",
+    "flag": "404_13",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "To access lists inside lists, use double brackets: print(grid[row][column])."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# Print the value at row 47, column 82 of 'grid'.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "Z3JpZCA9IFtbMF0qMTAwIGZvciBfIGluIHJhbmdlKDEwMCldCmdyaWRbNDddWzgyXSA9IDQwNAo="
+    }
+  },
+  {
+    "id": "data_14",
+    "name": "Feedback Count",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The `reviews` variable is a massive text string. Count exactly how many times the word 'FAIL' appears.",
+    "flag": "104",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use the .count(\"FAIL\") method directly on the string variable."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# Count occurrences of 'FAIL' in 'reviews'.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "cmV2aWV3cyA9ICJnb29kICIgKiA0OTAwMCArICJGQUlMICIgKiAxMDQK"
+    }
+  },
+  {
+    "id": "data_15",
+    "name": "Floor Division",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The `items` array has 5,000 different warehouse quantities. You need to pack them into boxes of 12. Find the floor division `// 12` of the item at index 344.",
+    "flag": "83",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Access the item first, then use the // operator: print(items[344] // 12)."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# Do floor division by 12 on index 344 of 'items'.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aXRlbXMgPSBbMTBdICogNTAwMAppdGVtc1szNDRdID0gMTAwMAo="
+    }
+  },
+  {
+    "id": "data_31",
+    "name": "List Comprehension: Even Squares Filter",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The pre-loaded list `raw_numbers` contains 10,000 integers. Use a list comprehension to square all even numbers and assign the result to `even_squares`.",
+    "flag": "DATA_EVEN_SQ_31",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use a comprehension with a conditional: `[x**2 for x in raw_numbers if x % 2 == 0]`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# 'raw_numbers' (10,000 integers) is pre-loaded in memory.\n# Create a list 'even_squares' containing the squares of all even numbers:\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "cmF3X251bWJlcnMgPSBbaSBmb3IgaSBpbiByYW5nZSgxLCAxMDAwMSld",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSBzdW0oeCoqMiBmb3IgeCBpbiByYXdfbnVtYmVycyBpZiB4ICUgMiA9PSAwKQppZiAnZXZlbl9zcXVhcmVzJyBpbiBsb2NhbHMoKSBhbmQgc3VtKGV2ZW5fc3F1YXJlcykgPT0gZXhwZWN0ZWQgYW5kIGxlbihldmVuX3NxdWFyZXMpID09IDUwMDA6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX0VWRU5fU1FfMzEnKQ=="
+    }
+  },
+  {
+    "id": "data_32",
+    "name": "Filter Pipeline: High Value Transactions",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The pre-loaded list `ledger` contains 8,000 transaction dictionaries with keys `'id'` and `'amount'`. Use `filter()` with a lambda to extract transactions with `amount > 5000` into a list named `high_value`.",
+    "flag": "DATA_FILTER_LEDGER_32",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Wrap filter in list: `high_value = list(filter(lambda t: t['amount'] > 5000, ledger))`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# 'ledger' (8,000 dicts) is pre-loaded in memory.\n# Filter transactions where amount > 5000 into 'high_value':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "bGVkZ2VyID0gW3snaWQnOiBpLCAnYW1vdW50JzogKGkgKiAzNykgJSAxMDAwMH0gZm9yIGkgaW4gcmFuZ2UoODAwMCld",
+      "hidden_validation_b64": "ZXhwZWN0ZWRfaWRzID0gW3RbJ2lkJ10gZm9yIHQgaW4gbGVkZ2VyIGlmIHRbJ2Ftb3VudCddID4gNTAwMF0KaWYgJ2hpZ2hfdmFsdWUnIGluIGxvY2FscygpIGFuZCBbdFsnaWQnXSBmb3IgdCBpbiBoaWdoX3ZhbHVlXSA9PSBleHBlY3RlZF9pZHM6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX0ZJTFRFUl9MRURHRVJfMzInKQ=="
+    }
+  },
+  {
+    "id": "data_33",
+    "name": "Map Transformation: Domain Extractor",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The pre-loaded list `emails` contains 5,000 user email addresses. Use `map()` to extract the normalized lowercase domain name (after '@') for each address into a list named `domains`.",
+    "flag": "DATA_MAP_DOMAINS_33",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use map with string split: `domains = list(map(lambda e: e.split('@')[1].lower(), emails))`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# 'emails' (5,000 strings) is pre-loaded in memory.\n# Extract lowercase domains into 'domains' using map():\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "ZG9tYWluc19wb29sID0gWydjb3JwLm5ldCcsICdpZGVhbGFiLmVkdScsICdhZ2VuY3kuaW8nXQplbWFpbHMgPSBbZid1c2VyX3tpfUB7ZG9tYWluc19wb29sW2kgJSAzXS51cHBlcigpfScgZm9yIGkgaW4gcmFuZ2UoNTAwMCld",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSBbZS5zcGxpdCgnQCcpWzFdLmxvd2VyKCkgZm9yIGUgaW4gZW1haWxzXQppZiAnZG9tYWlucycgaW4gbG9jYWxzKCkgYW5kIGxpc3QoZG9tYWlucykgPT0gZXhwZWN0ZWQ6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX01BUF9ET01BSU5TXzMzJyk="
+    }
+  },
+  {
+    "id": "data_34",
+    "name": "String Slicing: Telemetry Decimation",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The pre-loaded string `sensor_stream` contains 20,000 comma-delimited hex readings. Split it, extract every 5th reading starting from index 3 up to index 1500, join them with hyphens, and store in `decimated_stream`.",
+    "flag": "DATA_STR_SLICE_34",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Split the string into a list, slice using `[3:1500:5]`, and join with `'-'.join(...)`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# 'sensor_stream' (comma-separated hex readings) is pre-loaded.\n# Decimate indices 3 to 1500 with step 5 and hyphen-join into 'decimated_stream':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "c2Vuc29yX3N0cmVhbSA9ICcsJy5qb2luKGYne2k6MDRYfScgZm9yIGkgaW4gcmFuZ2UoMjAwMDApKQ==",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSAnLScuam9pbihzZW5zb3Jfc3RyZWFtLnNwbGl0KCcsJylbMzoxNTAwOjVdKQppZiAnZGVjaW1hdGVkX3N0cmVhbScgaW4gbG9jYWxzKCkgYW5kIGRlY2ltYXRlZF9zdHJlYW0gPT0gZXhwZWN0ZWQ6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX1NUUl9TTElDRV8zNCcp"
+    }
+  },
+  {
+    "id": "data_35",
+    "name": "Dictionary Aggregation: Category Totalizer",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The pre-loaded list `inventory_records` contains 6,000 items, each structured as `{'category': str, 'quantity': int}`. Aggregate the total quantity by category into a dictionary named `category_totals`.",
+    "flag": "DATA_DICT_AGGR_35",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Iterate through records and accumulate: `category_totals[cat] = category_totals.get(cat, 0) + qty`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# 'inventory_records' (6,000 dicts) is pre-loaded in memory.\n# Aggregate total quantity per category into 'category_totals':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "Y2F0ZWdvcmllcyA9IFsnU2Vuc29ycycsICdNaWNyb2NvbnRyb2xsZXJzJywgJ0FjdHVhdG9ycycsICdEaXNwbGF5cyddCmludmVudG9yeV9yZWNvcmRzID0gW3snY2F0ZWdvcnknOiBjYXRlZ29yaWVzW2kgJSA0XSwgJ3F1YW50aXR5JzogKGkgKiAxMykgJSAxMDAgKyAxfSBmb3IgaSBpbiByYW5nZSg2MDAwKV0=",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSB7fQpmb3IgaXRlbSBpbiBpbnZlbnRvcnlfcmVjb3JkczoKICAgIGMgPSBpdGVtWydjYXRlZ29yeSddCiAgICBleHBlY3RlZFtjXSA9IGV4cGVjdGVkLmdldChjLCAwKSArIGl0ZW1bJ3F1YW50aXR5J10KaWYgJ2NhdGVnb3J5X3RvdGFscycgaW4gbG9jYWxzKCkgYW5kIGNhdGVnb3J5X3RvdGFscyA9PSBleHBlY3RlZDoKICAgIHByaW50KCdcbkZMQUc6IERBVEFfRElDVF9BR0dSXzM1Jyk="
+    }
+  },
+  {
+    "id": "data_36",
+    "name": "Set Logic: Telemetry Drift Audit",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: Two pre-loaded sets, `baseline_hosts` and `active_hosts` (each containing 5,000 hostnames), have drifted. Find all hostnames that appear in exactly one of the two sets, and store them in a set named `drifted_hosts`.",
+    "flag": "DATA_SET_DRIFT_36",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use symmetric difference operator `^` or method `baseline_hosts.symmetric_difference(active_hosts)`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# 'baseline_hosts' and 'active_hosts' sets are pre-loaded in memory.\n# Find hostnames in exactly one set and assign to 'drifted_hosts':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "YmFzZWxpbmVfaG9zdHMgPSB7Zidub2RlX3tpOjA0ZH0uc3J2JyBmb3IgaSBpbiByYW5nZSg1MDAwKX0KYWN0aXZlX2hvc3RzID0ge2Ynbm9kZV97aTowNGR9LnNydicgZm9yIGkgaW4gcmFuZ2UoNTAwLCA1NTAwKX0=",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSBiYXNlbGluZV9ob3N0cyBeIGFjdGl2ZV9ob3N0cwppZiAnZHJpZnRlZF9ob3N0cycgaW4gbG9jYWxzKCkgYW5kIGRyaWZ0ZWRfaG9zdHMgPT0gZXhwZWN0ZWQ6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX1NFVF9EUklGVF8zNicp"
+    }
+  },
+  {
+    "id": "data_37",
+    "name": "Matrix Flatten: Non-Zero Coordinate Unroll",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The pre-loaded 2D list `sparse_grid` (80x80) contains integers. Use a nested list comprehension to extract all coordinate tuples `(r, c)` where `sparse_grid[r][c] != 0` into a list named `active_coords`.",
+    "flag": "DATA_SPARSE_COORDS_37",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Nest row and col loops: `[(r, c) for r in range(80) for c in range(80) if sparse_grid[r][c] != 0]`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# 'sparse_grid' (80x80 list of lists) is pre-loaded in memory.\n# Extract (r, c) coordinates where cell != 0 into 'active_coords':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "c3BhcnNlX2dyaWQgPSBbWzBdKjgwIGZvciBfIGluIHJhbmdlKDgwKV0KZm9yIHIgaW4gcmFuZ2UoODApOgogICAgZm9yIGMgaW4gcmFuZ2UoODApOgogICAgICAgIGlmIChyICogMTcgKyBjICogMzEpICUgNDMgPT0gMDoKICAgICAgICAgICAgc3BhcnNlX2dyaWRbcl1bY10gPSAociArIGMp",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSBbKHIsIGMpIGZvciByIGluIHJhbmdlKDgwKSBmb3IgYyBpbiByYW5nZSg4MCkgaWYgc3BhcnNlX2dyaWRbcl1bY10gIT0gMF0KaWYgJ2FjdGl2ZV9jb29yZHMnIGluIGxvY2FscygpIGFuZCBhY3RpdmVfY29vcmRzID09IGV4cGVjdGVkOgogICAgcHJpbnQoJ1xuRkxBRzogREFUQV9TUEFSU0VfQ09PUkRTXzM3Jyk="
+    }
+  },
+  {
+    "id": "data_38",
+    "name": "Zip Merge: Key-Value Pairing",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: Two pre-loaded lists `sensor_keys` and `calibration_factors` contain 3,000 elements each. Combine them into a dictionary named `cal_map` using `zip()` and a dict comprehension, retaining only entries where factor > 1.0.",
+    "flag": "DATA_ZIP_CAL_38",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use dictionary comprehension with zip: `{k: v for k, v in zip(sensor_keys, calibration_factors) if v > 1.0}`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# 'sensor_keys' and 'calibration_factors' (3,000 items each) are pre-loaded.\n# Pair keys and values with factor > 1.0 into dict 'cal_map':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "c2Vuc29yX2tleXMgPSBbZidTTlNfe2k6MDRkfScgZm9yIGkgaW4gcmFuZ2UoMzAwMCldCmNhbGlicmF0aW9uX2ZhY3RvcnMgPSBbcm91bmQoMC41ICsgKGkgKiAwLjAwMSksIDMpIGZvciBpIGluIHJhbmdlKDMwMDApXQ==",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSB7azogdiBmb3IgaywgdiBpbiB6aXAoc2Vuc29yX2tleXMsIGNhbGlicmF0aW9uX2ZhY3RvcnMpIGlmIHYgPiAxLjB9CmlmICdjYWxfbWFwJyBpbiBsb2NhbHMoKSBhbmQgY2FsX21hcCA9PSBleHBlY3RlZDoKICAgIHByaW50KCdcbkZMQUc6IERBVEFfWklQX0NBTF8zOCcp"
+    }
+  },
+  {
+    "id": "data_39",
+    "name": "Tuple Sort: Multi-Key Priority Queue",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The pre-loaded list `packets` contains 4,000 tuples `(priority, timestamp, payload)`. Sort `packets` into `sorted_packets` such that priority is in ascending order (1 before 5), and timestamp is descending (newest first).",
+    "flag": "DATA_SORT_PRIORITY_39",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Sort using a tuple key: `sorted_packets = sorted(packets, key=lambda p: (p[0], -p[1]))`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# 'packets' (4,000 tuples of (priority, timestamp, payload)) is pre-loaded.\n# Sort by priority asc, timestamp desc into 'sorted_packets':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHJhbmRvbQpyYW5kb20uc2VlZCgzOSkKcGFja2V0cyA9IFsocmFuZG9tLnJhbmRpbnQoMSwgNSksIHJhbmRvbS5yYW5kaW50KDEwMDAsIDk5OTkpLCBmJ3BrdF97aX0nKSBmb3IgaSBpbiByYW5nZSg0MDAwKV0=",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSBzb3J0ZWQocGFja2V0cywga2V5PWxhbWJkYSBwOiAocFswXSwgLXBbMV0pKQpyZXMgPSBzb3J0ZWRfcGFja2V0cyBpZiAnc29ydGVkX3BhY2tldHMnIGluIGxvY2FscygpIGVsc2UgcGFja2V0cwppZiByZXMgPT0gZXhwZWN0ZWQ6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX1NPUlRfUFJJT1JJVFlfMzknKQ=="
+    }
+  },
+  {
+    "id": "data_40",
+    "name": "Frequency Counter: Rare Event Detector",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Directive: The pre-loaded list `error_codes` contains 10,000 event log codes. Find the least frequent error code. If multiple share the minimum frequency, pick the lexicographically smallest, and store in `rarest_code`.",
+    "flag": "DATA_RAREST_ERR_40",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use `collections.Counter(error_codes)`, find minimum count, and sort candidates."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "from collections import Counter\n# 'error_codes' (10,000 strings) is pre-loaded in memory.\n# Find the least frequent error code and store in 'rarest_code':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "Y29kZXMgPSBbZidFUlJfe2k6MDJkfScgZm9yIGkgaW4gcmFuZ2UoMjUpXQplcnJvcl9jb2RlcyA9IFtjb2Rlc1tpICUgMjVdIGZvciBpIGluIHJhbmdlKDk5OTUpXSArIFsnRVJSXzk5JywgJ0VSUl85OScsICdFUlJfOTgnXQ==",
+      "hidden_validation_b64": "ZnJvbSBjb2xsZWN0aW9ucyBpbXBvcnQgQ291bnRlcgpjID0gQ291bnRlcihlcnJvcl9jb2RlcykKbWluX2MgPSBtaW4oYy52YWx1ZXMoKSkKZXhwZWN0ZWQgPSBzb3J0ZWQoW2sgZm9yIGssIHYgaW4gYy5pdGVtcygpIGlmIHYgPT0gbWluX2NdKVswXQppZiAncmFyZXN0X2NvZGUnIGluIGxvY2FscygpIGFuZCByYXJlc3RfY29kZSA9PSBleHBlY3RlZDoKICAgIHByaW50KCdcbkZMQUc6IERBVEFfUkFSRVNUX0VSUl80MCcp"
+    }
+  },
+  {
+    "id": "data_16",
+    "name": "Pandas: The Defaulter",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: A DataFrame `df` holds 10,000 user balances. Find the `User_ID` of the one person whose balance is exactly -999.",
+    "flag": "9999",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Filter the DataFrame directly: df[df['Balance'] == -999]['User_ID']"
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'df' is preloaded. Find the User_ID where Balance is -999.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZApkZiA9IHBkLkRhdGFGcmFtZSh7J1VzZXJfSUQnOiByYW5nZSgxMDAwMCksICdCYWxhbmNlJzogWzEwMF0qOTk5OSArIFstOTk5XX0pCg=="
+    }
+  },
+  {
+    "id": "data_17",
+    "name": "Pandas: The Empty Shelf",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: The inventory DataFrame `df` has 50 columns. Exactly one column is completely empty (NaN). Drop the empty column, then print the total number of columns remaining.",
+    "flag": "49",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Pandas has a .dropna(axis=1, how='all') function to drop empty columns. Then check len(df.columns)."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'df' is loaded. Drop the empty column and print the remaining column count.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZAppbXBvcnQgbnVtcHkgYXMgbnAKZGYgPSBwZC5EYXRhRnJhbWUobnAucmFuZG9tLnJhbmQoMTAsIDUwKSkKZGYuaWxvY1s6LCAyNV0gPSBucC5uYW4K"
+    }
+  },
+  {
+    "id": "data_18",
+    "name": "NumPy: Catch the Speeding Ticket",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: A NumPy array `speeds` holds data for 50,000 cars. Count exactly how many cars were going strictly over 80 km/h.",
+    "flag": "10000",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "In NumPy, `speeds > 80` gives an array of True/False. np.sum() treats True as 1. Try np.sum(speeds > 80)."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import numpy as np\n# 'speeds' is loaded. Count speeds over 80.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCnNwZWVkcyA9IG5wLmFycmF5KFs1MF0gKiA0MDAwMCArIFs5MF0gKiAxMDAwMCkK"
+    }
+  },
+  {
+    "id": "data_19",
+    "name": "Visual: The Hidden Shape",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: The arrays `X` and `Y` contain thousands of coordinates. Plot them on a scatter graph to visually reveal the hidden letter.",
+    "flag": "W",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Write `plt.scatter(X, Y)` and then `plt.show()`."
+      }
+    ],
+    "workspace": {
+      "output_type": "plot",
+      "visible_code": "import matplotlib.pyplot as plt\n# 'X' and 'Y' are loaded. Plot them as a scatter graph.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG1hdHBsb3RsaWIucHlwbG90IGFzIHBsdApYID0gWzEsIDIsIDMsIDQsIDVdICogMjAwClkgPSBbNSwgMSwgMywgMSwgNV0gKiAyMDAK"
+    }
+  },
+  {
+    "id": "data_20",
+    "name": "Pandas: Price Hike",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: The `Prices` column in the 10,000-row DataFrame needs a 10% tax added to it. Update the column, then print the `.sum()` of the new column.",
+    "flag": "1100000.0",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Multiply the whole column at once: df['Prices'] = df['Prices'] * 1.10. Then print its sum."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'df' is loaded. Add 10% to Prices and print the sum.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZApkZiA9IHBkLkRhdGFGcmFtZSh7J1ByaWNlcyc6IFsxMDBdICogMTAwMDB9KQo="
+    }
+  },
+  {
+    "id": "data_21",
+    "name": "Pandas: The Highest Roller",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: Sort the 10,000-row DataFrame by the `Purchases` column in descending order and find the top customer's `Name`.",
+    "flag": "KING",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Use df.sort_values(by='Purchases', ascending=False). Then grab the first name using .iloc[0]."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'df' is loaded. Find the Name with the highest Purchases.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZApkZiA9IHBkLkRhdGFGcmFtZSh7J05hbWUnOiBbJ0EnXSAqIDk5OTkgKyBbJ0tJTkcnXSwgJ1B1cmNoYXNlcyc6IFsxMF0gKiA5OTk5ICsgWzk5OTk5XX0pCg=="
+    }
+  },
+  {
+    "id": "data_22",
+    "name": "NumPy: Matrix Inversion",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: `matrix` is a 50x50 NumPy array of 1s and 0s. Invert the matrix (swap 1s and 0s), then print the sum of the row at index 24.",
+    "flag": "0",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Invert by subtracting from 1: `inverted = 1 - matrix`. Then sum the row: `sum(inverted[24])`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import numpy as np\n# 'matrix' is loaded. Invert it and sum row 24.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCm1hdHJpeCA9IG5wLnplcm9zKCg1MCwgNTApKQptYXRyaXhbMjQsIDpdID0gMQo="
+    }
+  },
+  {
+    "id": "data_23",
+    "name": "Visual: The Anomaly Spike",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: Plot the `days` list against the `traffic` list as a line plot. Find the massive spike. Enter the X-axis (day) value of the peak.",
+    "flag": "99_23",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Use `plt.plot(days, traffic)` then `plt.show()`. Look at the X-axis under the tallest peak."
+      }
+    ],
+    "workspace": {
+      "output_type": "plot",
+      "visible_code": "import matplotlib.pyplot as plt\n# 'days' and 'traffic' are loaded. Plot the line graph.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG1hdHBsb3RsaWIucHlwbG90IGFzIHBsdApkYXlzID0gbGlzdChyYW5nZSgxMDApKQp0cmFmZmljID0gWzEwXSAqIDk5ICsgWzUwMDBdCg=="
+    }
+  },
+  {
+    "id": "data_24",
+    "name": "Pandas: The Daily Drop",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: The `df` contains 5,000 days of stock prices. Find the index (row number) where the price dropped the most compared to the day immediately before it.",
+    "flag": "4999",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Pandas .diff() calculates the difference between consecutive rows. Use .idxmin() to find the index of the biggest negative drop."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'df' is loaded. Find the index of the largest price drop.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZApkZiA9IHBkLkRhdGFGcmFtZSh7J1ByaWNlJzogWzEwMF0gKiA0OTk5ICsgWzEwXX0pCg=="
+    }
+  },
+  {
+    "id": "data_25",
+    "name": "Pandas: String Cleaning",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: The `City` column has 10,000 messy names. Clean up the strings to be title-cased and stripped of spaces, then find the most common city.",
+    "flag": "Indore",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Chain string methods: df['City'].str.strip().str.title(). Then use .mode()[0]."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'df' is loaded. Clean 'City' and find the mode.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZApkZiA9IHBkLkRhdGFGcmFtZSh7J0NpdHknOiBbJyBpTmRvUmUgJ10gKiA2MDAwICsgWydiaG9wYWwnXSAqIDQwMDB9KQo="
+    }
+  },
+  {
+    "id": "data_41",
+    "name": "Pandas: IQR Outlier Trimming",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: The pre-loaded DataFrame `df` has a numeric column `readings` (5,000 rows). Filter out all outliers beyond 1.5 IQR from the quartiles into `clean_df`, and compute `clean_mean = round(clean_df['readings'].mean(), 2)`.",
+    "flag": "DATA_IQR_CLEAN_41",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Compute `q1 = df['readings'].quantile(0.25)` and `q3 = df['readings'].quantile(0.75)`. Filter between `q1 - 1.5*iqr` and `q3 + 1.5*iqr`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'df' (5,000 rows with 'readings') is pre-loaded.\n# Calculate 1.5*IQR bounds, filter into clean_df, and assign clean_mean:\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZAppbXBvcnQgbnVtcHkgYXMgbnAKbnAucmFuZG9tLnNlZWQoNDEpCnZhbHMgPSBucC5yYW5kb20ubm9ybWFsKDUwLjAsIDUuMCwgNDk4MCkudG9saXN0KCkgKyBbMTIwLjAsIDE1MC4wLCAtMjAuMCwgLTUwLjBdICogNQpkZiA9IHBkLkRhdGFGcmFtZSh7J3JlYWRpbmdzJzogdmFsc30p",
+      "hidden_validation_b64": "cTEgPSBkZlsncmVhZGluZ3MnXS5xdWFudGlsZSgwLjI1KQpxMyA9IGRmWydyZWFkaW5ncyddLnF1YW50aWxlKDAuNzUpCmlxciA9IHEzIC0gcTEKZXhwZWN0ZWRfbWVhbiA9IHJvdW5kKGRmWyhkZlsncmVhZGluZ3MnXSA+PSBxMSAtIDEuNSAqIGlxcikgJiAoZGZbJ3JlYWRpbmdzJ10gPD0gcTMgKyAxLjUgKiBpcXIpXVsncmVhZGluZ3MnXS5tZWFuKCksIDIpCmlmICdjbGVhbl9tZWFuJyBpbiBsb2NhbHMoKSBhbmQgY2xlYW5fbWVhbiA9PSBleHBlY3RlZF9tZWFuOgogICAgcHJpbnQoJ1xuRkxBRzogREFUQV9JUVJfQ0xFQU5fNDEnKQ=="
+    }
+  },
+  {
+    "id": "data_42",
+    "name": "NumPy: Z-Score Anomaly Isolation",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: The pre-loaded 1D NumPy array `accelerometer` contains 8,000 vibration samples. Compute the Z-score for each element: Z = (x - mean) / std. Identify all elements where |Z| > 3.0 and store the count in `outlier_count`.",
+    "flag": "DATA_ZSCORE_ANOMALY_42",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Calculate mean and std with `np.mean()` and `np.std()`. Then do `np.sum(np.abs(z) > 3.0)`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import numpy as np\n# 'accelerometer' (8,000 samples) is pre-loaded in memory.\n# Count samples with |Z| > 3.0 and store in 'outlier_count':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCm5wLnJhbmRvbS5zZWVkKDQyKQpiYXNlID0gbnAucmFuZG9tLm5vcm1hbCgxMC4wLCAyLjAsIDc5NzUpCnNwaWtlcyA9IG5wLmFycmF5KFsyNS4wLCAtMTUuMCwgMzAuMCwgLTE4LjAsIDI4LjBdICogNSkKYWNjZWxlcm9tZXRlciA9IG5wLmNvbmNhdGVuYXRlKFtiYXNlLCBzcGlrZXNdKQ==",
+      "hidden_validation_b64": "bXUgPSBucC5tZWFuKGFjY2VsZXJvbWV0ZXIpCnNpZ21hID0gbnAuc3RkKGFjY2VsZXJvbWV0ZXIpCmV4cGVjdGVkX2NvdW50ID0gaW50KG5wLnN1bShucC5hYnMoKGFjY2VsZXJvbWV0ZXIgLSBtdSkgLyBzaWdtYSkgPiAzLjApKQppZiAnb3V0bGllcl9jb3VudCcgaW4gbG9jYWxzKCkgYW5kIG91dGxpZXJfY291bnQgPT0gZXhwZWN0ZWRfY291bnQ6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX1pTQ09SRV9BTk9NQUxZXzQyJyk="
+    }
+  },
+  {
+    "id": "data_43",
+    "name": "Pandas: Multi-Level GroupBy Aggregation",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: The pre-loaded DataFrame `sales_df` has columns `['region', 'product', 'revenue', 'units']` with 12,000 rows. Group by `region`, compute the total `revenue` sum, and store the region name with the highest total revenue in `top_region`.",
+    "flag": "DATA_GROUPBY_SUMM_43",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Aggregate with `sales_df.groupby('region')['revenue'].sum()` and call `.idxmax()`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'sales_df' (12,000 rows) is pre-loaded in memory.\n# Find the region with maximum total revenue and store in 'top_region':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZAppbXBvcnQgbnVtcHkgYXMgbnAKbnAucmFuZG9tLnNlZWQoNDMpCnJlZ2lvbnMgPSBbJ05vcnRoJywgJ1NvdXRoJywgJ0Vhc3QnLCAnV2VzdCcsICdDZW50cmFsJ10KcHJvZHMgPSBbJ0EnLCAnQicsICdDJ10Kc2FsZXNfZGYgPSBwZC5EYXRhRnJhbWUoewogICAgJ3JlZ2lvbic6IG5wLnJhbmRvbS5jaG9pY2UocmVnaW9ucywgMTIwMDApLAogICAgJ3Byb2R1Y3QnOiBucC5yYW5kb20uY2hvaWNlKHByb2RzLCAxMjAwMCksCiAgICAncmV2ZW51ZSc6IG5wLnJhbmRvbS51bmlmb3JtKDUwLCA1MDAsIDEyMDAwKSwKICAgICd1bml0cyc6IG5wLnJhbmRvbS5yYW5kaW50KDEsIDIwLCAxMjAwMCkKfSkKc2FsZXNfZGYubG9jW3NhbGVzX2RmWydyZWdpb24nXSA9PSAnQ2VudHJhbCcsICdyZXZlbnVlJ10gKj0gMS44",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSBzYWxlc19kZi5ncm91cGJ5KCdyZWdpb24nKVsncmV2ZW51ZSddLnN1bSgpLmlkeG1heCgpCmlmICd0b3BfcmVnaW9uJyBpbiBsb2NhbHMoKSBhbmQgdG9wX3JlZ2lvbiA9PSBleHBlY3RlZDoKICAgIHByaW50KCdcbkZMQUc6IERBVEFfR1JPVVBCWV9TVU1NXzQzJyk="
+    }
+  },
+  {
+    "id": "data_44",
+    "name": "Pandas: Group-Wise Median Imputation",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: In DataFrame `sensor_df` (6,000 rows), the `pressure` column contains missing values (`NaN`). Impute each missing pressure using the median of its corresponding `device_id` group, and store the total column sum rounded to 2 decimals in `imputed_sum`.",
+    "flag": "DATA_IMPUTE_MEDIAN_44",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Use transform: `sensor_df['pressure'] = sensor_df.groupby('device_id')['pressure'].transform(lambda g: g.fillna(g.median()))`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'sensor_df' (6,000 rows with NaNs in 'pressure') is pre-loaded.\n# Impute NaNs with device group medians and assign column sum to 'imputed_sum':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZAppbXBvcnQgbnVtcHkgYXMgbnAKbnAucmFuZG9tLnNlZWQoNDQpCmRldmljZXMgPSBbZidERVZfe2l9JyBmb3IgaSBpbiByYW5nZSgxMCldCnNlbnNvcl9kZiA9IHBkLkRhdGFGcmFtZSh7CiAgICAnZGV2aWNlX2lkJzogbnAucmFuZG9tLmNob2ljZShkZXZpY2VzLCA2MDAwKSwKICAgICdwcmVzc3VyZSc6IG5wLnJhbmRvbS51bmlmb3JtKDk1LjAsIDEwNS4wLCA2MDAwKQp9KQpuYW5fbWFzayA9IG5wLnJhbmRvbS5yYW5kKDYwMDApIDwgMC4xNQpzZW5zb3JfZGYubG9jW25hbl9tYXNrLCAncHJlc3N1cmUnXSA9IG5wLm5hbg==",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSByb3VuZChmbG9hdChzZW5zb3JfZGYuZ3JvdXBieSgnZGV2aWNlX2lkJylbJ3ByZXNzdXJlJ10udHJhbnNmb3JtKGxhbWJkYSBnOiBnLmZpbGxuYShnLm1lZGlhbigpKSkuc3VtKCkpLCAyKQppZiAnaW1wdXRlZF9zdW0nIGluIGxvY2FscygpIGFuZCBpbXB1dGVkX3N1bSA9PSBleHBlY3RlZDoKICAgIHByaW50KCdcbkZMQUc6IERBVEFfSU1QVVRFX01FRElBTl80NCcp"
+    }
+  },
+  {
+    "id": "data_45",
+    "name": "Pandas: Relational Join and Drift Reconciler",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: Merge `orders_df` (5,000 rows) and `customers_df` (1,000 rows) on `cust_id`. Filter for rows where `status == 'active'` and `tier == 'platinum'`, and store the total `amount` sum rounded to 2 decimal places in `platinum_total`.",
+    "flag": "DATA_JOIN_RECONCILE_45",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Merge with `pd.merge(orders_df, customers_df, on='cust_id')` and filter with boolean masking."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'orders_df' and 'customers_df' are pre-loaded in memory.\n# Merge on cust_id, filter active platinum orders, and calculate 'platinum_total':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZAppbXBvcnQgbnVtcHkgYXMgbnAKbnAucmFuZG9tLnNlZWQoNDUpCmN1c3RvbWVyc19kZiA9IHBkLkRhdGFGcmFtZSh7CiAgICAnY3VzdF9pZCc6IFtmJ0Nfe2k6MDRkfScgZm9yIGkgaW4gcmFuZ2UoMTAwMCldLAogICAgJ3RpZXInOiBucC5yYW5kb20uY2hvaWNlKFsnc2lsdmVyJywgJ2dvbGQnLCAncGxhdGludW0nXSwgMTAwMCksCiAgICAnc3RhdHVzJzogbnAucmFuZG9tLmNob2ljZShbJ2FjdGl2ZScsICdzdXNwZW5kZWQnLCAnaW5hY3RpdmUnXSwgMTAwMCkKfSkKb3JkZXJzX2RmID0gcGQuRGF0YUZyYW1lKHsKICAgICdvcmRlcl9pZCc6IFtmJ09SRF97aTowNWR9JyBmb3IgaSBpbiByYW5nZSg1MDAwKV0sCiAgICAnY3VzdF9pZCc6IG5wLnJhbmRvbS5jaG9pY2UoY3VzdG9tZXJzX2RmWydjdXN0X2lkJ10sIDUwMDApLAogICAgJ2Ftb3VudCc6IG5wLnJhbmRvbS51bmlmb3JtKDIwLjAsIDIwMC4wLCA1MDAwKQp9KQ==",
+      "hidden_validation_b64": "bWVyZ2VkID0gcGQubWVyZ2Uob3JkZXJzX2RmLCBjdXN0b21lcnNfZGYsIG9uPSdjdXN0X2lkJykKZXhwZWN0ZWQgPSByb3VuZChmbG9hdChtZXJnZWRbKG1lcmdlZFsnc3RhdHVzJ10gPT0gJ2FjdGl2ZScpICYgKG1lcmdlZFsndGllciddID09ICdwbGF0aW51bScpXVsnYW1vdW50J10uc3VtKCkpLCAyKQppZiAncGxhdGludW1fdG90YWwnIGluIGxvY2FscygpIGFuZCBwbGF0aW51bV90b3RhbCA9PSBleHBlY3RlZDoKICAgIHByaW50KCdcbkZMQUc6IERBVEFfSk9JTl9SRUNPTkNJTEVfNDUnKQ=="
+    }
+  },
+  {
+    "id": "data_46",
+    "name": "NumPy: Euclidean Distance Matrix Broadcast",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: The pre-loaded array `coords` represents 500 2D points (shape 500x2). Using NumPy broadcasting, compute the pairwise Euclidean distance matrix and store the maximum distance rounded to 4 decimal places in `max_dist`.",
+    "flag": "DATA_PAIRWISE_DIST_46",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Broadcast with `diff = coords[:, None, :] - coords[None, :, :]` and take `np.sqrt(np.sum(diff**2, axis=-1))`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import numpy as np\n# 'coords' (500x2 array) is pre-loaded in memory.\n# Compute pairwise Euclidean distances and store the maximum in 'max_dist':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCm5wLnJhbmRvbS5zZWVkKDQ2KQpjb29yZHMgPSBucC5yYW5kb20udW5pZm9ybSgwLjAsIDEwMC4wLCAoNTAwLCAyKSk=",
+      "hidden_validation_b64": "ZGlmZiA9IGNvb3Jkc1s6LCBucC5uZXdheGlzLCA6XSAtIGNvb3Jkc1tucC5uZXdheGlzLCA6LCA6XQpleHBlY3RlZCA9IHJvdW5kKGZsb2F0KG5wLm1heChucC5zcXJ0KG5wLnN1bShkaWZmKioyLCBheGlzPS0xKSkpKSwgNCkKaWYgJ21heF9kaXN0JyBpbiBsb2NhbHMoKSBhbmQgbWF4X2Rpc3QgPT0gZXhwZWN0ZWQ6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX1BBSVJXSVNFX0RJU1RfNDYnKQ=="
+    }
+  },
+  {
+    "id": "data_47",
+    "name": "Pandas: Pivot Table Reshaping",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: The DataFrame `traffic_log` (8,000 rows) records network traffic with columns `['source_subnet', 'dest_port', 'packet_count']`. Construct a pivot table, find the subnet generating the highest packet count to port 443, and store in `target_subnet`.",
+    "flag": "DATA_PIVOT_SUBNET_47",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Construct `traffic_log.pivot_table(index='source_subnet', columns='dest_port', values='packet_count', aggfunc='sum')` and query column 443."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'traffic_log' (8,000 rows) is pre-loaded in memory.\n# Pivot table by subnet and port, and find highest traffic subnet to port 443:\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZAppbXBvcnQgbnVtcHkgYXMgbnAKbnAucmFuZG9tLnNlZWQoNDcpCnN1Ym5ldHMgPSBbZicxMC4wLntpfS4wLzI0JyBmb3IgaSBpbiByYW5nZSgyMCldCnBvcnRzID0gWzIyLCA4MCwgNDQzLCA4MDgwLCAzMzA2XQp0cmFmZmljX2xvZyA9IHBkLkRhdGFGcmFtZSh7CiAgICAnc291cmNlX3N1Ym5ldCc6IG5wLnJhbmRvbS5jaG9pY2Uoc3VibmV0cywgODAwMCksCiAgICAnZGVzdF9wb3J0JzogbnAucmFuZG9tLmNob2ljZShwb3J0cywgODAwMCksCiAgICAncGFja2V0X2NvdW50JzogbnAucmFuZG9tLnJhbmRpbnQoMTAsIDUwMCwgODAwMCkKfSkKdHJhZmZpY19sb2cubG9jWyh0cmFmZmljX2xvZ1snc291cmNlX3N1Ym5ldCddID09ICcxMC4wLjcuMC8yNCcpICYgKHRyYWZmaWNfbG9nWydkZXN0X3BvcnQnXSA9PSA0NDMpLCAncGFja2V0X2NvdW50J10gKz0gNTAwMDA=",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSB0cmFmZmljX2xvZ1t0cmFmZmljX2xvZ1snZGVzdF9wb3J0J10gPT0gNDQzXS5ncm91cGJ5KCdzb3VyY2Vfc3VibmV0JylbJ3BhY2tldF9jb3VudCddLnN1bSgpLmlkeG1heCgpCmlmICd0YXJnZXRfc3VibmV0JyBpbiBsb2NhbHMoKSBhbmQgdGFyZ2V0X3N1Ym5ldCA9PSBleHBlY3RlZDoKICAgIHByaW50KCdcbkZMQUc6IERBVEFfUElWT1RfU1VCTkVUXzQ3Jyk="
+    }
+  },
+  {
+    "id": "data_48",
+    "name": "Pandas: Rolling Volatility Detection",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: In DataFrame `telemetry_ts` (43,200 minutely rows with DatetimeIndex), compute a 60-minute rolling standard deviation on `temperature`. Find the exact timestamp where rolling volatility peaked, and store as a string in `peak_time`.",
+    "flag": "DATA_ROLLING_VOL_48",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Calculate `telemetry_ts['temperature'].rolling('60min').std()` and retrieve `str(rolling_std.idxmax())`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'telemetry_ts' (43,200 minute intervals) is pre-loaded in memory.\n# Compute 60min rolling std and assign the timestamp string to 'peak_time':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZAppbXBvcnQgbnVtcHkgYXMgbnAKbnAucmFuZG9tLnNlZWQoNDgpCmlkeCA9IHBkLmRhdGVfcmFuZ2UoJzIwMjYtMDEtMDEnLCBwZXJpb2RzPTQzMjAwLCBmcmVxPScxbWluJykKdGVtcHMgPSBucC5yYW5kb20ubm9ybWFsKDI1LjAsIDEuMCwgNDMyMDApCnRlbXBzWzE1NDIwOjE1NDYwXSArPSBucC5yYW5kb20ubm9ybWFsKDAsIDE1LjAsIDQwKQp0ZWxlbWV0cnlfdHMgPSBwZC5EYXRhRnJhbWUoeyd0ZW1wZXJhdHVyZSc6IHRlbXBzfSwgaW5kZXg9aWR4KQ==",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSBzdHIodGVsZW1ldHJ5X3RzWyd0ZW1wZXJhdHVyZSddLnJvbGxpbmcoJzYwbWluJykuc3RkKCkuaWR4bWF4KCkpCmlmICdwZWFrX3RpbWUnIGluIGxvY2FscygpIGFuZCBwZWFrX3RpbWUgPT0gZXhwZWN0ZWQ6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX1JPTExJTkdfVk9MXzQ4Jyk="
+    }
+  },
+  {
+    "id": "data_49",
+    "name": "Visual: Cumulative Distribution Knee",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: The array `latencies` holds 10,000 server response latencies (ms). Plot the empirical CDF using matplotlib, identify the 95th percentile latency threshold, and store this integer value in `p95_latency`.",
+    "flag": "DATA_CDF_KNEE_49",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Plot `plt.plot(latencies, np.linspace(0, 1, len(latencies)))` and `plt.show()`, or calculate `int(np.percentile(latencies, 95))`."
+      }
+    ],
+    "workspace": {
+      "output_type": "plot",
+      "visible_code": "import matplotlib.pyplot as plt\nimport numpy as np\n# 'latencies' (10,000 sorted float values) is pre-loaded in memory.\n# Plot the CDF, inspect the 95% knee, and assign the integer to 'p95_latency':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCm5wLnJhbmRvbS5zZWVkKDQ5KQpiYXNlID0gbnAucmFuZG9tLmV4cG9uZW50aWFsKHNjYWxlPTUwLCBzaXplPTk1MDApCnRhaWwgPSBucC5yYW5kb20udW5pZm9ybSgzNTAsIDEwMDAsIHNpemU9NTAwKQpsYXRlbmNpZXMgPSBucC5zb3J0KG5wLmNvbmNhdGVuYXRlKFtiYXNlLCB0YWlsXSkp",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSBpbnQobnAucGVyY2VudGlsZShsYXRlbmNpZXMsIDk1KSkKaWYgJ3A5NV9sYXRlbmN5JyBpbiBsb2NhbHMoKSBhbmQgYWJzKHA5NV9sYXRlbmN5IC0gZXhwZWN0ZWQpIDw9IDI6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX0NERl9LTkVFXzQ5Jyk="
+    }
+  },
+  {
+    "id": "data_50",
+    "name": "Pandas: Regex Tokenizer & IP Masking",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Directive: The DataFrame `raw_logs` contains 7,000 rows with a string column `log_entry`. Extract the IPv4 address two-octet prefix (e.g., '10.14') from each log, and store the most common subnet prefix in `top_subnet`.",
+    "flag": "DATA_REGEX_IP_50",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Extract with `raw_logs['log_entry'].str.extract(r'(\\d{1,3}\\.\\d{1,3})')` and take `.mode()[0]`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'raw_logs' (7,000 log strings) is pre-loaded in memory.\n# Extract IP prefix, find the most frequent subnet, and assign to 'top_subnet':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZAppbXBvcnQgbnVtcHkgYXMgbnAKbnAucmFuZG9tLnNlZWQoNTApCnN1Ym5ldHMgPSBbJzEwLjE0JywgJzE3Mi4xNicsICcxOTIuMTY4JywgJzEwMC42NCddCmlwcyA9IFtmIntucC5yYW5kb20uY2hvaWNlKHN1Ym5ldHMpfS57bnAucmFuZG9tLnJhbmRpbnQoMSwyNTQpfS57bnAucmFuZG9tLnJhbmRpbnQoMSwyNTQpfSIgZm9yIF8gaW4gcmFuZ2UoNzAwMCldCnJhd19sb2dzID0gcGQuRGF0YUZyYW1lKHsnbG9nX2VudHJ5JzogW2YnVElNRVNUQU1QIFtDT05OXSBjb25uZWN0aW9uIGZyb20ge2lwfSBzdGF0dXM9T0snIGZvciBpcCBpbiBpcHNdfSkKcmF3X2xvZ3MubG9jWzo0MDAwLCAnbG9nX2VudHJ5J10gPSBbZidUSU1FU1RBTVAgW0NPTk5dIGNvbm5lY3Rpb24gZnJvbSAxMC4xNC57aSUyNTB9LntpJTI1MH0gc3RhdHVzPU9LJyBmb3IgaSBpbiByYW5nZSg0MDAxKV0=",
+      "hidden_validation_b64": "ZXh0cmFjdGVkID0gcmF3X2xvZ3NbJ2xvZ19lbnRyeSddLnN0ci5leHRyYWN0KHInKFxkezEsM31cLlxkezEsM30pJylbMF0KZXhwZWN0ZWQgPSBleHRyYWN0ZWQubW9kZSgpWzBdCmlmICd0b3Bfc3VibmV0JyBpbiBsb2NhbHMoKSBhbmQgdG9wX3N1Ym5ldCA9PSBleHBlY3RlZDoKICAgIHByaW50KCdcbkZMQUc6IERBVEFfUkVHRVhfSVBfNTAnKQ=="
+    }
+  },
+  {
+    "id": "data_26",
+    "name": "The Biased Algorithm (Parameter Tuning)",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: Tweak the `threshold` variable in the script so exactly 42 candidates get approved from the hidden dataset.",
+    "flag": "MODEL_TUNED_OK",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Adjust the threshold number and hit Run. Keep adjusting until the console says 'Approved: 42'."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "# Change this variable until exactly 42 candidates pass\nthreshold = 9000\n\n# --- Engine Logic ---\napproved = []\nfor score in candidates_scores:\n    if score > threshold:\n        approved.append(score)\n        \nprint(f\"Approved: {len(approved)}\")",
+      "hidden_setup_b64": "Y2FuZGlkYXRlc19zY29yZXMgPSBsaXN0KHJhbmdlKDUwMDApKQo=",
+      "hidden_validation_b64": "CmlmIGxlbihhcHByb3ZlZCkgPT0gNDI6CiAgICBwcmludCgnXG5GTEFHOiBNT0RFTF9UVU5FRF9PSycpCg=="
+    }
+  },
+  {
+    "id": "data_27",
+    "name": "Data Leakage (Correlation)",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: Our predictive model is cheating. The `Target` variable is perfectly correlated with one of the 50 feature columns in `df`. Print the name of the leaking column.",
+    "flag": "Feature_38",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Use df.corr() to generate a correlation matrix. Look for a column that has a perfect 1.0 correlation with 'Target'."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import pandas as pd\n# 'df' is loaded. Print the correlation matrix to find the leak.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IHBhbmRhcyBhcyBwZAppbXBvcnQgbnVtcHkgYXMgbnAKZGYgPSBwZC5EYXRhRnJhbWUobnAucmFuZG9tLnJhbmQoMTAwLCA1MCksIGNvbHVtbnM9W2YnRmVhdHVyZV97aX0nIGZvciBpIGluIHJhbmdlKDUwKV0pCmRmWydUYXJnZXQnXSA9IG5wLnJhbmRvbS5yYW5kKDEwMCkKZGZbJ0ZlYXR1cmVfMzgnXSA9IGRmWydUYXJnZXQnXSAqIDIuNQo="
+    }
+  },
+  {
+    "id": "data_28",
+    "name": "Visual: The Outlier (Clustering)",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: We plotted 50,000 data points. There is one rogue bot account completely outside the clusters. Plot it, visually locate the outlier, and enter its Y-coordinate.",
+    "flag": "850",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Write plt.scatter(df['X'], df['Y']) and plt.show(). The rogue point sits far away from the center mass."
+      }
+    ],
+    "workspace": {
+      "output_type": "plot",
+      "visible_code": "import matplotlib.pyplot as plt\nimport pandas as pd\n# 'df' is loaded. Plot the scatter graph to find the outlier.\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG1hdHBsb3RsaWIucHlwbG90IGFzIHBsdAppbXBvcnQgcGFuZGFzIGFzIHBkCmltcG9ydCBudW1weSBhcyBucApkZiA9IHBkLkRhdGFGcmFtZSh7J1gnOiBucC5yYW5kb20ucmFuZG4oNDk5OTkpLCAnWSc6IG5wLnJhbmRvbS5yYW5kbig0OTk5OSl9KQpkZi5sb2NbNDk5OTldID0gWzEwLCA4NTBdCg=="
+    }
+  },
+  {
+    "id": "data_29",
+    "name": "The Gradient Descent",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: A mathematical optimization ball rolls down a hill. Start at `x = 15`. Loop 10 times: if `x` is even, divide it by 2 (using `//`). If `x` is odd, multiply by 3 and add 1. What is the final value of `x`?",
+    "flag": "40",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Set up a for loop in range(10). Use the modulo operator `% 2 == 0` to check if the number is even."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "",
+      "visible_code": "x = 15\n# Write the optimization loop for 10 iterations here:\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "data_30",
+    "name": "The Broken Decision Tree (Debugging)",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: The script classifies users into 'Premium' or 'Basic' using `if/else` rules, but it's failing hidden test cases. Fix the logical `and`/`or` operators so it passes.",
+    "flag": "LOGIC_FIXED",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Trace the logic. If a user needs 5 purchases OR to be over 30 years old, make sure the operator is 'or', not 'and'."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "",
+      "visible_code": "purchases = 6\nage = 25\nstatus = \"Basic\"\n\n# Fix the logic below so this user becomes Premium\nif purchases > 5 and age > 30:\n    status = \"Premium\"\n\nprint(f\"User Status: {status}\")",
+      "hidden_validation_b64": "CmlmIHN0YXR1cyA9PSAiUHJlbWl1bSIgYW5kICIgb3IgIiBpbiBfdmlzaWJsZV9jb2RlX3N1Ym1pdHRlZDoKICAgIHByaW50KCdcbkZMQUc6IExPR0lDX0ZJWEVEJykKZWxpZiBzdGF0dXMgPT0gIlByZW1pdW0iOgogICAgcHJpbnQoJ1xuRkxBRzogTE9HSUNfRklYRUQnKQo="
+    }
+  },
+  {
+    "id": "data_51",
+    "name": "ML Metric: ROC-AUC Rank Statistic",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: The pre-loaded arrays `y_true` (binary 0/1, 2,000 samples) and `y_scores` (probabilities) represent classifier predictions. Calculate the exact ROC-AUC score rounded to 4 decimal places using the rank statistic formula, and store in `auc_score`.",
+    "flag": "DATA_ROCAUC_RANK_51",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Compute rank vector with `np.argsort(np.argsort(y_scores)) + 1` and apply Mann-Whitney U formula."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import numpy as np\n# 'y_true' and 'y_scores' (2,000 samples) are pre-loaded in memory.\n# Compute the ROC-AUC score rounded to 4 decimals and assign to 'auc_score':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCm5wLnJhbmRvbS5zZWVkKDUxKQp5X3RydWUgPSBucC5yYW5kb20uYmlub21pYWwoMSwgMC40LCAyMDAwKQp5X3Njb3JlcyA9IG5wLmNsaXAoeV90cnVlICogMC42ICsgbnAucmFuZG9tLm5vcm1hbCgwLjIsIDAuMjUsIDIwMDApLCAwLjAsIDEuMCk=",
+      "hidden_validation_b64": "bjEgPSBucC5zdW0oeV90cnVlID09IDEpCm4wID0gbnAuc3VtKHlfdHJ1ZSA9PSAwKQpyYW5rcyA9IG5wLmFyZ3NvcnQobnAuYXJnc29ydCh5X3Njb3JlcykpICsgMQpleHBlY3RlZCA9IHJvdW5kKGZsb2F0KChucC5zdW0ocmFua3NbeV90cnVlID09IDFdKSAtIG4xICogKG4xICsgMSkgLyAyLjApIC8gKG4wICogbjEpKSwgNCkKaWYgJ2F1Y19zY29yZScgaW4gbG9jYWxzKCkgYW5kIGF1Y19zY29yZSA9PSBleHBlY3RlZDoKICAgIHByaW50KCdcbkZMQUc6IERBVEFfUk9DQVVDX1JBTktfNTEnKQ=="
+    }
+  },
+  {
+    "id": "data_52",
+    "name": "ML Metric: Macro F1-Score Matrix",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: The pre-loaded arrays `y_true` and `y_pred` contain 3,000 predictions across 4 classes (0, 1, 2, 3). Compute the Macro-averaged F1-score across all 4 classes, and store the result rounded to 4 decimal places in `macro_f1`.",
+    "flag": "DATA_MACRO_F1_52",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "For each class, compute Precision = TP/(TP+FP), Recall = TP/(TP+FN), F1 = 2*P*R/(P+R), then average across classes."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import numpy as np\n# 'y_true' and 'y_pred' (3,000 items, classes 0-3) are pre-loaded in memory.\n# Compute Macro-F1 score rounded to 4 decimals and assign to 'macro_f1':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCm5wLnJhbmRvbS5zZWVkKDUyKQp5X3RydWUgPSBucC5yYW5kb20uY2hvaWNlKFswLCAxLCAyLCAzXSwgc2l6ZT0zMDAwLCBwPVswLjQsIDAuMywgMC4yLCAwLjFdKQpub2lzZSA9IG5wLnJhbmRvbS5yYW5kKDMwMDApCnlfcHJlZCA9IHlfdHJ1ZS5jb3B5KCkKZmxpcHMgPSBub2lzZSA8IDAuMjUKeV9wcmVkW2ZsaXBzXSA9IG5wLnJhbmRvbS5jaG9pY2UoWzAsIDEsIDIsIDNdLCBzaXplPW5wLnN1bShmbGlwcykp",
+      "hidden_validation_b64": "ZjFfbGlzdCA9IFtdCmZvciBjIGluIFswLCAxLCAyLCAzXToKICAgIHRwID0gbnAuc3VtKCh5X3ByZWQgPT0gYykgJiAoeV90cnVlID09IGMpKQogICAgZnAgPSBucC5zdW0oKHlfcHJlZCA9PSBjKSAmICh5X3RydWUgIT0gYykpCiAgICBmbiA9IG5wLnN1bSgoeV9wcmVkICE9IGMpICYgKHlfdHJ1ZSA9PSBjKSkKICAgIHByZWMgPSB0cCAvICh0cCArIGZwKSBpZiAodHAgKyBmcCkgPiAwIGVsc2UgMAogICAgcmVjID0gdHAgLyAodHAgKyBmbikgaWYgKHRwICsgZm4pID4gMCBlbHNlIDAKICAgIGYxID0gMiAqIHByZWMgKiByZWMgLyAocHJlYyArIHJlYykgaWYgKHByZWMgKyByZWMpID4gMCBlbHNlIDAKICAgIGYxX2xpc3QuYXBwZW5kKGYxKQpleHBlY3RlZCA9IHJvdW5kKGZsb2F0KG5wLm1lYW4oZjFfbGlzdCkpLCA0KQppZiAnbWFjcm9fZjEnIGluIGxvY2FscygpIGFuZCBtYWNyb19mMSA9PSBleHBlY3RlZDoKICAgIHByaW50KCdcbkZMQUc6IERBVEFfTUFDUk9fRjFfNTInKQ=="
+    }
+  },
+  {
+    "id": "data_53",
+    "name": "Optimization: Batch Gradient Descent Convergence",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: Fit a linear model y = w*x + b on pre-loaded arrays `X` and `y` (1,000 samples). Starting from w=0, b=0, run 100 iterations of batch gradient descent with alpha=0.05. Store the final weight `w` rounded to 4 decimal places in `final_weight`.",
+    "flag": "DATA_GRADIENT_STEP_53",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "In each step: `dw = np.sum((y_hat - y) * X) / N` and `w -= alpha * dw`. Run loop for 100 iterations."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import numpy as np\n# 'X' and 'y' (1,000 data points) are pre-loaded in memory.\n# Run 100 gradient descent iterations (alpha=0.05) and assign w to 'final_weight':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCm5wLnJhbmRvbS5zZWVkKDUzKQpYID0gbnAucmFuZG9tLnVuaWZvcm0oLTIuMCwgMi4wLCAxMDAwKQp5ID0gMy41ICogWCArIDEuMiArIG5wLnJhbmRvbS5ub3JtYWwoMCwgMC4yLCAxMDAwKQ==",
+      "hidden_validation_b64": "dywgYiA9IDAuMCwgMC4wCmFscGhhID0gMC4wNQpOID0gbGVuKFgpCmZvciBfIGluIHJhbmdlKDEwMCk6CiAgICBlcnIgPSAodyAqIFggKyBiKSAtIHkKICAgIHcgLT0gYWxwaGEgKiBucC5zdW0oZXJyICogWCkgLyBOCiAgICBiIC09IGFscGhhICogbnAuc3VtKGVycikgLyBOCmV4cGVjdGVkID0gcm91bmQoZmxvYXQodyksIDQpCmlmICdmaW5hbF93ZWlnaHQnIGluIGxvY2FscygpIGFuZCBmaW5hbF93ZWlnaHQgPT0gZXhwZWN0ZWQ6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX0dSQURJRU5UX1NURVBfNTMnKQ=="
+    }
+  },
+  {
+    "id": "data_54",
+    "name": "Clustering: K-Means Inertia Computation",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: The pre-loaded array `data_points` contains 1,500 2D coordinates and `centroids` contains 3 cluster centers. Compute the total within-cluster sum of squares (inertia), and store the result rounded to 2 decimal places in `total_inertia`.",
+    "flag": "DATA_KMEANS_INERTIA_54",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Find squared distance from each point to every centroid, take minimum for each point, and sum them up."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import numpy as np\n# 'data_points' (1500x2) and 'centroids' (3x2) are pre-loaded in memory.\n# Compute total K-Means inertia rounded to 2 decimals and assign to 'total_inertia':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCm5wLnJhbmRvbS5zZWVkKDU0KQpjMSA9IG5wLnJhbmRvbS5ub3JtYWwoWzUsIDVdLCAxLjAsICg1MDAsIDIpKQpjMiA9IG5wLnJhbmRvbS5ub3JtYWwoWzE1LCAxNV0sIDEuMiwgKDUwMCwgMikpCmMzID0gbnAucmFuZG9tLm5vcm1hbChbNSwgMjVdLCAxLjEsICg1MDAsIDIpKQpkYXRhX3BvaW50cyA9IG5wLnZzdGFjayhbYzEsIGMyLCBjM10pCmNlbnRyb2lkcyA9IG5wLmFycmF5KFtbNS4xLCA1LjBdLCBbMTQuOSwgMTUuMl0sIFs0LjgsIDI0LjldXSk=",
+      "hidden_validation_b64": "ZGlzdHMgPSBucC5zdW0oKGRhdGFfcG9pbnRzWzosIG5wLm5ld2F4aXMsIDpdIC0gY2VudHJvaWRzW25wLm5ld2F4aXMsIDosIDpdKSoqMiwgYXhpcz0tMSkKZXhwZWN0ZWQgPSByb3VuZChmbG9hdChucC5zdW0obnAubWluKGRpc3RzLCBheGlzPS0xKSkpLCAyKQppZiAndG90YWxfaW5lcnRpYScgaW4gbG9jYWxzKCkgYW5kIHRvdGFsX2luZXJ0aWEgPT0gZXhwZWN0ZWQ6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX0tNRUFOU19JTkVSVElBXzU0Jyk="
+    }
+  },
+  {
+    "id": "data_55",
+    "name": "Dimensionality: PCA Explained Variance Ratio",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: The pre-loaded matrix `features` is a centered (1000, 5) dataset. Compute the covariance matrix and its eigenvalues. Determine the fraction of total variance explained by the top 2 principal components, and store rounded to 4 decimals in `explained_var_ratio`.",
+    "flag": "DATA_PCA_RATIO_55",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Compute `cov = (features.T @ features) / (N - 1)`, eigenvalues with `np.linalg.eigvalsh()`, sort descending, and divide sum(top 2) by total sum."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import numpy as np\n# 'features' (1000x5 centered array) is pre-loaded in memory.\n# Calculate the variance ratio of the top 2 components and assign to 'explained_var_ratio':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCm5wLnJhbmRvbS5zZWVkKDU1KQpyYXcgPSBucC5yYW5kb20ubm9ybWFsKDAsIDEsICgxMDAwLCA1KSkKdHJhbnNmb3JtID0gbnAuYXJyYXkoWwogICAgWzMuMCwgMS41LCAwLjIsIDAuMCwgMC4wXSwKICAgIFsxLjUsIDIuMCwgMC4xLCAwLjAsIDAuMF0sCiAgICBbMC4yLCAwLjEsIDAuOCwgMC4xLCAwLjBdLAogICAgWzAuMCwgMC4wLCAwLjEsIDAuNSwgMC4wXSwKICAgIFswLjAsIDAuMCwgMC4wLCAwLjAsIDAuMl0KXSkKZmVhdHVyZXMgPSByYXcgQCB0cmFuc2Zvcm0KZmVhdHVyZXMgLT0gbnAubWVhbihmZWF0dXJlcywgYXhpcz0wKQ==",
+      "hidden_validation_b64": "Y292ID0gKGZlYXR1cmVzLlQgQCBmZWF0dXJlcykgLyAobGVuKGZlYXR1cmVzKSAtIDEpCmVpZ3ZhbHMgPSBucC5saW5hbGcuZWlndmFsc2goY292KVs6Oi0xXQpleHBlY3RlZCA9IHJvdW5kKGZsb2F0KG5wLnN1bShlaWd2YWxzWzoyXSkgLyBucC5zdW0oZWlndmFscykpLCA0KQppZiAnZXhwbGFpbmVkX3Zhcl9yYXRpbycgaW4gbG9jYWxzKCkgYW5kIGV4cGxhaW5lZF92YXJfcmF0aW8gPT0gZXhwZWN0ZWQ6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX1BDQV9SQVRJT181NScp"
+    }
+  },
+  {
+    "id": "data_56",
+    "name": "Preprocessing: Robust Scaler Implementation",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: Implement Robust Scaling from scratch on the (2000, 4) array `sensor_features`: for each column, subtract median and divide by IQR (Q3 - Q1). Find the maximum value in the scaled matrix rounded to 3 decimal places and store in `max_scaled_val`.",
+    "flag": "DATA_ROBUST_SCALE_56",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Compute median with `np.median(..., axis=0)` and IQR with `np.percentile()`. Scale and find `round(float(np.max(scaled)), 3)`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import numpy as np\n# 'sensor_features' (2000x4 array with outliers) is pre-loaded.\n# Apply median/IQR robust scaling and store maximum scaled value in 'max_scaled_val':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCm5wLnJhbmRvbS5zZWVkKDU2KQpzZW5zb3JfZmVhdHVyZXMgPSBucC5yYW5kb20uZXhwb25lbnRpYWwoc2NhbGU9WzEwLCA1MCwgMTAwLCAyMDBdLCBzaXplPSgyMDAwLCA0KSkKc2Vuc29yX2ZlYXR1cmVzWzQ1LCAyXSA9IDI1MDAwLjA=",
+      "hidden_validation_b64": "bWVkID0gbnAubWVkaWFuKHNlbnNvcl9mZWF0dXJlcywgYXhpcz0wKQppcXIgPSBucC5wZXJjZW50aWxlKHNlbnNvcl9mZWF0dXJlcywgNzUsIGF4aXM9MCkgLSBucC5wZXJjZW50aWxlKHNlbnNvcl9mZWF0dXJlcywgMjUsIGF4aXM9MCkKZXhwZWN0ZWQgPSByb3VuZChmbG9hdChucC5tYXgoKHNlbnNvcl9mZWF0dXJlcyAtIG1lZCkgLyBpcXIpKSwgMykKaWYgJ21heF9zY2FsZWRfdmFsJyBpbiBsb2NhbHMoKSBhbmQgbWF4X3NjYWxlZF92YWwgPT0gZXhwZWN0ZWQ6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX1JPQlVTVF9TQ0FMRV81Nicp"
+    }
+  },
+  {
+    "id": "data_57",
+    "name": "Loss Function: Multi-Class Cross-Entropy",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: The pre-loaded array `y_true_onehot` is a (1500, 3) binary one-hot matrix, and `y_prob` contains predicted probabilities. Compute categorical cross-entropy loss with epsilon 1e-15, and store rounded to 4 decimals in `cross_entropy_loss`.",
+    "flag": "DATA_LOGLOSS_ENTROPY_57",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Calculate `-np.mean(np.sum(y_true_onehot * np.log(np.clip(y_prob, 1e-15, 1.0)), axis=1))`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import numpy as np\n# 'y_true_onehot' and 'y_prob' (1500x3 matrices) are pre-loaded in memory.\n# Calculate categorical cross-entropy loss rounded to 4 decimals and assign to 'cross_entropy_loss':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCm5wLnJhbmRvbS5zZWVkKDU3KQpsYWJlbHMgPSBucC5yYW5kb20uY2hvaWNlKFswLCAxLCAyXSwgc2l6ZT0xNTAwKQp5X3RydWVfb25laG90ID0gbnAuemVyb3MoKDE1MDAsIDMpKQp5X3RydWVfb25laG90W25wLmFyYW5nZSgxNTAwKSwgbGFiZWxzXSA9IDEuMApsb2dpdHMgPSBucC5yYW5kb20ubm9ybWFsKDAsIDEsICgxNTAwLCAzKSkKbG9naXRzW25wLmFyYW5nZSgxNTAwKSwgbGFiZWxzXSArPSAyLjAKZXhwX2wgPSBucC5leHAobG9naXRzKQp5X3Byb2IgPSBleHBfbCAvIG5wLnN1bShleHBfbCwgYXhpcz0xLCBrZWVwZGltcz1UcnVlKQ==",
+      "hidden_validation_b64": "ZXhwZWN0ZWQgPSByb3VuZChmbG9hdCgtbnAubWVhbihucC5zdW0oeV90cnVlX29uZWhvdCAqIG5wLmxvZyhucC5jbGlwKHlfcHJvYiwgMWUtMTUsIDEuMCkpLCBheGlzPTEpKSksIDQpCmlmICdjcm9zc19lbnRyb3B5X2xvc3MnIGluIGxvY2FscygpIGFuZCBjcm9zc19lbnRyb3B5X2xvc3MgPT0gZXhwZWN0ZWQ6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX0xPR0xPU1NfRU5UUk9QWV81Nycp"
+    }
+  },
+  {
+    "id": "data_58",
+    "name": "Optimization: Elastic Net Penalty Evaluation",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: An Elastic Net regularizer has lambda=0.1 and L1-ratio=0.5. Given the pre-loaded weight vector `weights` (length 500), compute penalty P(w) = lambda * [0.5 * sum(|w|) + 0.25 * sum(w^2)], and store rounded to 4 decimals in `penalty_value`.",
+    "flag": "DATA_ELASTIC_NET_58",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Calculate `l1 = np.sum(np.abs(weights))` and `l2 = np.sum(weights**2)`. Compute penalty with the given formula."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import numpy as np\n# 'weights' (500 float coefficients) is pre-loaded in memory.\n# Compute Elastic Net penalty (lambda=0.1, rho=0.5) and assign to 'penalty_value':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCm5wLnJhbmRvbS5zZWVkKDU4KQp3ZWlnaHRzID0gbnAucmFuZG9tLmxhcGxhY2UoMCwgMC41LCA1MDApCndlaWdodHNbbnAuYWJzKHdlaWdodHMpIDwgMC4xXSA9IDAuMA==",
+      "hidden_validation_b64": "bDEgPSBucC5zdW0obnAuYWJzKHdlaWdodHMpKQpsMiA9IG5wLnN1bSh3ZWlnaHRzKioyKQpleHBlY3RlZCA9IHJvdW5kKGZsb2F0KDAuMSAqICgwLjUgKiBsMSArIDAuMjUgKiBsMikpLCA0KQppZiAncGVuYWx0eV92YWx1ZScgaW4gbG9jYWxzKCkgYW5kIHBlbmFsdHlfdmFsdWUgPT0gZXhwZWN0ZWQ6CiAgICBwcmludCgnXG5GTEFHOiBEQVRBX0VMQVNUSUNfTkVUXzU4Jyk="
+    }
+  },
+  {
+    "id": "data_59",
+    "name": "Evaluation: Matthews Correlation Coefficient",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: The binary prediction arrays `y_actual` and `y_predicted` have 5,000 imbalanced entries. Construct the confusion matrix (TP, TN, FP, FN), compute the Matthews Correlation Coefficient (MCC), and store rounded to 4 decimals in `mcc_score`.",
+    "flag": "DATA_MCC_METRIC_59",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Compute TP, TN, FP, FN, then evaluate `(TP*TN - FP*FN) / sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))`."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "visible_code": "import numpy as np\n# 'y_actual' and 'y_predicted' (5,000 binary values) are pre-loaded.\n# Compute Matthews Correlation Coefficient (MCC) rounded to 4 decimals and assign to 'mcc_score':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCm5wLnJhbmRvbS5zZWVkKDU5KQp5X2FjdHVhbCA9IG5wLnJhbmRvbS5iaW5vbWlhbCgxLCAwLjEsIDUwMDApCm5vaXNlID0gbnAucmFuZG9tLnJhbmQoNTAwMCkKeV9wcmVkaWN0ZWQgPSB5X2FjdHVhbC5jb3B5KCkKeV9wcmVkaWN0ZWRbKHlfYWN0dWFsID09IDApICYgKG5vaXNlIDwgMC4wNSldID0gMQp5X3ByZWRpY3RlZFsoeV9hY3R1YWwgPT0gMSkgJiAobm9pc2UgPCAwLjIwKV0gPSAw",
+      "hidden_validation_b64": "dHAgPSBucC5zdW0oKHlfYWN0dWFsID09IDEpICYgKHlfcHJlZGljdGVkID09IDEpKQp0biA9IG5wLnN1bSgoeV9hY3R1YWwgPT0gMCkgJiAoeV9wcmVkaWN0ZWQgPT0gMCkpCmZwID0gbnAuc3VtKCh5X2FjdHVhbCA9PSAwKSAmICh5X3ByZWRpY3RlZCA9PSAxKSkKZm4gPSBucC5zdW0oKHlfYWN0dWFsID09IDEpICYgKHlfcHJlZGljdGVkID09IDApKQpkZW5vbSA9IG5wLnNxcnQoZmxvYXQoKHRwICsgZnApICogKHRwICsgZm4pICogKHRuICsgZnApICogKHRuICsgZm4pKSkKZXhwZWN0ZWQgPSByb3VuZChmbG9hdCgoKHRwICogdG4pIC0gKGZwICogZm4pKSAvIGRlbm9tKSwgNCkKaWYgJ21jY19zY29yZScgaW4gbG9jYWxzKCkgYW5kIG1jY19zY29yZSA9PSBleHBlY3RlZDoKICAgIHByaW50KCdcbkZMQUc6IERBVEFfTUNDX01FVFJJQ181OScp"
+    }
+  },
+  {
+    "id": "data_60",
+    "name": "Visual: K-Means Elbow Method Optimal K",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Directive: The pre-loaded arrays `k_values` (1 to 8) and `inertias` represent K-Means clustering results. Plot the elbow curve, visually locate the optimal cluster count K where inertia reduction abruptly flattens, and store in `optimal_k`.",
+    "flag": "DATA_ELBOW_K_60",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Execute `plt.plot(k_values, inertias, marker='o')` and `plt.show()`. Look for the inflection point (elbow) on the curve."
+      }
+    ],
+    "workspace": {
+      "output_type": "plot",
+      "visible_code": "import matplotlib.pyplot as plt\n# 'k_values' and 'inertias' are pre-loaded in memory.\n# Plot the elbow curve, determine the optimal K, and assign to 'optimal_k':\n\n",
+      "hidden_validation": "",
+      "hidden_setup_b64": "aW1wb3J0IG51bXB5IGFzIG5wCmtfdmFsdWVzID0gbGlzdChyYW5nZSgxLCA5KSkKaW5lcnRpYXMgPSBbMTUyMDAuMCwgNzgwMC4wLCAzOTAwLjAsIDE4NTAuMCwgMTYwMC4wLCAxNDIwLjAsIDEyODAuMCwgMTE1MC4wXQ==",
+      "hidden_validation_b64": "aWYgJ29wdGltYWxfaycgaW4gbG9jYWxzKCkgYW5kIG9wdGltYWxfayA9PSA0OgogICAgcHJpbnQoJ1xuRkxBRzogREFUQV9FTEJPV19LXzYwJyk="
+    }
+  }
+]

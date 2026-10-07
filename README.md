@@ -3,9 +3,9 @@
 An Among-Us-themed debugging competition platform for **IDEALab.h · AAROHAN 2026 · SGSITS Indore**.
 
 The format is **2 days × 2 slots × 4 sprints**, and every crew plays in exactly one slot. Crews
-board an explorable spaceship, repair buggy programs at six domain stations, and race for
+board an explorable spaceship, solve flag problems from the IDEALab.dev bank at six domain stations, and race for
 IdeaCoins. Organizers import crews, send credentials, start each sprint explicitly, release
-reserves and bonuses, and finalize results. Projectors show live sprint, slot and overall boards.
+questions from the bank (initial sets, top-ups, bonuses), and finalize results. Projectors show live sprint, slot and overall boards.
 
 | Landing | Ship lobby + HUD | Rankings |
 |---|---|---|
@@ -47,11 +47,22 @@ Keep it current when behaviour changes.
     `sprint` (4 per slot).
   - `team` → `slot_enrollment`, which is unique per team: one slot per crew. It caches wallet,
     earned, spent and score, and is the scoring identity.
-- **Content:**
-  - `question` → `question_version` (DRAFT → REVIEWED → PUBLISHED).
-  - Per slot, the **release plan** is `release` rows (INITIAL / RESERVE / BONUS; PENDING /
-    SCHEDULED / RELEASED / CANCELLED; active-time `offset_seconds`) owning `question_instance` rows.
-  - It is built by `buildSlotPlan` from the rules' blueprint. Each slot uses different versions.
+- **Content (question bank):**
+  - `question` → `question_version` (DRAFT → REVIEWED → PUBLISHED). The bank is the organizers'
+    **IDEALab.dev** repository: 360 flag problems, 6 domains (`core_compute`, `cryptography`,
+    `data_decypher`, `maker`, `recon`, `web`), 25 easy / 20 medium / 15 hard each. Snapshot in
+    `server/src/content/idealab/` (`SOURCE.json` = commit); converter `content/idealab.ts`.
+  - **GitHub sync** (`services/sync.ts`): preview → commit by repository id and content hash
+    (NEW / CHANGED / UNCHANGED); changed questions get a new version (DRAFT, or PUBLISHED only when
+    the organizer ticks it). Released instances keep their version.
+  - `question_version` (migration 003) adds `runtime` (python / shell / sql / json), `board`
+    (evidence), `hints` (ladder, bought in order; `hint_purchase.level`) and `source`.
+  - **Workspaces:** BASIC / DATA (Python; hidden setup + check via stdin, numpy / pandas /
+    matplotlib, plots returned as PNG), SHELL (server-side virtual shell, `services/shell.ts`),
+    SQL (SQLite in the runner), JSON (server-side compare), EVIDENCE (board + flag), WEB (preview).
+    Job building lives in `services/runtimes.ts`; dispatch in `services/runs.ts`.
+  - Hidden-check secrecy: the flag literal in a check is replaced by a per-run nonce that the
+    server swaps back only in output; self-contained checks (maker_41–60) are output-gated.
 - **Scoring:**
   - `submission` → `solve_award` (unique per instance + generation) → append-only `coin_ledger`
     (`slot_id`, `sprint_id`).
@@ -68,13 +79,21 @@ Keep it current when behaviour changes.
     unreleased releases, freezes a snapshot).
   - Then the next `startSprint` → … → `finalizeSlot` → `finalizeEvent`.
   - Pause / resume shift the deadline. Only one slot runs at a time.
-- **Releases (`services/releases.ts`):** a single idempotent `releaseNow` is used by the worker
-  scheduler and by organizers. Organizer early or manual releases need a reason and are fairness
-  deviations.
-  - Per slot: 4 × 60 INITIAL (one set per sprint); a 20-question RESERVE pool (`sprint_id` NULL,
-    single-question releases) released by `refillSlot` into the domains with the largest deficit;
-    a 10-question BONUS pool released one at a time by `releaseNextBonus` (`bonusMode` MANUAL,
-    default; SCHEDULED uses blueprint offsets). `poolStatus` reports per-domain stock.
+- **Releases (`services/bank.ts`, `services/releases.ts`):** rule `questionScope` = SLOT_POOL
+  (default): released questions stay active for the whole slot and expire when its last sprint
+  closes.
+  - **Initial set** per slot (`buildSlotPlan`): 7 easy / 5 medium / 3 hard per domain (rule
+    `initialPerDomain`) = 90, released when Sprint 1 starts; editable before then (remove, add,
+    rebuild with other counts).
+  - **Stock** (`slotStock`): active / solved / planned vs target per domain × difficulty.
+  - **Top up** (`topUp`) auto-picks back to target; **pick & release** (`releaseFromBank`) sends
+    chosen bank questions, regular or BONUS, NOW or at the next sprint start.
+  - **Reuse is allowed:** the picker prefers questions new to the slot, then the least used, then
+    a deterministic per-slot order.
+  - `releaseNow` stays the single idempotent release path (worker and organizers).
+- **Content protection** (rule `protectContent`, default on; `web/src/lib/contentProtection.tsx`):
+  crew screens block copy / cut / context menu / devtools and screenshot shortcuts, blur when
+  focus is lost, hide on print, and carry a crew watermark. Best effort only.
 - **People:**
   - Crews come only from CSV/XLSX import (`services/teams.ts`: preview → commit, stable `CRW-NNN`,
     never resets passwords).
@@ -106,20 +125,24 @@ Keep it current when behaviour changes.
 
 | Concern | File(s) |
 |---|---|
-| Schema | `server/src/migrations/001_init.sql` |
+| Schema | `server/src/migrations/001_init.sql` … `003_question_bank_runtime.sql` |
 | Rules, defaults, rule catalogue | `server/src/services/rules.ts` |
 | Crew context / slot resolution | `server/src/services/context.ts` |
 | Questions, submit, hints | `server/src/services/questions.ts` |
+| Question bank: initial sets, stock, top-up, pick & release | `server/src/services/bank.ts` |
+| GitHub sync, snapshot seeding | `server/src/services/sync.ts`, `server/src/content/idealab.ts` |
+| Runs: Python / SQL jobs, shell, JSON check | `server/src/services/{runs,runtimes,shell}.ts` |
+| Bank self-check | `server/src/scripts/bank-check.ts` |
 | Boards | `server/src/services/ranking.ts` |
 | Snapshot for crews | `server/src/services/snapshot.ts` |
 | Organizer ops, exports, health | `server/src/services/admin.ts` |
 | Routes | `server/src/routes/{auth,crew,admin,display}.ts` |
 | Worker (deadlines, scheduler, heartbeat) | `server/src/worker.ts` |
 | Seed (demo) / skeleton (prod) | `server/src/seed/demo.ts`, `server/src/seed/structure.ts`, `server/src/scripts/bootstrap.ts` |
-| Seedable content templates | `server/src/content/templates/*.ts` (`variant(seed)`) |
+| Legacy seedable templates (extra content) | `server/src/content/templates/*.ts` (`variant(seed)`) |
 | Web API types (mirror server DTOs) | `web/src/lib/api.ts` |
 | Crew UI | `web/src/screens/*`, `web/src/game/*`, `web/src/workspace/*` |
-| Organizer console | `web/src/admin/*` |
+| Organizer console (question control: `QuestionControl.tsx`) | `web/src/admin/*` |
 | Projectors | `web/src/display/DisplayScreen.tsx` |
 | Tests | `server/test/*.test.ts` (real PostgreSQL + runner), `e2e/ui.spec.ts` (Playwright) |
 
@@ -131,8 +154,8 @@ See **Known limitations** at the bottom. Keep that list honest.
 
 ## Quick start — local, no Docker (Windows / macOS / Linux)
 
-Requirements: **Node 20.11+** (tested on 24.12) and **Python 3.10+** on `PATH` for Python
-questions. PostgreSQL is downloaded automatically (embedded-postgres, real PostgreSQL binaries,
+Requirements: **Node 20.11+** (tested on 24.12) and **Python 3.10+** on `PATH` with
+**numpy, pandas and matplotlib** (`pip install numpy pandas matplotlib`) for Python questions. PostgreSQL is downloaded automatically (embedded-postgres, real PostgreSQL binaries,
 data in `.local-pg/`, port 54329).
 
 ```bash
@@ -156,8 +179,8 @@ whole process tree. Fresh demo data: `npm run reset:demo -- --yes`.
 
 The demo contains:
 - 4 slots on 8 and 9 October 2026, 4 sprints each (30 min; REHEARSAL preset = 2 min);
-- a bank of 1,296 published demo questions;
-- 1,080 planned instances (960 initial + 120 reserves / bonuses);
+- the IDEALab.dev bank: 360 published questions in 6 domains;
+- an initial set of 90 questions per slot (15 per domain: 7 easy, 5 medium, 3 hard);
 - every rule **UNCONFIRMED**.
 
 Nothing runs until an organizer acts:
@@ -219,7 +242,8 @@ For real delivery, set `MAIL_MODE=smtp`, `SMTP_URL=<provider>` and `MAIL_SINK=fa
 | Integration tests (real PostgreSQL + runner) | `npm test` |
 | UI e2e (needs `npm run dev` on a fresh seed) | `npm run test:e2e` |
 | UI e2e on an isolated stack (leaves your dev / live stack alone) | `powershell -File e2e/tools/isolated-stack.ps1 reset`, then start the API on :4300 with `DATABASE_URL=…/among_bugs_e2e PORT=4300 WEB_DIST_DIR=../web/dist` (+ worker), then `E2E_BASE=http://127.0.0.1:4300 npm run test:e2e` |
-| Content self-check | `npm run content:check` (options `--domain`, `--seeds 0-63`, `--distinct 64`) |
+| Question bank check (IDEALab) | `npm run bank:check -w server` (`--github` checks GitHub main, `--notes` lists notes) |
+| Legacy template self-check | `npm run content:check` (options `--domain`, `--seeds 0-63`, `--distinct 64`) |
 | Load / rehearsal simulator (opt-in) | `npm run rehearsal:sim -- --yes --slot 1 --sessions 4 --duration 120 --all --start` |
 | API contract | `GET /api/v1/openapi.json` · [`docs/API.md`](docs/API.md) |
 
@@ -228,19 +252,19 @@ For real delivery, set `MAIL_MODE=smtp`, `SMTP_URL=<provider>` and `MAIL_SINK=fa
 1. **Setup:**
    - Rules review: confirm every rule (production cannot start otherwise).
    - **Roll call:** Crews → Slot rosters → tick **Present** (attendance enables login).
-   - Question bank: import → verify → publish.
-   - **Build release plan** per slot.
+   - Question bank: **Sync from GitHub** → review → publish (bulk by domain / difficulty).
+   - Each slot's **initial set** (7 / 5 / 3 per domain) — edit it in Releases before Sprint 1.
    - **Import crews** (preview → commit), assign slots, **Send credentials** (preview first).
 2. **Slot n:** **Open slot (kick-in)** → present crews board and roam the ship (nothing solvable yet).
 3. **Sprint 1:**
    - The organizer presses Start after the preflight.
-   - Crews see 60 fresh questions (10 per domain). The first correct answer in the slot wins each.
-   - **Refill** releases reserves (20-question pool) into the domains emptied by solves.
-   - **Release bonus** sends the next of 10 bonus questions (IMPOSTER DETECTED, 900 coins, open to
-     all, first correct wins).
+   - Crews see the 90-question initial set. The first correct answer in the slot wins each.
+   - Releases → **question control** shows the stock per domain and difficulty. **Top up** refills
+     low cells; **Pick & release** sends chosen bank questions, as regular or **bonus**
+     (IMPOSTER DETECTED, 900 coins, first correct wins). Used questions may be reused.
    - HUD: sprint score, cumulative, wallet, sprint rank, slot rank, timer.
-4. **The deadline passes:** the worker closes the sprint, unsolved questions expire and boards
-   freeze. The sprint board restarts at zero next sprint.
+4. **The deadline passes:** the worker closes the sprint and boards freeze. Questions stay active
+   until the slot's last sprint closes (rule `questionScope`). The sprint board restarts at zero next sprint.
 5. **Sprints 2–4:** each started explicitly. After sprint 4, **Finalize slot** (top-3 ties need a
    published decision).
 6. **Repeat** for Slots 2–4. Only one slot runs at a time.
@@ -252,15 +276,14 @@ Projector routes: `/display/overall`, `/display/slots/:slotId`, `/display/slots/
 
 ## Verified in this build (actually run)
 
-Last run on 5 Oct 2026 (after the kick-in / attendance / refill update), on Windows 11 with Node 24.12, real PostgreSQL (embedded-postgres) and the real runner:
+Last run on 6 Oct 2026 (after the IDEALab question bank update), on Windows 11 with Node 24.12, real PostgreSQL (embedded-postgres) and the real runner:
 
 | Check | Result |
 |---|---|
-| `npm test`: integration tests in 5 files (auth, import, slots, competition, controls) | **49 / 49 pass** |
+| `npm test`: integration tests in 5 files (auth, import, slots, competition, controls) | **51 / 51 pass** |
 | `npm run test:e2e`: Chromium against a fresh demo seed (isolated stack on :4300) | **9 / 9 pass** |
-| `npm run content:check` (runner proof for seeds 0–5, structural pass over 64 seeds per template) | **204 variants runner-checked, 0 problems** |
+| `npm run bank:check -w server` (snapshot `f406d64`, real runner) | **360 checked, 1 problem (`core_compute_21`, upstream data), 12 notes** |
 | `npm run typecheck`, `npm run build` (runner, server, web) | **pass** |
-| `npm audit` | **0 vulnerabilities** |
 
 What the integration tests cover:
 
@@ -289,8 +312,8 @@ What the integration tests cover:
   - PUBLISHED is impossible before REVIEWED.
   - Verify runs the real runner for the code sample.
 - **Four slots:**
-  - Demo structure: dates, 10 crews per slot, 30-min sprints, 270 instances per slot, 5E/3M/2H × 6
-    domains, 20 reserves, bonus offsets [8,16,24]…, no version shared between slots.
+  - Demo structure: dates, 10 crews per slot, 30-min sprints, 90 initial questions per slot, 7E/5M/3H × 6
+    domains, 360 bank questions; questions carry over between sprints of a slot.
   - Nothing visible before start; one running slot at a time.
   - Other slots can't see, open, submit or rank Slot 1.
   - First correct wins and the loser gets `QUESTION_ALREADY_SOLVED`; socket events reach only that
@@ -323,10 +346,11 @@ What the integration tests cover:
     without `checked_in` keeps attendance.
   - Crews of an unopened slot wait; Sprint 1 is blocked until **Open slot**; after opening, crews
     roam but see no questions until the start; close boarding works only before Sprint 1.
-  - **Refill** sends reserves to the domain emptied by solves (3 solved misc → 3 misc reserves),
-    and reports `POOL_EMPTY` when that domain's reserves are gone.
-  - **Release bonus** releases one at a time (10 → 0, then `POOL_EMPTY`); unreleased bonuses
-    carry over to the next sprint.
+  - **Stock / top-up / pick:** stock reflects solves; top-up refills to target; picking specific
+    questions (regular and bonus, now or next start); reuse of used questions; questions carry over
+    between sprints of a slot; the initial set is editable before Sprint 1 only.
+- **Runtimes:** a fixed Python question prints its flag; the flag never leaks via `__file__` or
+  stdin; the maker gate; the recon shell; the recon SQL; the maker JSON device; `FLAG:` wrappers.
 - **Restart:** a rebuilt server keeps sessions and standings; the worker closes an overdue sprint
   at its stored deadline, exactly once.
 
@@ -335,15 +359,16 @@ The e2e tests cover:
 - an absent crew is refused; ticking **Present** in the slot roster enables its login; it then
   waits for the slot to open;
 - **Open slot (kick-in)** before Sprint 1 can start;
-- **Refill** and **Release bonus** in the Releases tab, seen by the crew (reserve in the depleted
-  domain, IMPOSTER DETECTED);
+- question control: the solved cell shows low, **Top up all low** refills it, **Release bonus**
+  picks a bank question, and the crew sees IMPOSTER DETECTED;
 - the console's ten sections, and starting Slot 1 · Sprint 1 through the preflight
   acknowledgement;
-- Nexora's HUD, 60 questions, and the Sprint / Slot / Overall rankings;
+- Nexora's HUD, 90 questions, and the Sprint / Slot / Overall rankings;
 - a Slot 2 crew waiting and seeing nothing;
 - a crew denied at `/command`;
 - the projector link (key removed from the URL, no emails, revoked → 401);
-- **a real repair in the ship workspace** raising wallet, sprint score and cumulative.
+- **a real repair in the ship workspace** (cryptography evidence board, answered as `FLAG: …`)
+  raising wallet, sprint score and cumulative.
 
 ## Security model (summary)
 
@@ -381,8 +406,16 @@ The e2e tests cover:
   - elimination (off);
   - bonus policy, ties, sessions;
   - prize labels (placeholders, no amounts).
-- **Content:** the 1,296 questions are demo material from 34 templates
-  ([`docs/CONTENT_REVIEW.md`](docs/CONTENT_REVIEW.md)). Review them or import your own.
+- **Content:** the bank is the IDEALab.dev repository ([`docs/CONTENT_REVIEW.md`](docs/CONTENT_REVIEW.md)).
+  `core_compute_21` (starter already passes) and `recon_60` (data cannot produce its flag) are
+  broken upstream; `maker_41`–`maker_60` are auto-gated. It has no reference solutions, so the
+  intended fixes are not proven. Four slots plus top-ups exceed the fresh supply, so later slots
+  reuse questions.
+- **Content protection is best effort:** it cannot stop phone cameras, OS-level capture tools or a
+  determined user with devtools. Web-question preview files are sent to the browser and are
+  readable that way.
+- **Python libraries:** numpy / pandas / matplotlib must be installed for the runner (the Docker
+  image installs them).
 - **Not exercised in a browser:**
   - the console's import / credentials / rules / bank / releases screens are covered by API
     tests, but only partly by e2e;

@@ -159,10 +159,28 @@ function RuleEditor({ data, reload }: { data: RulesResponse; reload: () => Promi
             <Select ariaLabel="Session policy" value={r.sessionLimitPolicy} onChange={(v) => set('sessionLimitPolicy', v)} options={[{ value: 'EVICT_OLDEST', label: 'EVICT_OLDEST' }, { value: 'REJECT', label: 'REJECT' }]} />
           </Field>
           <div className="pt-6"><Check checked={r.singleRunningSlot} onChange={(v) => set('singleRunningSlot', v)} label="Only one slot may run at a time" /></div>
-          <Field label="BONUS RELEASE" hint="MANUAL = you release the 10 bonus questions from time to time">
+          <Field label="BONUS RELEASE" hint="MANUAL = you release bonus questions from the bank (RELEASES)">
             <Select ariaLabel="Bonus release mode" value={r.bonusMode ?? 'MANUAL'} onChange={(v) => set('bonusMode', v)} options={[{ value: 'MANUAL', label: 'MANUAL (organizer)' }, { value: 'SCHEDULED', label: 'SCHEDULED (blueprint offsets)' }]} />
           </Field>
           <div className="pt-6"><Check checked={r.attendanceGatesLogin ?? true} onChange={(v) => set('attendanceGatesLogin', v)} label="Attendance enables login (crews must be marked present)" /></div>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className={SUBCARD}>
+            <Label className="mb-1">QUESTIONS PER DOMAIN</Label>
+            <p className="mb-2 text-[10px] leading-4 text-muted">Released at the start of each slot&rsquo;s Sprint 1 (per domain). Also the target the live stock is topped up to. Default 7 easy · 5 medium · 3 hard.</p>
+            <div className="grid grid-cols-3 gap-2">
+              {(['EASY', 'MEDIUM', 'HARD'] as const).map((d) => (
+                <label key={d} className="text-[10px]"><span className="text-muted">{d}</span>
+                  <NumInput value={String(r.initialPerDomain[d])} onChange={(v) => set('initialPerDomain', { ...r.initialPerDomain, [d]: num(v) })} min={0} max={50} ariaLabel={`Initial ${d} per domain`} />
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className={SUBCARD}>
+            <Label className="mb-2">CREW SCREEN PROTECTION</Label>
+            <Check checked={r.protectContent ?? true} onChange={(v) => set('protectContent', v)} label="Copy & screenshot protection on crew screens" />
+            <p className="mt-2 text-[10px] leading-4 text-muted">Blocks copy, cut, right-click, printing and screenshot shortcuts, blanks the screen when it loses focus and shows a crew watermark. Browsers cannot fully stop screenshots or phone cameras.</p>
+          </div>
         </div>
         <div className={SUBCARD}>
           <Check checked={r.elimination.enabled} onChange={(v) => set('elimination', { ...r.elimination, enabled: v })} label="Elimination enabled (bottom N crews after each sprint, frozen standings)" />

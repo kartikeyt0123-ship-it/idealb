@@ -1,0 +1,1937 @@
+[
+  {
+    "id": "web_01",
+    "name": "Snow Blindness",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "A polar bear in a snowstorm. We lost the flag in the blizzard.",
+    "flag": "IDEALAB_24",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Check the CSS file. Something is matching the background."
+      },
+      {
+        "level": 2,
+        "cost": 50,
+        "text": "Can you read white text on a white background? Change the color properties."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='snow'>IDEALAB_24</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body { background-color: white; }\n.snow {\n  color: white;\n  font-size: 2rem;\n  font-family: sans-serif;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_02",
+    "name": "The Z-Index Trap",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Something massive is blocking your view. Dig under it.",
+    "flag": "FLAG_UNDER",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "There is an invisible layer covering everything."
+      },
+      {
+        "level": 2,
+        "cost": 50,
+        "text": "Look for properties related to depth or layers in the CSS."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='blocker'></div>\n<div class='flag'>FLAG_UNDER</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }\n.blocker { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: black; z-index: 999; }\n.flag { font-size: 3rem; color: black; z-index: 1; position: relative; }",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_03",
+    "name": "Peekaboo",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The flag is right there on the screen, but it's playing hide and seek.",
+    "flag": "SGSITS_GHOST",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Check how the display property is set."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='hidden-flag'>SGSITS_GHOST</div>",
+          "is_editable": true,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": ".hidden-flag {\n  display: none;\n  font-size: 2rem;\n  font-family: monospace;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_04",
+    "name": "Ghost Protocol",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The text is here, but it's totally transparent.",
+    "flag": "INVISIBLE_99",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Look for a property that controls transparency in CSS."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='ghost'>INVISIBLE_99</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": ".ghost {\n  opacity: 0;\n  font-size: 3rem;\n  font-weight: bold;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_05",
+    "name": "The Developer's Secret",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Developers always leave notes for themselves. Sometimes they forget to delete them.",
+    "flag": "DEVS_KNOW_ALL",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Look at the raw HTML structure. Read it carefully."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<!-- FLAG: DEVS_KNOW_ALL -->\n<div>Nothing to see here! The page is working normally.</div>",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/styles.css": {
+          "content": "body { font-family: sans-serif; text-align: center; margin-top: 50px; }",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/index.html"
+    }
+  },
+  {
+    "id": "web_06",
+    "name": "Microscopic",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "You need a magnifying glass to read this one.",
+    "flag": "ANT_MAN_007",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "The text exists, but the font size is way too small."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='tiny'>ANT_MAN_007</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": ".tiny {\n  font-size: 0px;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_07",
+    "name": "Off-Screen Excursion",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The flag has left the building. Bring it back to the center.",
+    "flag": "COME_BACK_MP",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "The element is pushed way out of the visible screen area using absolute positioning."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='lost'>COME_BACK_MP</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": ".lost {\n  position: absolute;\n  left: -9999px;\n  font-size: 2rem;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_08",
+    "name": "Console Confession",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Not everything is meant for the main screen. Check the backend logs.",
+    "flag": "TERMINAL_77",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Where do developers print debugging messages in a browser? Press F12."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div>Check the logs. The UI is clean.</div>",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "console.log('The flag is hidden here: TERMINAL_77');",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_09",
+    "name": "Hover Hack",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The answer will only reveal itself when you point exactly at it.",
+    "flag": "MOUSE_TRAP",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Check the pseudo-classes in CSS like :hover."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='hover-me'>MOUSE_TRAP</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": ".hover-me {\n  color: transparent;\n  font-size: 3rem;\n  cursor: crosshair;\n}\n.hover-me:hover {\n  color: red;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_10",
+    "name": "The Disabled Button",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The system locked the button. You need administrative override to click it.",
+    "flag": "FLAG_UNLOCKED",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Look at the button tag in the HTML. Why is it unclickable?"
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<button disabled id='btn'>Reveal Flag</button>",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "document.getElementById('btn').addEventListener('click', () => alert('FLAG_UNLOCKED'));",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/index.html"
+    }
+  },
+  {
+    "id": "web_11",
+    "name": "Buried Treasure",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The secret is buried in a hidden input field meant for the server.",
+    "flag": "INDORE_MP",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "HTML forms sometimes hold invisible data. Check the input types."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div>Look deeper...</div>\n<input type='hidden' value='INDORE_MP'>",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/index.html"
+    }
+  },
+  {
+    "id": "web_12",
+    "name": "Claustrophobia",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The box is way too small to fit the entire message.",
+    "flag": "BOXED_IN_22",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "The text is overflowing the box, but the CSS is hiding the overflow."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='box'>\n  <p>Here is some text and eventually the flag is BOXED_IN_22</p>\n</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": ".box {\n  width: 10px;\n  height: 10px;\n  overflow: hidden;\n  border: 1px solid red;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_13",
+    "name": "Fog Glasses",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Everything is just a little too blurry to read.",
+    "flag": "BLURRY_VISION",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "There is a CSS filter applied to the body."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div>BLURRY_VISION</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body {\n  filter: blur(20px);\n  font-size: 3rem;\n  font-weight: bold;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_14",
+    "name": "Contrast Clash",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "You are staring right at it, but the colors are too similar.",
+    "flag": "SQUINT_HARD",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "The text color and background color are almost exactly identical hex codes."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='contrast'>SQUINT_HARD</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body { background-color: #222223; }\n.contrast {\n  color: #222222;\n  font-size: 3rem;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_15",
+    "name": "Pseudo-Hiding",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The HTML is completely empty, yet the text is on the screen. How?",
+    "flag": "FLAG_CSS_MAGIC",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "CSS can inject content directly into the page. Look for '::before' or '::after'."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='magic'></div>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/styles.css": {
+          "content": ".magic::after {\n  content: 'FLAG_CSS_MAGIC';\n  font-size: 2rem;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_16",
+    "name": "Flexbox Jumble",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The letters are all mixed up. Put them back in order.",
+    "flag": "FLEX_IT",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "The container uses Flexbox. Look at how the 'order' property rearranges HTML elements."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='flex'>\n  <span class='s1'>T</span>\n  <span class='s2'>X</span>\n  <span class='s3'>F</span>\n  <span class='s4'>_</span>\n  <span class='s5'>L</span>\n  <span class='s6'>I</span>\n  <span class='s7'>E</span>\n</div>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/styles.css": {
+          "content": ".flex { display: flex; font-size: 2rem; }\n.s1 { order: 7; }\n.s2 { order: 4; }\n.s3 { order: 1; }\n.s4 { order: 5; }\n.s5 { order: 2; }\n.s6 { order: 6; }\n.s7 { order: 3; }",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_17",
+    "name": "Rotated Reality",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "You might need to stand on your head for this one.",
+    "flag": "UPSIDE_DOWN_88",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "The text container has been flipped and rotated using CSS transforms."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='flip'>UPSIDE_DOWN_88</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": ".flip {\n  transform: rotate(180deg) scaleX(-1);\n  display: inline-block;\n  font-size: 3rem;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_18",
+    "name": "The Annoying Poha Plate",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "A giant plate of Poha is blocking your view and keeps following your cursor!",
+    "flag": "POHA_JALEBI_00",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "The image is tracking your mouse via JavaScript."
+      },
+      {
+        "level": 2,
+        "cost": 75,
+        "text": "Delete the image tag from the HTML or clear out the JS file completely."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div id='container'>\n  <div id='flag'>POHA_JALEBI_00</div>\n  <img id='poha' src='https://placehold.co/150x150/orange/white?text=Poha' />\n</div>",
+          "is_editable": true,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body { overflow: hidden; margin: 0; background: #eee; cursor: crosshair; }\n#flag {\n  position: absolute;\n  z-index: 1;\n  font-size: 24px;\n  font-weight: bold;\n  top: -100px;\n  left: -100px;\n  pointer-events: none;\n}\n#poha {\n  position: absolute;\n  z-index: 2;\n  width: 150px;\n  height: 150px;\n  top: -150px;\n  left: -150px;\n  pointer-events: none;\n}",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "document.addEventListener('mousemove', (e) => {\n  const flag = document.getElementById('flag');\n  const img = document.getElementById('poha');\n  if(flag && img) {\n    flag.style.left = (e.clientX - 90) + 'px';\n    flag.style.top = (e.clientY - 15) + 'px';\n    img.style.left = (e.clientX - 75) + 'px';\n    img.style.top = (e.clientY - 75) + 'px';\n  }\n});",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/index.html"
+    }
+  },
+  {
+    "id": "web_19",
+    "name": "Margin Mess",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "All the characters collapsed into a single black dot.",
+    "flag": "UNCOLLAPSE",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "The elements have wild negative margins pulling them into each other."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div>\n  <span class='m'>U</span><span class='m'>N</span><span class='m'>C</span><span class='m'>O</span><span class='m'>L</span><span class='m'>L</span><span class='m'>A</span><span class='m'>P</span><span class='m'>S</span><span class='m'>E</span>\n</div>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/styles.css": {
+          "content": ".m {\n  margin-left: -50px;\n  font-size: 3rem;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_20",
+    "name": "Speed Reader",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The text is flying by way too fast to read. Slow it down.",
+    "flag": "FLASH_99",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Check the CSS animation properties. The duration is set way too low."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='marquee'>FLASH_99</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body { overflow: hidden; }\n@keyframes run {\n  0% { left: -10%; }\n  100% { left: 110%; }\n}\n.marquee {\n  position: absolute;\n  animation: run 0.05s linear infinite;\n  font-size: 3rem;\n  font-weight: bold;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_21",
+    "name": "LocalStorage Loot",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "We dropped a package in your browser's local warehouse.",
+    "flag": "IDEA_HACK_99",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Check the Application/Storage tab in your browser's Developer Tools."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div>Data transferred securely.</div>",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "localStorage.setItem('secret_flag', 'IDEA_HACK_99');",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_22",
+    "name": "The Short Input",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The system asks for a password, but the input box won't let you type enough characters.",
+    "flag": "1337_WIN",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "The HTML input element has a restriction (maxlength) on how many characters you can type."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<input type='text' id='inp' maxlength='4' placeholder='Type SGSITS_WINNER'>",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "document.getElementById('inp').addEventListener('input', function() {\n  if(this.value === 'SGSITS_WINNER') alert('FLAG: 1337_WIN');\n});",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/index.html"
+    }
+  },
+  {
+    "id": "web_23",
+    "name": "Class Toggle Chaos",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "There is way too much noise. Filter out the fakes.",
+    "flag": "REALITY",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Only spans with the class '.real' matter. Hide the rest using CSS display property."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div>\n  <span class='fake'>X</span><span class='real'>R</span><span class='fake'>Y</span><span class='real'>E</span><span class='fake'>Z</span><span class='real'>A</span><span class='fake'>W</span><span class='real'>L</span><span class='fake'>Q</span><span class='real'>I</span><span class='fake'>P</span><span class='real'>T</span><span class='fake'>M</span><span class='real'>Y</span>\n</div>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/styles.css": {
+          "content": "body { font-size: 3rem; font-family: monospace; letter-spacing: 5px; }",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_24",
+    "name": "The SVG Mask",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Half of the text has been sliced off by a vector shape.",
+    "flag": "HALF_FLAG_44",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Look for a CSS clip-path or SVG mask property applied to the text container."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<svg width='0' height='0'>\n  <clipPath id='cut'>\n    <rect x='0' y='0' width='100%' height='15px'/>\n  </clipPath>\n</svg>\n<div class='masked'>HALF_FLAG_44</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": ".masked {\n  clip-path: url(#cut);\n  font-size: 4rem;\n  font-weight: bold;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_25",
+    "name": "Blend Mode Magic",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The text is camouflaged perfectly into the background pattern.",
+    "flag": "CAMO_FLAG",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "The text uses a CSS mix-blend-mode that makes it merge with the colors behind it."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='bg'>\n  <div class='text'>CAMO_FLAG</div>\n</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body { margin: 0; }\n.bg {\n  width: 100vw;\n  height: 100vh;\n  background: repeating-linear-gradient(45deg, black, black 10px, white 10px, white 20px);\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}\n.text {\n  color: black;\n  mix-blend-mode: color-burn;\n  font-size: 5rem;\n  font-weight: bold;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_26",
+    "name": "The Puzzled Canvas",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The artwork is completely dark. Bring some color to the shapes to see the hidden message.",
+    "flag": "DARK_ART",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "The shapes are drawn using the Canvas API in JavaScript."
+      },
+      {
+        "level": 2,
+        "cost": 150,
+        "text": "All fill styles are set to black (#000000). Change the text fillStyle to a contrasting color."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<canvas id='c' width='400' height='200'></canvas>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "const ctx = document.getElementById('c').getContext('2d');\n// Background\nctx.fillStyle = '#000000';\nctx.fillRect(0, 0, 400, 200);\n// Text\nctx.fillStyle = '#000000';\nctx.font = '40px sans-serif';\nctx.fillText('DARK_ART', 50, 100);",
+          "is_editable": true,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_27",
+    "name": "Keypress Konami",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "Execute the secret sequence to unlock the vault.",
+    "flag": "KONAMI_PRO",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "The JavaScript is listening for a specific combination of arrow keys."
+      },
+      {
+        "level": 2,
+        "cost": 150,
+        "text": "Click the preview window and type Up, Up, Down, Left on your keyboard."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div>Enter the sequence. Click here first to focus.</div>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "let k = [];\ndocument.addEventListener('keydown', (e) => {\n  k.push(e.key);\n  if (k.join('').includes('ArrowUpArrowUpArrowDownArrowLeft')) {\n    alert('FLAG: KONAMI_PRO');\n  }\n});",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_28",
+    "name": "CSS Grid Labyrinth",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The path is there, but the tiles aren't glowing. Light them up.",
+    "flag": "GRID",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "A specific CSS class (.path) is assigned to certain grid cells, but it has no styling."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class='grid'>\n  <div class='path'>G</div><div>X</div><div class='path'>R</div><div>Y</div>\n  <div class='path'>I</div><div>Z</div><div class='path'>D</div><div>A</div>\n</div>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/styles.css": {
+          "content": ".grid {\n  display: grid;\n  grid-template-columns: repeat(4, 50px);\n  font-size: 2rem;\n  text-align: center;\n}\n/* Add styling for .path below */\n",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_29",
+    "name": "The Split Cookie",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The key was snapped in half. One piece is in the jar, the other is in your current session.",
+    "flag": "HALF_BAKED_99",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Check both the browser Cookies and Session Storage in your developer tools."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div>Data fragmented...</div>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "document.cookie = 'part1=HALF_; path=/';\nsessionStorage.setItem('part2', 'BAKED_99');",
+          "is_editable": false,
+          "is_visible": true
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_30",
+    "name": "Event Listener Trap",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The system has locked down your controls. No right-clicking, no selecting, no inspecting. Break the lock.",
+    "flag": "UNTOUCHABLE_404",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "JavaScript is hijacking your mouse and keyboard events using preventDefault()."
+      },
+      {
+        "level": 2,
+        "cost": 150,
+        "text": "Delete the event listeners in the JS file and the preview will refresh."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div id='secret'>UNTOUCHABLE_404</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body { color: transparent; } /* Selection is required to read */\n::selection { color: black; background: yellow; }",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "window.addEventListener('contextmenu', e => e.preventDefault());\nwindow.addEventListener('selectstart', e => e.preventDefault());\nwindow.addEventListener('keydown', e => {\n  if(e.key === 'F12') e.preventDefault();\n});",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_31",
+    "name": "Flexbox Centering Crisis",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The confidential code has drifted off into the digital void due to a flexbox layout catastrophe. Realign the container so the contents land dead center.",
+    "flag": "WEB_FLEX_ALIGN_31",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Inspect the .vault-container in styles.css. The flex properties push elements to flex-end and apply a large translation offset."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"vault-container\">\n  <div class=\"vault-box\">\n    <span class=\"badge\">CONFIDENTIAL</span>\n    <div class=\"secret-code\">WEB_FLEX_ALIGN_31</div>\n  </div>\n</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body {\n  margin: 0;\n  background: #0f172a;\n  font-family: monospace;\n}\n.vault-container {\n  display: flex;\n  height: 100vh;\n  justify-content: flex-end;\n  align-items: flex-end;\n  transform: translateX(120vw);\n}\n.vault-box {\n  background: #1e293b;\n  padding: 30px;\n  border-radius: 8px;\n  border: 1px solid #38bdf8;\n  text-align: center;\n}\n.badge {\n  color: #94a3b8;\n  font-size: 14px;\n}\n.secret-code {\n  color: #38bdf8;\n  font-size: 28px;\n  font-weight: bold;\n  margin-top: 10px;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_32",
+    "name": "Grid Column Overlap",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "A heavy metal shutter has locked into the exact same CSS grid coordinate as our security badge. Reconfigure the grid columns to reveal the badge.",
+    "flag": "WEB_GRID_SPAN_32",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "In styles.css, both .keycard and .shutter occupy grid-column 1 and grid-row 1. Relocate the shutter or hide it."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"grid-board\">\n  <div class=\"keycard\">\n    <div class=\"label\">ACCESS BADGE</div>\n    <div class=\"flag-val\">WEB_GRID_SPAN_32</div>\n  </div>\n  <div class=\"shutter\">BLOCKED</div>\n</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body {\n  margin: 0;\n  background: #18181b;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n  font-family: sans-serif;\n}\n.grid-board {\n  display: grid;\n  grid-template-columns: 300px 300px;\n  grid-template-rows: 200px;\n  position: relative;\n}\n.keycard {\n  grid-column: 1;\n  grid-row: 1;\n  background: #27272a;\n  color: #22c55e;\n  padding: 20px;\n  border-radius: 8px;\n  display: flex;\n  flex-direction: column;\n  justify-content: center;\n  align-items: center;\n  font-size: 22px;\n  font-weight: bold;\n}\n.label {\n  font-size: 12px;\n  color: #a1a1aa;\n  margin-bottom: 8px;\n}\n.shutter {\n  grid-column: 1;\n  grid-row: 1;\n  background: #09090b;\n  color: #ef4444;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  font-size: 20px;\n  border: 2px solid #ef4444;\n  z-index: 10;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_33",
+    "name": "The Inverted Opacity",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The mainframe rendered the decryption token, but zero opacity has masked it into total invisibility. Bring the token back to light.",
+    "flag": "WEB_OPACITY_FLIP_33",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Locate .token-text in styles.css and adjust its opacity property from 0 to 1."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"terminal-wrap\">\n  <h3 class=\"heading\">SYSTEM DECRYPTION LOG</h3>\n  <div class=\"token-text\">WEB_OPACITY_FLIP_33</div>\n</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body {\n  margin: 0;\n  background: #030712;\n  color: #f9fafb;\n  font-family: monospace;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n}\n.terminal-wrap {\n  border: 1px solid #1f2937;\n  padding: 40px;\n  background: #111827;\n  border-radius: 6px;\n  text-align: center;\n}\n.heading {\n  color: #9ca3af;\n  font-size: 14px;\n  margin-bottom: 20px;\n}\n.token-text {\n  opacity: 0;\n  font-size: 26px;\n  color: #60a5fa;\n  letter-spacing: 2px;\n  transition: opacity 0.3s ease;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_34",
+    "name": "Collapsed Dimensions",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The safe drawer holding the verification passcode has its height and width clamped to zero with hidden overflow. Restore its natural proportions.",
+    "flag": "WEB_BOX_HEIGHT_34",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Check .safe-drawer in styles.css. Both width and height are 0px and overflow is hidden."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"safe-cabinet\">\n  <div class=\"safe-drawer\">\n    <span class=\"passcode\">WEB_BOX_HEIGHT_34</span>\n  </div>\n</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body {\n  margin: 0;\n  background: #1e1e24;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n  font-family: 'Courier New', monospace;\n}\n.safe-cabinet {\n  padding: 20px;\n  border: 2px solid #444;\n}\n.safe-drawer {\n  width: 0px;\n  height: 0px;\n  overflow: hidden;\n  background: #2e2e38;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}\n.passcode {\n  font-size: 24px;\n  color: #facc15;\n  font-weight: bold;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_35",
+    "name": "Attribute Sleuth",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "A security badge carries a confidential credential in its data attribute, but nothing is drawn in the element body. Use CSS pseudo-elements with attr() to project the secret onto the screen.",
+    "flag": "WEB_DATA_ATTR_35",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "In styles.css, add a ::before or ::after pseudo-element to .security-badge with content: attr(data-flag)."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"badge-holder\">\n  <div class=\"security-badge\" data-flag=\"WEB_DATA_ATTR_35\"></div>\n</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body {\n  margin: 0;\n  background: #111;\n  color: #eee;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n  font-family: monospace;\n}\n.badge-holder {\n  padding: 30px;\n  border: 1px dashed #555;\n  border-radius: 8px;\n}\n.security-badge {\n  font-size: 24px;\n  color: #38bdf8;\n  /* Hint: Use .security-badge::after { content: attr(data-flag); } */\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_36",
+    "name": "Visibility Hidden Trap",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The dossier entry preserves its physical space on screen, but CSS visibility: hidden is suppressing its render tree. Toggle the property.",
+    "flag": "WEB_VIS_REVEAL_36",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "In styles.css, change visibility: hidden to visibility: visible on .classified-line."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"dossier\">\n  <h2>TOP SECRET DISPATCH</h2>\n  <p class=\"classified-line\">WEB_VIS_REVEAL_36</p>\n</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body {\n  margin: 0;\n  background: #1c1917;\n  color: #fafaf9;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n  font-family: Georgia, serif;\n}\n.dossier {\n  background: #292524;\n  padding: 40px;\n  border-left: 6px solid #e11d48;\n}\nh2 {\n  color: #e11d48;\n  font-size: 18px;\n  letter-spacing: 3px;\n}\n.classified-line {\n  visibility: hidden;\n  font-family: monospace;\n  font-size: 24px;\n  color: #4ade80;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_37",
+    "name": "The Clipping Mask",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "A razor-sharp clip-path polygon with 0px bounds has cropped out the credential banner entirely. Expand the polygon or cancel the clipping.",
+    "flag": "WEB_CLIP_PATH_37",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Set clip-path: none or clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%) on .cred-banner in styles.css."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"frame\">\n  <div class=\"cred-banner\">\n    <span>WEB_CLIP_PATH_37</span>\n  </div>\n</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body {\n  margin: 0;\n  background: #020617;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n  font-family: sans-serif;\n}\n.frame {\n  padding: 20px;\n}\n.cred-banner {\n  background: linear-gradient(135deg, #6366f1, #a855f7);\n  color: #ffffff;\n  padding: 16px 32px;\n  font-size: 22px;\n  font-weight: bold;\n  border-radius: 6px;\n  clip-path: polygon(0 0, 0 0, 0 0);\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_38",
+    "name": "Scale to Zero",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The security console display text has been miniaturized to infinitesimal zero scale via CSS transforms. Enlarge it back to standard scale.",
+    "flag": "WEB_TRANSFORM_SCALE_38",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Find .console-output in styles.css and change transform: scale(0) to transform: scale(1)."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"monitor\">\n  <div class=\"header\">TERMINAL MON-04</div>\n  <div class=\"console-output\">WEB_TRANSFORM_SCALE_38</div>\n</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body {\n  margin: 0;\n  background: #0a0a0a;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n  font-family: monospace;\n}\n.monitor {\n  background: #141414;\n  border: 2px solid #262626;\n  padding: 30px;\n  border-radius: 8px;\n  text-align: center;\n}\n.header {\n  color: #737373;\n  font-size: 13px;\n  margin-bottom: 15px;\n}\n.console-output {\n  color: #f43f5e;\n  font-size: 26px;\n  font-weight: bold;\n  transform: scale(0);\n  transition: transform 0.2s;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_39",
+    "name": "Color Inversion Disguise",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The secret message was styled with transparent text against a transparent container. Assign a bold, vibrant foreground color to read it.",
+    "flag": "WEB_COLOR_INVERT_39",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Change color: transparent to a visible color like #38bdf8 or white in styles.css."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"chamber\">\n  <div class=\"hidden-glyph\">WEB_COLOR_INVERT_39</div>\n</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body {\n  margin: 0;\n  background: #0f172a;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n  font-family: monospace;\n}\n.chamber {\n  background: #1e293b;\n  padding: 40px;\n  border-radius: 10px;\n}\n.hidden-glyph {\n  color: transparent;\n  background-color: transparent;\n  font-size: 26px;\n  font-weight: bold;\n  letter-spacing: 1px;\n}",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_40",
+    "name": "Flex Order Scramble",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The fragments of the keycard string have been jumbled across flexbox children using irregular order values. Sequence them 1 through 4.",
+    "flag": "WEB_FLEX_ORDER_40",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Assign order: 1 to .seg-1, order: 2 to .seg-2, order: 3 to .seg-3, and order: 4 to .seg-4 in styles.css."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"scramble-bar\">\n  <span class=\"seg-4\">ER_40</span>\n  <span class=\"seg-2\">_FLE</span>\n  <span class=\"seg-1\">WEB</span>\n  <span class=\"seg-3\">X_ORD</span>\n</div>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body {\n  margin: 0;\n  background: #18181b;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n  font-family: monospace;\n}\n.scramble-bar {\n  display: flex;\n  background: #27272a;\n  padding: 20px;\n  border-radius: 8px;\n  font-size: 24px;\n  font-weight: bold;\n  color: #a855f7;\n}\n.seg-1 { order: 3; }\n.seg-2 { order: 1; }\n.seg-3 { order: 4; }\n.seg-4 { order: 2; }",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  },
+  {
+    "id": "web_41",
+    "name": "Click Hijack Interceptor",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "A malicious security handler is capturing click events on the authorization button and halting propagation before it reaches the voucher handler. Disarm the blocker.",
+    "flag": "WEB_EVENT_BYPASS_41",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Remove e.stopImmediatePropagation() and e.preventDefault() in script.js so the authorized listener in auth.js can execute."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"portal\">\n  <h2>VOUCHER CLAIM TERMINAL</h2>\n  <button id=\"claim-btn\">Claim Authorization Voucher</button>\n  <div id=\"output\"></div>\n</div>\n<script src=\"/auth.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// The blocker intercepts clicks in capture phase\ndocument.getElementById('claim-btn').addEventListener('click', (e) => {\n  e.stopImmediatePropagation();\n  e.preventDefault();\n}, true);",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/auth.js": {
+          "content": "document.getElementById('claim-btn').addEventListener('click', () => {\n  document.getElementById('output').innerText = 'FLAG: WEB_EVENT_BYPASS_41';\n});",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_42",
+    "name": "Client-Side Regex Bypass",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The registration gate enforces a strict 3-character lowercase regex that rejects genuine clearance codes. Adjust the validation logic in script.js to trigger the authorization event.",
+    "flag": "WEB_REGEX_BYPASS_42",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Update script.js so window.dispatchEvent(new CustomEvent('authorized')) fires when the form is submitted with code 'BYPASS'."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"panel\">\n  <h2>GATE VERIFICATION</h2>\n  <form id=\"regForm\">\n    <input id=\"code\" type=\"text\" placeholder=\"Enter code\" value=\"BYPASS\">\n    <button type=\"submit\">Verify</button>\n  </form>\n  <div id=\"result\"></div>\n</div>\n<script src=\"/validator.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "document.getElementById('regForm').addEventListener('submit', (e) => {\n  e.preventDefault();\n  const val = document.getElementById('code').value;\n  if (/^[a-z]{3}$/.test(val)) {\n    window.dispatchEvent(new CustomEvent('authorized'));\n  } else {\n    document.getElementById('result').innerText = 'Format rejected by regex';\n  }\n});",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/validator.js": {
+          "content": "window.addEventListener('authorized', () => {\n  document.getElementById('result').innerText = 'FLAG: WEB_REGEX_BYPASS_42';\n});",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_43",
+    "name": "LocalStorage Tamper Vault",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The gatekeeper script reads localStorage for the 'user_role' key. If it finds 'guest', access is forbidden. Tamper with localStorage in script.js to elevate role to 'admin'.",
+    "flag": "WEB_LOCAL_STORAGE_43",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Set localStorage.setItem('user_role', 'admin') and call checkAccess() in script.js."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"vault-card\">\n  <h2>ACCESS CONTROL</h2>\n  <div id=\"status\">Checking privileges...</div>\n  <div id=\"flag-display\"></div>\n</div>\n<script src=\"/gatekeeper.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Default initialization sets role to guest\nlocalStorage.setItem('user_role', 'guest');\n// Elevate user_role to admin and invoke checkAccess()\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/gatekeeper.js": {
+          "content": "function checkAccess() {\n  if (localStorage.getItem('user_role') === 'admin') {\n    document.getElementById('flag-display').innerText = 'FLAG: WEB_LOCAL_STORAGE_43';\n  } else {\n    document.getElementById('status').innerText = 'Access Restricted: Guest Mode';\n  }\n}\nwindow.addEventListener('DOMContentLoaded', checkAccess);",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_44",
+    "name": "SessionStorage Fragment Assembly",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The secure enclave verifies sessionStorage for an authorized debug override flag. Modify the session storage in script.js to unlock the payload.",
+    "flag": "WEB_SESSION_KEY_44",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Set sessionStorage.setItem('debug_override', 'true') and execute evaluateSession() in script.js."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"enclave\">\n  <h2>SESSION VAULT</h2>\n  <div id=\"console-view\">Enclave locked</div>\n</div>\n<script src=\"/vault.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Configure session storage debug flag to unlock vault\nsessionStorage.setItem('debug_override', 'false');\n// Set to 'true' and invoke evaluateSession()\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/vault.js": {
+          "content": "function evaluateSession() {\n  if (sessionStorage.getItem('debug_override') === 'true') {\n    document.getElementById('console-view').innerText = 'FLAG: WEB_SESSION_KEY_44';\n  }\n}\nwindow.addEventListener('load', evaluateSession);",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_45",
+    "name": "URL Hash Route Dispatcher",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "A client-side hash router monitors window.location.hash for navigation events. Direct the router to '#admin_portal' to expose the administrative view.",
+    "flag": "WEB_HASH_ROUTER_45",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Set window.location.hash = '#admin_portal' or trigger a hashchange event with that hash in script.js."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"router-view\">\n  <h2>SPA ROUTER</h2>\n  <div id=\"view\">Route: #home</div>\n</div>\n<script src=\"/router.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Set the hash route to navigate to the administrative route\n// window.location.hash = '#admin_portal';\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/router.js": {
+          "content": "function handleRoute() {\n  if (window.location.hash === '#admin_portal') {\n    document.getElementById('view').innerText = 'FLAG: WEB_HASH_ROUTER_45';\n  }\n}\nwindow.addEventListener('hashchange', handleRoute);\nwindow.addEventListener('load', handleRoute);",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_46",
+    "name": "Disabled Input Override",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The PIN verification interface has disabled the input element and set maxlength to 2, blocking entry of the four-digit passcode '7701'. Strip the constraints and submit.",
+    "flag": "WEB_INPUT_OVERRIDE_46",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "In script.js, remove the disabled and readonly attributes from #pin-field, set its value to '7701', and click #submit-pin."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"keypad\">\n  <h2>SECURITY PIN GATE</h2>\n  <input id=\"pin-field\" type=\"text\" disabled readonly maxlength=\"2\">\n  <button id=\"submit-pin\">Enter PIN</button>\n  <div id=\"feedback\"></div>\n</div>\n<script src=\"/auth_pin.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Unlock #pin-field, assign value '7701', and trigger #submit-pin click\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/auth_pin.js": {
+          "content": "document.getElementById('submit-pin').addEventListener('click', () => {\n  const val = document.getElementById('pin-field').value;\n  if (val === '7701') {\n    document.getElementById('feedback').innerText = 'FLAG: WEB_INPUT_OVERRIDE_46';\n  } else {\n    document.getElementById('feedback').innerText = 'Invalid PIN code';\n  }\n});",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_47",
+    "name": "Custom Event Dispatcher",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The kernel message bus listens for a CustomEvent named 'kernel:unlock' bearing authorization key 'ALPHA_OMEGA'. Dispatch the event to breach the kernel.",
+    "flag": "WEB_EVENT_DISPATCH_47",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Dispatch window.dispatchEvent(new CustomEvent('kernel:unlock', { detail: { authorizationKey: 'ALPHA_OMEGA' } })) in script.js."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"kernel-monitor\">\n  <h2>KERNEL BUS</h2>\n  <div id=\"bus-log\">Listening for kernel signal...</div>\n</div>\n<script src=\"/kernel.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Dispatch 'kernel:unlock' CustomEvent with detail: { authorizationKey: 'ALPHA_OMEGA' }\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/kernel.js": {
+          "content": "window.addEventListener('kernel:unlock', (e) => {\n  if (e.detail && e.detail.authorizationKey === 'ALPHA_OMEGA') {\n    document.getElementById('bus-log').innerText = 'FLAG: WEB_EVENT_DISPATCH_47';\n  }\n});",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_48",
+    "name": "History State Navigator",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The browser session manager monitors popstate history transitions. Transition history state to { level: 'master' } to trigger administrative elevation.",
+    "flag": "WEB_HISTORY_POP_48",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Dispatch a PopStateEvent with state: { level: 'master' } or push state and invoke back() in script.js."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"history-box\">\n  <h2>SESSION HISTORIAN</h2>\n  <div id=\"nav-status\">Standard User Session</div>\n</div>\n<script src=\"/history_manager.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Transition popstate history state to level: 'master'\nwindow.dispatchEvent(new PopStateEvent('popstate', { state: { level: 'master' } }));\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/history_manager.js": {
+          "content": "window.addEventListener('popstate', (e) => {\n  if (e.state && e.state.level === 'master') {\n    document.getElementById('nav-status').innerText = 'FLAG: WEB_HISTORY_POP_48';\n  }\n});",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_49",
+    "name": "Timer Hijack Race",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "An auto-lock timer running on window.lockoutTimer disables the terminal button after 500ms. Abort the timeout using clearTimeout before clicking.",
+    "flag": "WEB_TIMER_CANCEL_49",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Call clearTimeout(window.lockoutTimer) and then document.getElementById('unlock-btn').click() in script.js."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"timer-panel\">\n  <h2>DEFENSE LOCKOUT</h2>\n  <div id=\"timer-display\">Timer armed</div>\n  <button id=\"unlock-btn\">Access Terminal</button>\n  <div id=\"output\"></div>\n</div>\n<script src=\"/timer_core.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Clear window.lockoutTimer before expiration and click #unlock-btn\nclearTimeout(window.lockoutTimer);\ndocument.getElementById('unlock-btn').click();\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/timer_core.js": {
+          "content": "window.lockoutTimer = setTimeout(() => {\n  document.getElementById('unlock-btn').disabled = true;\n  document.getElementById('timer-display').innerText = 'TERMINAL LOCKED';\n}, 500);\ndocument.getElementById('unlock-btn').addEventListener('click', () => {\n  document.getElementById('output').innerText = 'FLAG: WEB_TIMER_CANCEL_49';\n});",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_50",
+    "name": "Cookie Attribute Tampering",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The clearance gate verifies document.cookie for authorization credentials. Set cookie 'badge_tier=commander; path=/' and invoke verifyCookie() to pass.",
+    "flag": "WEB_COOKIE_TAMPER_50",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "In script.js, assign document.cookie = 'badge_tier=commander; path=/'; and call verifyCookie()."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"cookie-vault\">\n  <h2>CLEARANCE GATE</h2>\n  <div id=\"badge-info\">Guest Tier</div>\n</div>\n<script src=\"/cookie_checker.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Tamper cookie and verify credentials\ndocument.cookie = 'badge_tier=commander; path=/';\nif (typeof verifyCookie === 'function') verifyCookie();\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/cookie_checker.js": {
+          "content": "function verifyCookie() {\n  if (document.cookie.includes('badge_tier=commander')) {\n    document.getElementById('badge-info').innerText = 'FLAG: WEB_COOKIE_TAMPER_50';\n  }\n}\nwindow.addEventListener('load', verifyCookie);",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_51",
+    "name": "JWT None Algorithm Bypass",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The client token parser accepts tokens signed with algorithm 'none'. Craft an unsigned JWT with header {'alg':'none'} and payload role 'root' to authenticate.",
+    "flag": "WEB_JWT_NONE_ALG_51",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Base64 encode header JSON {'alg':'none','typ':'JWT'} and payload {'user':'admin','role':'root'}, join with a dot, add a trailing dot, and pass to verifyJWT(token)."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"jwt-box\">\n  <h2>TOKEN VERIFIER</h2>\n  <div id=\"jwt-status\">Awaiting Valid Token</div>\n</div>\n<script src=\"/jwt_verifier.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Craft unsigned JWT: header.payload. with alg: none and role: root\nconst h = btoa(JSON.stringify({ alg: 'none', typ: 'JWT' }));\nconst p = btoa(JSON.stringify({ user: 'admin', role: 'root' }));\nverifyJWT(h + '.' + p + '.');\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/jwt_verifier.js": {
+          "content": "function verifyJWT(token) {\n  const parts = token.split('.');\n  if (parts.length >= 2) {\n    try {\n      const header = JSON.parse(atob(parts[0]));\n      const payload = JSON.parse(atob(parts[1]));\n      if (header.alg === 'none' && payload.role === 'root') {\n        document.getElementById('jwt-status').innerText = 'FLAG: WEB_JWT_NONE_ALG_51';\n      }\n    } catch(e) {}\n  }\n}\nwindow.addEventListener('load', () => verifyJWT(''));",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_52",
+    "name": "Prototype Pollution Infiltration",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The configuration merge engine processes arbitrary JSON keys into prototype chains without filtering __proto__. Inject isAdmin into Object.prototype to escalate to root.",
+    "flag": "WEB_PROTO_POLLUTE_52",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Invoke mergeConfig(JSON.parse('{\"__proto__\": {\"isAdmin\": True}}')) and then call authenticateUser() in script.js."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"proto-card\">\n  <h2>CONFIG ENGINE</h2>\n  <div id=\"proto-output\">Standard Access Mode</div>\n</div>\n<script src=\"/merge_engine.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Pollute prototype and authenticate\nconst payload = JSON.parse('{\"__proto__\": {\"isAdmin\": True}}');\nmergeConfig(payload);\nauthenticateUser();\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/merge_engine.js": {
+          "content": "function mergeConfig(src) {\n  for (let key in src) {\n    if (typeof src[key] === 'object' && src[key] !== null) {\n      if (!Object.prototype[key]) Object.prototype[key] = {};\n      Object.assign(Object.prototype, src[key]);\n    }\n  }\n}\nfunction authenticateUser() {\n  const user = {};\n  if (user.isAdmin === true) {\n    document.getElementById('proto-output').innerText = 'FLAG: WEB_PROTO_POLLUTE_52';\n  }\n}\nwindow.addEventListener('load', authenticateUser);",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_53",
+    "name": "Iframe PostMessage Eavesdrop",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "An isolated sub-frame periodically broadcasts classified telemetry via window.parent.postMessage with wildcard target origin. Set up a window message listener to capture the broadcast.",
+    "flag": "WEB_POST_MESSAGE_53",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Listen to window.addEventListener('message', (e) => { ... }) and display e.data.secret inside #inbox."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"cross-origin-box\">\n  <h2>CROSS-ORIGIN BUS</h2>\n  <div id=\"inbox\">Listening for iframe message...</div>\n  <iframe id=\"subframe\" src=\"/frame.html\" style=\"display:none;\"></iframe>\n</div>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "window.addEventListener('message', (e) => {\n  if (e.data && e.data.secret) {\n    document.getElementById('inbox').innerText = 'FLAG: ' + e.data.secret;\n  }\n});\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/frame.html": {
+          "content": "<script>\nsetInterval(() => {\n  window.parent.postMessage({ type: 'TELEMETRY', secret: 'WEB_POST_MESSAGE_53' }, '*');\n}, 100);\n</script>",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_54",
+    "name": "WebSocket Handshake Emulation",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "A simulated real-time socket transport endpoint requires a strict initial handshake packet with protocol 'wss' and subprotocol 'idealab-v2'. Dispatch the handshake to open the channel.",
+    "flag": "WEB_WS_HANDSHAKE_54",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Send { protocol: 'wss', subprotocol: 'idealab-v2', token: 'SESSION_INIT' } using window.mockSocket.send() in script.js."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"ws-terminal\">\n  <h2>WEBSOCKET GATEWAY</h2>\n  <div id=\"ws-log\">Socket Standby</div>\n</div>\n<script src=\"/mock_socket.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Emulate websocket handshake\nwindow.mockSocket.send({\n  protocol: 'wss',\n  subprotocol: 'idealab-v2',\n  token: 'SESSION_INIT'\n});\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/mock_socket.js": {
+          "content": "window.mockSocket = {\n  send: function(msg) {\n    if (msg.protocol === 'wss' && msg.subprotocol === 'idealab-v2' && msg.token === 'SESSION_INIT') {\n      document.getElementById('ws-log').innerText = 'FLAG: WEB_WS_HANDSHAKE_54';\n    }\n  }\n};",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_55",
+    "name": "CORS Preflight Simulation",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "An internal API gateway simulates CORS origin validation. Submit an authorized simulated request with Origin 'https://admin.idealab.internal' to retrieve the secret.",
+    "flag": "WEB_CORS_PREFLIGHT_55",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Call mockFetch('/api/vault', { headers: { 'Origin': 'https://admin.idealab.internal', 'X-Requested-With': 'XMLHttpRequest' } }) in script.js."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"cors-panel\">\n  <h2>CORS SIMULATOR</h2>\n  <div id=\"cors-response\">Awaiting authorized origin request</div>\n</div>\n<script src=\"/cors_gateway.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Dispatch simulated request with internal origin\nmockFetch('/api/vault', {\n  headers: {\n    'Origin': 'https://admin.idealab.internal',\n    'X-Requested-With': 'XMLHttpRequest'\n  }\n});\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/cors_gateway.js": {
+          "content": "function mockFetch(endpoint, opts) {\n  if (opts && opts.headers && opts.headers['Origin'] === 'https://admin.idealab.internal' && opts.headers['X-Requested-With'] === 'XMLHttpRequest') {\n    document.getElementById('cors-response').innerText = 'FLAG: WEB_CORS_PREFLIGHT_55';\n  }\n}",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_56",
+    "name": "DOM Clobbering Escalation",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The global script relies on window.systemConfig.apiUrl without prior declaration. Inject named DOM elements into index.html to clobber window.systemConfig with value 'trusted'.",
+    "flag": "WEB_DOM_CLOBBER_56",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Inject <form id='systemConfig'><input name='apiUrl' value='trusted'></form> into the DOM or configure script.js to set it before checkConfig() runs."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"clobber-zone\">\n  <h2>GLOBAL CONFIG GUARD</h2>\n  <div id=\"dom-target\">Config pending...</div>\n</div>\n<script src=\"/clobber_eval.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Clobber window.systemConfig before evaluation\nconst f = document.createElement('form');\nf.id = 'systemConfig';\nconst inp = document.createElement('input');\ninp.name = 'apiUrl';\ninp.value = 'trusted';\nf.appendChild(inp);\ndocument.body.appendChild(f);\ncheckConfig();\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/clobber_eval.js": {
+          "content": "function checkConfig() {\n  if (window.systemConfig && window.systemConfig.apiUrl && window.systemConfig.apiUrl.value === 'trusted') {\n    document.getElementById('dom-target').innerText = 'FLAG: WEB_DOM_CLOBBER_56';\n  }\n}\nwindow.addEventListener('load', checkConfig);",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_57",
+    "name": "Service Worker Cache Tamper",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The offline service worker controller looks up the cache entry at '/offline/key'. Pre-populate the cache mock with 'OFFLINE_AUTHORIZED' to bypass the network barrier.",
+    "flag": "WEB_SW_CACHE_57",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Invoke window.mockCaches.put('/offline/key', 'OFFLINE_AUTHORIZED') and execute checkCache() in script.js."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"sw-status-box\">\n  <h2>OFFLINE CACHE GATEWAY</h2>\n  <div id=\"sw-status\">Cache miss: Offline key not found</div>\n</div>\n<script src=\"/mock_sw.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Populate mock cache and check\nwindow.mockCaches.put('/offline/key', 'OFFLINE_AUTHORIZED');\ncheckCache();\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/mock_sw.js": {
+          "content": "window.mockCaches = {\n  store: {},\n  put: function(k, v) { this.store[k] = v; },\n  match: function(k) { return this.store[k]; }\n};\nfunction checkCache() {\n  if (window.mockCaches.match('/offline/key') === 'OFFLINE_AUTHORIZED') {\n    document.getElementById('sw-status').innerText = 'FLAG: WEB_SW_CACHE_57';\n  }\n}\nwindow.addEventListener('load', checkCache);",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_58",
+    "name": "MutationObserver Leak Intercept",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "An ephemeral injection routine inserts an element containing classified data and removes it within 10ms. Deploy a MutationObserver on document.body to intercept the fleeting node.",
+    "flag": "WEB_MUTATION_OBS_58",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Instantiate a MutationObserver observing document.body with childList: True, and capture the text of any node with id 'ephemeral-secret'."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"observer-stage\">\n  <h2>EPHEMERAL VAULT</h2>\n  <div id=\"observer-vault\">Vault standby...</div>\n</div>\n<script src=\"/flash_injector.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "const obs = new MutationObserver((mutations) => {\n  for (let m of mutations) {\n    for (let node of m.addedNodes) {\n      if (node.id === 'ephemeral-secret') {\n        document.getElementById('observer-vault').innerText = 'FLAG: ' + node.innerText;\n      }\n    }\n  }\n});\nobs.observe(document.body, { childList: True });\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/flash_injector.js": {
+          "content": "setTimeout(() => {\n  const el = document.createElement('span');\n  el.id = 'ephemeral-secret';\n  el.innerText = 'WEB_MUTATION_OBS_58';\n  document.body.appendChild(el);\n  setTimeout(() => el.remove(), 10);\n}, 150);",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_59",
+    "name": "Web Worker Channel Hijack",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The background computing worker instance expects a command 'DISPATCH_KEY' with clearance level 9. Post the command message to the worker to receive the flag.",
+    "flag": "WEB_WORKER_CHANNEL_59",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Execute window.mockWorker.postMessage({ cmd: 'DISPATCH_KEY', clearance: 9 }) in script.js."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"worker-monitor\">\n  <h2>WORKER PIPELINE</h2>\n  <div id=\"worker-res\">Worker standby</div>\n</div>\n<script src=\"/mock_worker.js\"></script>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "// Post authorization message to worker\nwindow.mockWorker.postMessage({\n  cmd: 'DISPATCH_KEY',\n  clearance: 9\n});\n",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/mock_worker.js": {
+          "content": "window.mockWorker = {\n  postMessage: function(msg) {\n    if (msg.cmd === 'DISPATCH_KEY' && msg.clearance === 9) {\n      document.getElementById('worker-res').innerText = 'FLAG: WEB_WORKER_CHANNEL_59';\n    }\n  }\n};",
+          "is_editable": false,
+          "is_visible": false
+        }
+      },
+      "active_file": "/script.js"
+    }
+  },
+  {
+    "id": "web_60",
+    "name": "CSS Keyframe Exfiltration",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "A CSS keyframe animation named 'pulse' triggers animation events carrying secret data in the beacon target. Listen for the 'animationstart' event to exfiltrate the secret.",
+    "flag": "WEB_KEYFRAME_EXFIL_60",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Add an event listener for 'animationstart' and read e.target.getAttribute('data-secret') when e.animationName is 'pulse'."
+      }
+    ],
+    "editor_state": {
+      "files": {
+        "/index.html": {
+          "content": "<div class=\"beacon-chamber\">\n  <h2>KEYFRAME RADAR</h2>\n  <div id=\"beacon-output\">Waiting for radar sweep...</div>\n  <div class=\"pulse-beacon\" data-secret=\"WEB_KEYFRAME_EXFIL_60\"></div>\n</div>\n<script src=\"/script.js\"></script>",
+          "is_editable": false,
+          "is_visible": false
+        },
+        "/styles.css": {
+          "content": "body {\n  margin: 0;\n  background: #09090b;\n  color: #fafafa;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n  font-family: monospace;\n}\n.beacon-chamber {\n  text-align: center;\n}\n@keyframes pulse {\n  0% { opacity: 0; transform: scale(0.9); }\n  100% { opacity: 1; transform: scale(1.1); }\n}\n.pulse-beacon {\n  width: 20px;\n  height: 20px;\n  background: #06b6d4;\n  border-radius: 50%;\n  margin: 20px auto;\n  animation: pulse 0.1s infinite alternate;\n}",
+          "is_editable": true,
+          "is_visible": true
+        },
+        "/script.js": {
+          "content": "document.addEventListener('animationstart', (e) => {\n  if (e.animationName === 'pulse') {\n    const s = e.target.getAttribute('data-secret');\n    if (s) document.getElementById('beacon-output').innerText = 'FLAG: ' + s;\n  }\n});\n",
+          "is_editable": true,
+          "is_visible": true
+        }
+      },
+      "active_file": "/styles.css"
+    }
+  }
+]

@@ -30,6 +30,8 @@ export const rulesSchema = z.object({
   bonusMode: z.enum(['MANUAL', 'SCHEDULED']).default('MANUAL'),
   /** Marking a crew present (attendance) is what enables its login. */
   attendanceGatesLogin: z.boolean().default(true),
+  /** Crew screens block copy / cut / right-click / print / screenshot keys and hide content when the window loses focus. */
+  protectContent: z.boolean().default(true),
   elimination: z.object({ enabled: z.boolean(), counts: z.array(z.number().int().min(0)).length(4) }),
   tiePolicy: z.enum(['SHARED_RANK_PUBLISHED_TIEBREAK']),
   sessionLimit: z.number().int().min(1).max(20),
@@ -49,18 +51,23 @@ export const rulesSchema = z.object({
 export type Rules = z.infer<typeof rulesSchema>;
 
 export const DEFAULT_RULES: Rules = {
-  questionScope: 'FRESH_PER_SPRINT',
-  initialPerDomain: { EASY: 5, MEDIUM: 3, HARD: 2 },
+  // Released questions stay active for the whole slot; the organizer tops domains up from the bank.
+  questionScope: 'SLOT_POOL',
+  // Released when Sprint 1 of a slot starts: 15 per domain (7 easy, 5 medium, 3 hard).
+  initialPerDomain: { EASY: 7, MEDIUM: 5, HARD: 3 },
   extraScope: 'PER_SLOT',
-  reservesPerSlot: 20,
-  bonusesPerSlot: 10,
-  rewards: { EASY: 150, MEDIUM: 400, HARD: 700, BONUS: 900 },
-  hintCosts: { EASY: 30, MEDIUM: 80, HARD: 140, BONUS: 100 },
+  // Top-ups and bonuses are picked from the bank by the organizer (no fixed pools).
+  reservesPerSlot: 0,
+  bonusesPerSlot: 0,
+  // Matches the IDEALab.dev economy (base_coins 150 / 400 / 750; hints 25 / 50 / 100).
+  rewards: { EASY: 150, MEDIUM: 400, HARD: 750, BONUS: 900 },
+  hintCosts: { EASY: 25, MEDIUM: 50, HARD: 100, BONUS: 100 },
   startingWallet: 0,
   rankingMetric: 'GROSS_EARNED',
   bonusPolicy: 'OPEN_FIRST_CORRECT',
   bonusMode: 'MANUAL',
   attendanceGatesLogin: true,
+  protectContent: true,
   elimination: { enabled: false, counts: [0, 0, 0, 0] },
   tiePolicy: 'SHARED_RANK_PUBLISHED_TIEBREAK',
   sessionLimit: 4,
@@ -81,19 +88,20 @@ export const REHEARSAL_SECONDS = 120;
 
 /** Human-readable catalogue shown on the rule-review screen. */
 export const RULE_CATALOGUE: { key: string; title: string; describe: (r: Rules) => string; fairness: boolean }[] = [
-  { key: 'questionScope', title: 'Initial question scope', fairness: true, describe: (r) => r.questionScope === 'FRESH_PER_SPRINT' ? `Fresh release each sprint: ${sum(r.initialPerDomain) * 6} questions (${sum(r.initialPerDomain)} per domain), expiring at sprint end` : `One slot pool of ${sum(r.initialPerDomain) * 6} questions carried across all four sprints; solves count for the sprint in which they are accepted` },
-  { key: 'initialPerDomain', title: 'Difficulty distribution', fairness: true, describe: (r) => `Per domain: ${r.initialPerDomain.EASY} easy, ${r.initialPerDomain.MEDIUM} medium, ${r.initialPerDomain.HARD} hard (six domains = ${r.initialPerDomain.EASY * 6}/${r.initialPerDomain.MEDIUM * 6}/${r.initialPerDomain.HARD * 6})` },
-  { key: 'extraPools', title: 'Reserve and bonus pools', fairness: true, describe: (r) => `${r.reservesPerSlot} reserve questions per slot (mixed domains) refill the domains depleted by solves when the organizer presses Refill; ${r.bonusesPerSlot} bonus questions per slot (mixed domains) ${r.bonusMode === 'MANUAL' ? 'released by the organizer from time to time' : 'released automatically at the blueprint offsets'}. Released extras expire with their sprint.` },
+  { key: 'questionScope', title: 'Question lifetime', fairness: true, describe: (r) => r.questionScope === 'SLOT_POOL' ? 'Released questions stay active for the whole slot (all four sprints) until solved; solves count for the sprint in which they are accepted. Unsolved questions expire when the slot ends.' : 'A fresh initial set every sprint; questions expire at sprint end' },
+  { key: 'initialPerDomain', title: 'Initial release per domain', fairness: true, describe: (r) => `${r.initialPerDomain.EASY} easy + ${r.initialPerDomain.MEDIUM} medium + ${r.initialPerDomain.HARD} hard per domain (${r.initialPerDomain.EASY + r.initialPerDomain.MEDIUM + r.initialPerDomain.HARD} per domain, ${(r.initialPerDomain.EASY + r.initialPerDomain.MEDIUM + r.initialPerDomain.HARD) * 6} total) released when Sprint 1 of a slot starts; auto-picked from the bank and editable before the start. Also the top-up target.` },
+  { key: 'extraPools', title: 'Top-ups and bonuses', fairness: true, describe: () => 'The organizer watches the live stock per domain and difficulty and releases more from the bank at any time (Top up to target, or pick specific questions), as regular or bonus questions. Previously used questions may be reused.' },
   { key: 'rewards', title: 'Rewards', fairness: true, describe: (r) => `Easy ${r.rewards.EASY}, medium ${r.rewards.MEDIUM}, hard ${r.rewards.HARD}, bonus ${r.rewards.BONUS} IdeaCoins` },
-  { key: 'hintCosts', title: 'Hint costs', fairness: true, describe: (r) => `${r.hintCosts.EASY}/${r.hintCosts.MEDIUM}/${r.hintCosts.HARD} (easy/medium/hard), bonus ${r.hintCosts.BONUS}; starting wallet ${r.startingWallet}` },
+  { key: 'hintCosts', title: 'Hint costs', fairness: true, describe: (r) => `Each question's own hint ladder (IDEALab.dev: usually 25 / 50 / 100 by difficulty); fallback ${r.hintCosts.EASY}/${r.hintCosts.MEDIUM}/${r.hintCosts.HARD}, bonus ${r.hintCosts.BONUS}; starting wallet ${r.startingWallet}` },
   { key: 'rankingMetric', title: 'Ranking basis', fairness: true, describe: (r) => r.rankingMetric === 'GROSS_EARNED' ? 'GROSS_EARNED: score = coins earned; hints reduce the spendable wallet only' : 'NET_COINS: score = earned − spent; hints reduce score' },
   { key: 'bonusPolicy', title: 'Bonus solve policy', fairness: true, describe: () => 'Open to every active crew in the slot; first correct verified solution wins. No click-to-reserve.' },
   { key: 'elimination', title: 'Elimination', fairness: true, describe: (r) => r.elimination.enabled ? `Enabled: bottom ${r.elimination.counts.join(' / ')} crews after sprints 1-4 (frozen standings, ties need a decision)` : 'Disabled (latest format does not restate elimination)' },
   { key: 'tiePolicy', title: 'Ties', fairness: true, describe: () => 'Shared rank. Final top-score ties require a published tiebreak or a joint-winner decision. Never by team ID.' },
   { key: 'attendance', title: 'Attendance gates login', fairness: false, describe: (r) => r.attendanceGatesLogin ? 'A crew can sign in only after an organizer marks it present (attendance). Unmarking signs its devices out.' : 'Attendance is informational; enabled crews can always sign in.' },
   { key: 'sessions', title: 'Devices per crew', fairness: false, describe: (r) => `Up to ${r.sessionLimit} concurrent sessions per crew, one shared wallet (${r.sessionLimitPolicy === 'EVICT_OLDEST' ? 'oldest device is signed out' : 'extra sign-ins are rejected'})` },
-  { key: 'recycling', title: 'Question recycling', fairness: true, describe: () => 'Disabled: solved or expired questions never reopen automatically' },
-  { key: 'schedule', title: 'Sprint schedule & release blueprint', fairness: true, describe: (r) => `4 sprints × ${r.sprintMinutes} active minutes (${r.preset}), each started by an organizer after the slot is opened. Initial set released at sprint start; ${r.reservesPerSlot} reserves held in a slot pool for refills; ${r.bonusMode === 'SCHEDULED' ? `bonuses ${r.blueprint.bonusesPerSprint.join('/')} at active minutes ${r.blueprint.bonusOffsetsMinutes.map((o) => `[${o.join(',')}]`).join(' ')}` : `${r.bonusesPerSlot} bonuses released manually from the slot pool`}` },
+  { key: 'recycling', title: 'Question reuse', fairness: true, describe: () => 'Solved or expired questions never reopen automatically. The organizer may release any bank question again — including ones used in earlier slots or sprints.' },
+  { key: 'protection', title: 'Copy & screenshot protection', fairness: false, describe: (r) => r.protectContent ? 'Crew screens block copy, cut, right-click, printing and screenshot shortcuts, and blank the screen when it loses focus; a crew watermark is shown. (Browsers cannot fully prevent screenshots or phone cameras.)' : 'Off' },
+  { key: 'schedule', title: 'Sprint schedule', fairness: true, describe: (r) => `4 sprints × ${r.sprintMinutes} active minutes (${r.preset}), each started by an organizer after the slot is opened. ${r.bonusMode === 'SCHEDULED' ? `Bonuses ${r.blueprint.bonusesPerSprint.join('/')} at active minutes ${r.blueprint.bonusOffsetsMinutes.map((o) => `[${o.join(',')}]`).join(' ')}.` : 'Bonuses are released by the organizer from the bank.'}` },
   { key: 'singleRunningSlot', title: 'Concurrent slots', fairness: false, describe: (r) => r.singleRunningSlot ? 'Only one slot may run at a time' : 'Several slots may run at once' },
 ];
 
@@ -105,18 +113,12 @@ export function parseRules(raw: unknown): Rules {
   const r = rulesSchema.safeParse(raw);
   if (!r.success) throw new AppError('VALIDATION_FAILED', `Invalid rules: ${r.error.issues[0]?.path.join('.')} ${r.error.issues[0]?.message}`);
   for (let i = 0; i < 4; i++) {
-    if (r.data.blueprint.bonusOffsetsMinutes[i].length !== r.data.blueprint.bonusesPerSprint[i]) {
+    if (r.data.bonusMode === 'SCHEDULED' && r.data.blueprint.bonusOffsetsMinutes[i].length !== r.data.blueprint.bonusesPerSprint[i]) {
       throw new AppError('VALIDATION_FAILED', `Sprint ${i + 1}: ${r.data.blueprint.bonusesPerSprint[i]} bonuses need exactly that many release offsets.`);
     }
     for (const m of r.data.blueprint.bonusOffsetsMinutes[i]) {
       if (m >= r.data.sprintMinutes && r.data.preset !== 'REHEARSAL') throw new AppError('VALIDATION_FAILED', `Bonus offset ${m} min is outside the ${r.data.sprintMinutes}-minute sprint.`);
     }
-  }
-  if (r.data.blueprint.reservesPerSprint.reduce((a, b) => a + b, 0) !== r.data.reservesPerSlot && r.data.extraScope === 'PER_SLOT') {
-    throw new AppError('VALIDATION_FAILED', 'Reserve blueprint must add up to reserves per slot.');
-  }
-  if (r.data.blueprint.bonusesPerSprint.reduce((a, b) => a + b, 0) !== r.data.bonusesPerSlot && r.data.extraScope === 'PER_SLOT') {
-    throw new AppError('VALIDATION_FAILED', 'Bonus blueprint must add up to bonuses per slot.');
   }
   return r.data;
 }

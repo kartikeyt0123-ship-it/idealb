@@ -163,7 +163,16 @@ export interface Announcement {
 export interface CrewState {
   serverTime: string;
   identity: { role: 'CREW'; teamId: string; crewId: string; name: string; color: string; members: { name: string; is_captain: boolean }[]; mustChangePassword: boolean };
-  event: { name: string; edition: string; organizer: string; isDemo: boolean; metric: Metric; phase: 'OPEN' | 'FINAL_REVIEW' | 'FINALIZED' };
+  event: {
+    name: string;
+    edition: string;
+    organizer: string;
+    isDemo: boolean;
+    metric: Metric;
+    phase: 'OPEN' | 'FINAL_REVIEW' | 'FINALIZED';
+    /** Organizer rule: best-effort copy / screenshot deterrence on crew screens (see lib/useContentProtection). */
+    protectContent?: boolean;
+  };
   slot: SlotDto;
   sprint: SprintDto | null;
   sprints: SprintDto[];
@@ -232,6 +241,19 @@ export interface TaskFile {
   language: string;
   content: string;
   readOnly: boolean;
+  /** WEB preview-only file: included in the sandboxed preview, never shown as an editor tab. */
+  hidden?: boolean;
+}
+
+export type WorkspaceKind = 'WEB' | 'DATA' | 'DS' | 'BASIC' | 'DESIGN' | 'MISC' | 'SHELL' | 'SQL' | 'JSON' | 'EVIDENCE';
+export type RuntimeKind = 'python' | 'sql' | 'json' | 'shell' | 'code';
+
+/** One rung of the paid hint ladder (text only after purchase). Levels are bought in order. */
+export interface HintLevelDto {
+  level: number;
+  cost: number;
+  unlocked: boolean;
+  text: string | null;
 }
 
 /** GET /api/v1/question-instances/:id */
@@ -245,16 +267,24 @@ export interface QuestionDetail {
   difficulty: 'EASY' | 'MEDIUM' | 'HARD';
   reward: number;
   statement: string;
-  workspace: 'WEB' | 'DATA' | 'DS' | 'BASIC' | 'DESIGN' | 'MISC';
+  workspace: WorkspaceKind;
   runLanguage: 'javascript' | 'python' | null;
   runEntry: string | null;
   files: TaskFile[];
+  /** Read-only evidence board (cryptography / OSINT). `html` must only be rendered in a script-less sandbox. */
+  board?: { type: 'text' | 'html' | 'sequence'; content: string } | null;
+  /** What the Run button does (null = no Run). */
+  runtimeKind?: RuntimeKind | null;
+  /** SHELL workspaces: the virtual terminal's starting state. */
+  terminal?: { cwd: string; user: string; initialCommand: string | null } | null;
   sampleStdin: string | null;
   answerFormat: string;
   validation: { mode: 'EXACT_TEXT' | 'NUMERIC' | 'CODE_TESTS'; language?: string; testCount?: number; tolerance?: number; caseSensitive?: boolean; collapseWhitespace?: boolean };
   status: 'AVAILABLE' | 'SOLVED_BY_YOU' | 'SOLVED' | 'EXPIRED' | 'DISABLED';
   solvedBy: string | null;
   hint: { cost: number; unlocked: boolean; text: string | null };
+  /** Hint ladder (falls back to `hint` as a single level on older servers). */
+  hints?: HintLevelDto[];
   sprintDeadlineAt: string | null;
 }
 
@@ -269,6 +299,7 @@ export interface SubmitResult {
 
 export interface HintResult {
   hint: string;
+  level?: number;
   cost: number;
   charged: boolean;
   wallet: number;
@@ -278,7 +309,23 @@ export interface RunResult {
   jobId: string;
   status: 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED' | 'CANCELLED';
   language: string;
-  result: { stdout: string; stderr: string; exitCode: number | null; timedOut: boolean; outputTruncated: boolean; durationMs: number; runtime: string } | null;
+  result: {
+    stdout: string;
+    stderr: string;
+    exitCode: number | null;
+    timedOut: boolean;
+    outputTruncated: boolean;
+    durationMs: number;
+    runtime: string;
+    /** DATA plot questions: base64 PNG figures. */
+    images?: string[];
+    /** SHELL: working directory after the command. */
+    cwd?: string;
+    /** JSON: whether the device / endpoint accepted the state. */
+    success?: boolean;
+    /** JSON: device widget to animate (e.g. 'svg_bulb', 'svg_padlock'). */
+    component?: string | null;
+  } | null;
   error: string | null;
 }
 

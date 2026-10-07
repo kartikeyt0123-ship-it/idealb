@@ -18,9 +18,9 @@ describe('rules review', () => {
   it('rules start unconfirmed; changing one clears its confirmation; REHEARSAL scales sprint and bonus offsets', async () => {
     const rv = (await org.get(`${V}/admin/rules`)).body;
     expect(rv.review.every((r: { confirmed: unknown }) => r.confirmed === null)).toBe(true);
-    expect(rv.rules).toMatchObject({ rankingMetric: 'GROSS_EARNED', questionScope: 'FRESH_PER_SPRINT', sessionLimit: 4, recycling: false, singleRunningSlot: true });
-    expect(rv.rules.rewards).toEqual({ EASY: 150, MEDIUM: 400, HARD: 700, BONUS: 900 });
-    expect(rv.rules.hintCosts).toEqual({ EASY: 30, MEDIUM: 80, HARD: 140, BONUS: 100 });
+    expect(rv.rules).toMatchObject({ rankingMetric: 'GROSS_EARNED', questionScope: 'SLOT_POOL', initialPerDomain: { EASY: 7, MEDIUM: 5, HARD: 3 }, sessionLimit: 4, recycling: false, singleRunningSlot: true, protectContent: true });
+    expect(rv.rules.rewards).toEqual({ EASY: 150, MEDIUM: 400, HARD: 750, BONUS: 900 });
+    expect(rv.rules.hintCosts).toEqual({ EASY: 25, MEDIUM: 50, HARD: 100, BONUS: 100 });
     expect((await org.post(`${V}/admin/rules/rewards/confirmation`, { confirmed: true })).status).toBe(200);
     expect((await org.post(`${V}/admin/rules/rankingMetric/confirmation`, { confirmed: true })).status).toBe(200);
     // This suite exercises the automatic bonus schedule (the default is the manual bonus pool).
@@ -28,7 +28,7 @@ describe('rules review', () => {
     expect(upd.status).toBe(200);
     expect(upd.body.changed).toContain('schedule');
     expect(upd.body.notes.join(' ')).toMatch(/rebuild each slot plan/);
-    expect((await org.post(`${V}/admin/slots/${await slotId(env, 1)}/plan`, {})).body.instances).toBe(270);
+    expect((await org.post(`${V}/admin/slots/${await slotId(env, 1)}/plan`, {})).body.instances).toBe(100); // 90 initial + 10 scheduled bonuses
     const after = (await org.get(`${V}/admin/rules`)).body;
     expect(after.review.find((r: { key: string }) => r.key === 'rewards').confirmed).not.toBeNull();
     expect(after.review.find((r: { key: string }) => r.key === 'schedule').confirmed).toBeNull();
@@ -130,35 +130,59 @@ describe('releases and the scheduler', () => {
 
   it('bonus: open to all, first correct wins and is recorded as BONUS_REWARD', async () => {
     const b = (await answerInstances(env, 1, 'BONUS'))[0];
-    if (!b) return; // the first bonus may be a code question; covered by the runner-backed check below
     const c = await crew(env, 5);
     const r = await c.post(`${V}/question-instances/${b.id}/submissions`, await solutionFor(env, b.id), true);
     expect(r.body).toMatchObject({ correct: true, reward: 900 });
     expect(await count(`SELECT count(*)::int AS n FROM coin_ledger WHERE kind='BONUS_REWARD'`)).toBe(1);
   });
 
-  it('a code bonus/question is judged by the real runner (starter fails, solution passes)', async () => {
-    const q = await one<{ id: string; generation: number; files: { name: string; content: string }[] }>(
-      env.db,
-      `SELECT qi.id, qi.generation, qv.files FROM question_instance qi JOIN release r ON r.id=qi.release_id JOIN question_version qv ON qv.id=qi.question_version_id
-        WHERE qi.slot_id=$1 AND r.status='RELEASED' AND qi.status='AVAILABLE' AND qv.validation->>'mode'='CODE_TESTS' ORDER BY qi.label LIMIT 1`,
-      [await slotId(env, 1)],
-    );
+  it('IDEALab runtimes through the real runner: python fix prints the flag, gated maker check, terminal, SQL, JSON', async () => {
+    const sid = await slotId(env, 1);
+    const ver = async (key: string) => (await one<{ id: string }>(env.db, `SELECT v.id FROM question_version v JOIN question q ON q.id=v.question_id WHERE q.key=$1 AND v.status='PUBLISHED'`, [key]))!.id;
+    const keys = ['core_compute_01', 'maker_41', 'recon_01', 'recon_44', 'maker_01'];
+    const rel = await org.post(`${V}/admin/slots/${sid}/releases`, { versionIds: await Promise.all(keys.map(ver)), when: 'NOW' });
+    expect(rel.body.count).toBe(5);
+    const inst = async (key: string) => (await one<{ id: string }>(env.db, `SELECT qi.id FROM question_instance qi JOIN question_version v ON v.id=qi.question_version_id JOIN question q ON q.id=v.question_id WHERE qi.slot_id=$1 AND q.key=$2 ORDER BY qi.created_at DESC LIMIT 1`, [sid, key]))!.id;
     const c = await crew(env, 6);
-    const starter = Object.fromEntries(q!.files.map((f) => [f.name, f.content]));
-    const bad = await c.post(`${V}/question-instances/${q!.id}/submissions`, { generation: q!.generation, files: starter }, true);
-    expect(bad.body.correct).toBe(false);
-    const good = await c.post(`${V}/question-instances/${q!.id}/submissions`, await solutionFor(env, q!.id), true);
-    expect(good.body.correct).toBe(true);
-  }, 60_000);
+    const run = (key: string, body: unknown) => inst(key).then((id) => c.post(`${V}/question-instances/${id}/run-jobs`, body));
 
-  it('reserves release on demand (no reason), early scheduled releases need a reason and are recorded as deviations', async () => {
+    // core_compute_01: the hidden check prints the flag only when the loop is fixed; the check source never reaches the crew.
+    const detail = (await c.get(`${V}/question-instances/${await inst('core_compute_01')}`)).body;
+    expect(JSON.stringify(detail)).not.toMatch(/ROBOT_SAVED_99|hidden_validation|runtime"/);
+    const fixed = await run('core_compute_01', { files: { 'main.py': 'steps = 10\nwhile steps > 0:\n    steps -= 1\nprint(steps)\n' } });
+    expect(fixed.body.result.stdout).toContain('FLAG: ROBOT_SAVED_99');
+    const leak = await run('core_compute_01', { files: { 'main.py': 'import sys\nprint(open(__file__).read() if "__file__" in dir() else "")\nprint(sys.stdin.read())\n' } });
+    expect(leak.body.result.stdout).not.toContain('ROBOT_SAVED_99');
+
+    // maker_41: the check recomputes the answer itself → gated on the crew printing the right value.
+    const empty = await run('maker_41', { files: { 'main.py': '# nothing yet\n' } });
+    expect(empty.body.result.stdout).not.toContain('MAKER_PIR_EDGES_41');
+    const right = await run('maker_41', { files: { 'main.py': 'print(sum(1 for i in range(1, len(pir_samples)) if pir_samples[i] == 1 and pir_samples[i-1] == 0))\n' } });
+    expect(right.body.result.stdout).toContain('FLAG: MAKER_PIR_EDGES_41');
+
+    // recon_01: server-side terminal.
+    const sh = await run('recon_01', { command: 'cat instructions.txt | grep -o "SYSTEM_[A-Z]*"' });
+    expect(sh.body.result).toMatchObject({ stdout: 'SYSTEM_READY\n', exitCode: 0 });
+    // recon_44: SQLite with the real catalogue.
+    const sql = await run('recon_44', { files: { 'query.sql': "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'shadow_%';" } });
+    expect(sql.body.result.stdout).toContain('shadow_vault_sec');
+    const sql2 = await run('recon_44', { files: { 'query.sql': 'SELECT flag FROM shadow_vault_sec;' } });
+    expect(sql2.body.result.stdout).toContain('RECON_SQLITE_TBL_44');
+    // maker_01: JSON apply.
+    const bad = await run('maker_01', { files: { 'config.json': '{"R":255,"G":255,"B":255}' } });
+    expect(bad.body.result.success).toBe(false);
+    const good = await run('maker_01', { files: { 'config.json': '{ "R": 255, "G": 0, "B": 0 }' } });
+    expect(good.body.result).toMatchObject({ success: true, component: 'svg_bulb' });
+    expect(good.body.result.stdout).toContain('RED_NODE_ONLINE');
+
+    // Flags are accepted with or without the "FLAG:" wrapper.
+    const sub = await c.post(`${V}/question-instances/${await inst('core_compute_01')}/submissions`, { generation: 1, answer: 'FLAG: robot_saved_99' }, true);
+    expect(sub.body.correct).toBe(true);
+  }, 90_000);
+
+  it('early release of a scheduled bonus needs a reason and is recorded as a deviation; manual override too', async () => {
     const sid = await slotId(env, 1);
     const rels = await many<{ id: string; type: string; status: string }>(env.db, `SELECT r.id, r.type, r.status FROM release r JOIN sprint sp ON sp.id=r.sprint_id WHERE r.slot_id=$1 AND sp.number=1 ORDER BY r.type, r.offset_seconds`, [sid]);
-    const reserve = (await one<{ id: string }>(env.db, `SELECT id FROM release WHERE slot_id=$1 AND type='RESERVE' AND status='PENDING' ORDER BY blueprint_key LIMIT 1`, [sid]))!;
-    const r1 = await org.post(`${V}/admin/question-releases/${reserve.id}/release`, {});
-    expect(r1.body.released).toBe(true);
-    expect((await org.post(`${V}/admin/question-releases/${reserve.id}/release`, {})).body.released).toBe(false);
     const sched = rels.find((r) => r.type === 'BONUS' && r.status === 'SCHEDULED')!;
     expect((await org.post(`${V}/admin/question-releases/${sched.id}/release`, {})).status).toBe(400);
     const early = await org.post(`${V}/admin/question-releases/${sched.id}/release`, { reason: 'Room lost power for 5 minutes' });
@@ -166,7 +190,7 @@ describe('releases and the scheduler', () => {
     const pf = (await org.get(`${V}/admin/slots/${sid}/sprints/2/preflight`)).body;
     expect(pf.warnings.join(' ')).toMatch(/fairness deviation/);
     // Manual override release needs a reason too.
-    const v = (await one<{ id: string }>(env.db, `SELECT qv.id FROM question_version qv JOIN question q ON q.id=qv.question_id WHERE q.pool='BONUS' AND NOT EXISTS (SELECT 1 FROM question_instance qi WHERE qi.question_version_id=qv.id) LIMIT 1`))!;
+    const v = (await one<{ id: string }>(env.db, `SELECT qv.id FROM question_version qv WHERE qv.status='PUBLISHED' AND NOT EXISTS (SELECT 1 FROM question_instance qi WHERE qi.question_version_id=qv.id) LIMIT 1`))!;
     const body = { slotId: sid, sprintNumber: 1, type: 'BONUS', versionIds: [v.id], releaseImmediately: true };
     expect((await org.post(`${V}/admin/question-releases`, { ...body, reason: 'x' })).status).toBe(400);
     const man = await org.post(`${V}/admin/question-releases`, { ...body, reason: 'Replacement for a broken bonus question' });

@@ -9,7 +9,9 @@ import { getEvent, getSprints } from '../services/context.js';
 import { createDisplayLink, listDisplayLinks, revokeDisplayLink } from '../services/display.js';
 import * as life from '../services/lifecycle.js';
 import { emit, Rooms } from '../services/outbox.js';
-import { buildSlotPlan, cancelRelease, createManualRelease, poolStatus, refillSlot, releaseNextBonus, releaseNow } from '../services/releases.js';
+import { bankCoverage, bankForSlot, buildSlotPlan, initialSet, releaseFromBank, removePlanned, slotStock, topUp } from '../services/bank.js';
+import { cancelRelease, createManualRelease, releaseNow } from '../services/releases.js';
+import { commitSync, previewSync } from '../services/sync.js';
 import { RULE_CATALOGUE } from '../services/rules.js';
 import { toXlsx } from '../services/spreadsheet.js';
 import * as teams from '../services/teams.js';
@@ -74,15 +76,24 @@ export async function adminRoutes(app: FastifyInstance, deps: Deps) {
     return { ok: true };
   });
 
-  r.post('/admin/slots/:slotId/plan', { summary: 'Build / rebuild the slot release plan from the blueprint (before start only)', tag: 'releases', auth: O, permission: 'releases.manage' }, async (req) => {
+  const counts = z.object({ EASY: z.number().int().min(0).max(60).optional(), MEDIUM: z.number().int().min(0).max(60).optional(), HARD: z.number().int().min(0).max(60).optional() });
+  r.post('/admin/slots/:slotId/plan', { summary: 'Build / rebuild the initial set (default 7 easy, 5 medium, 3 hard per domain) before the slot starts', tag: 'releases', auth: O, permission: 'releases.manage', body: '{ counts?, perDomain?, domains? }' }, async (req) => {
     const { slotId } = slotParam.parse(req.params);
     const { actor } = await requireOrganizer(deps, req, 'releases.manage');
-    const res = await withTx(db, async (tx) => {
-      const out = await buildSlotPlan(tx, actor, slotId);
-      await emit(tx, 'slot.updated', [Rooms.organizers], { slotId });
-      return out;
-    });
-    return res;
+    const body = z.object({ counts: counts.optional(), perDomain: z.record(counts).optional(), domains: z.array(z.string().max(40)).max(20).optional() }).parse(req.body ?? {});
+    return withTx(db, (tx) => buildSlotPlan(tx, actor, slotId, body));
+  });
+
+  r.get('/admin/slots/:slotId/plan', { summary: 'The unreleased question set(s) of a slot (initial set / next-start set)', tag: 'releases', auth: O, permission: 'teams.read' }, async (req) => {
+    const { slotId } = slotParam.parse(req.params);
+    await requireOrganizer(deps, req, 'teams.read');
+    return initialSet(db, slotId);
+  });
+
+  r.delete('/admin/slots/:slotId/plan/:instanceId', { summary: 'Remove one question from the unreleased set', tag: 'releases', auth: O, permission: 'releases.manage' }, async (req) => {
+    const { slotId, instanceId } = z.object({ slotId: uuid, instanceId: uuid }).parse(req.params);
+    const { actor } = await requireOrganizer(deps, req, 'releases.manage');
+    return withTx(db, (tx) => removePlanned(tx, actor, slotId, instanceId));
   });
 
   r.post('/admin/slots/:slotId/open', { summary: 'Open (kick in) the slot: its crews may board and roam; no sprint starts', tag: 'slots', auth: O, permission: 'slots.control' }, async (req) => {
@@ -97,23 +108,31 @@ export async function adminRoutes(app: FastifyInstance, deps: Deps) {
     return withTx(db, (tx) => life.closeBoarding(tx, actor, slotId, reasonBody.parse(req.body ?? {}).reason));
   });
 
-  r.get('/admin/slots/:slotId/pools', { summary: 'Per-domain stock (available / solved / deficit) and reserve + bonus pools left', tag: 'releases', auth: O, permission: 'teams.read' }, async (req) => {
+  r.get('/admin/slots/:slotId/stock', { summary: 'Live stock per domain x difficulty: active, solved, released, planned vs target; bank availability', tag: 'releases', auth: O, permission: 'teams.read' }, async (req) => {
     const { slotId } = slotParam.parse(req.params);
     await requireOrganizer(deps, req, 'teams.read');
-    return poolStatus(db, slotId);
+    return slotStock(db, slotId);
   });
 
-  r.post('/admin/slots/:slotId/refill', { summary: 'Release reserve questions into the most depleted domains (count, optional domain)', tag: 'releases', auth: O, permission: 'releases.manage', body: '{ count?, domain? }' }, async (req) => {
+  r.get('/admin/slots/:slotId/bank', { summary: 'Bank questions for a slot with usage (new to this slot / used before)', tag: 'releases', auth: O, permission: 'content.read', query: 'domain, difficulty, search, freshOnly' }, async (req) => {
     const { slotId } = slotParam.parse(req.params);
-    const { actor } = await requireOrganizer(deps, req, 'releases.manage');
-    const body = z.object({ count: z.number().int().min(1).max(50).optional(), domain: z.string().max(20).optional() }).parse(req.body ?? {});
-    return withTx(db, (tx) => refillSlot(tx, actor, slotId, body));
+    await requireOrganizer(deps, req, 'content.read');
+    const qs = z.object({ domain: z.string().max(40).optional(), difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).optional(), search: z.string().max(100).optional(), freshOnly: z.enum(['true', 'false']).optional() }).parse(req.query);
+    return bankForSlot(db, slotId, { ...qs, freshOnly: qs.freshOnly === 'true' });
   });
 
-  r.post('/admin/slots/:slotId/bonus/next', { summary: 'Release the next bonus question from the slot pool', tag: 'releases', auth: O, permission: 'releases.manage' }, async (req) => {
+  r.post('/admin/slots/:slotId/releases', { summary: 'Release chosen bank questions now (or at the next sprint start), as regular or bonus', tag: 'releases', auth: O, permission: 'releases.manage', body: '{ versionIds, bonus?, when?: NOW|NEXT_START, announcement? }' }, async (req) => {
     const { slotId } = slotParam.parse(req.params);
     const { actor } = await requireOrganizer(deps, req, 'releases.manage');
-    return withTx(db, (tx) => releaseNextBonus(tx, actor, slotId));
+    const body = z.object({ versionIds: z.array(uuid).min(1).max(120), bonus: z.boolean().default(false), when: z.enum(['NOW', 'NEXT_START']).optional(), announcement: z.string().max(200).optional() }).parse(req.body);
+    return withTx(db, (tx) => releaseFromBank(tx, actor, slotId, body));
+  });
+
+  r.post('/admin/slots/:slotId/top-up', { summary: 'Auto-pick and release enough questions to bring domains back to target (optionally one domain / difficulty, or N each)', tag: 'releases', auth: O, permission: 'releases.manage', body: '{ domain?, difficulty?, count? }' }, async (req) => {
+    const { slotId } = slotParam.parse(req.params);
+    const { actor } = await requireOrganizer(deps, req, 'releases.manage');
+    const body = z.object({ domain: z.string().max(40).optional(), difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).optional(), count: z.number().int().min(1).max(30).optional() }).parse(req.body ?? {});
+    return withTx(db, (tx) => topUp(tx, actor, slotId, body));
   });
 
   r.get('/admin/slots/:slotId/sprints/:n/preflight', { summary: 'Start checklist for a sprint', tag: 'slots', auth: O, permission: 'slots.control' }, async (req) => {
@@ -411,9 +430,36 @@ export async function adminRoutes(app: FastifyInstance, deps: Deps) {
   r.get('/admin/questions', { summary: 'Question bank (latest version of each)', tag: 'bank', auth: O, permission: 'content.read' }, async (req) => {
     await requireOrganizer(deps, req, 'content.read');
     const ev = await getEvent(db);
-    const { bankCoverage } = await import('../services/releases.js');
     const slots = await admin.unplannedSlots(db);
     return { questions: await content.listQuestionsAdmin(db), coverage: await bankCoverage(db, ev.rules, slots) };
+  });
+
+  r.post('/admin/questions/sync/preview', { summary: 'Fetch the IDEALab.dev bank from GitHub (or the bundled snapshot) and preview new / changed / unchanged questions', tag: 'bank', auth: O, permission: 'content.write', body: '{ repo?, ref?, source?: GITHUB|SNAPSHOT }' }, async (req) => {
+    const { actor } = await requireOrganizer(deps, req, 'content.write');
+    const body = z.object({ repo: z.string().url().max(200).optional(), ref: z.string().max(100).optional(), source: z.enum(['GITHUB', 'SNAPSHOT']).default('GITHUB') }).parse(req.body ?? {});
+    return previewSync(db, actor, body);
+  });
+
+  r.post('/admin/questions/sync/commit', { summary: 'Apply a previewed sync: new questions are created, changed ones get a new version (DRAFT, or PUBLISHED when chosen)', tag: 'bank', auth: O, permission: 'content.publish', body: '{ previewId, publish }' }, async (req) => {
+    const { actor } = await requireOrganizer(deps, req, 'content.publish');
+    const body = z.object({ previewId: uuid, publish: z.boolean().default(false) }).parse(req.body);
+    return commitSync(db, cfg, actor, body.previewId, body.publish);
+  });
+
+  r.post('/admin/question-versions/bulk-status', { summary: 'Move many versions at once (e.g. publish a reviewed domain)', tag: 'bank', auth: O, permission: 'content.publish', body: '{ versionIds, to }' }, async (req) => {
+    const { actor } = await requireOrganizer(deps, req, 'content.publish');
+    const body = z.object({ versionIds: z.array(uuid).min(1).max(1000), to: z.enum(['REVIEWED', 'PUBLISHED', 'ARCHIVED']) }).parse(req.body);
+    return withTx(db, async (tx) => {
+      let moved = 0;
+      for (const id of body.versionIds) {
+        const cur = await one<{ status: string }>(tx, 'SELECT status FROM question_version WHERE id=$1', [id]);
+        if (!cur || cur.status === body.to) continue;
+        if (body.to === 'PUBLISHED' && cur.status === 'DRAFT') await content.advanceStatus(tx, actor, id, 'REVIEWED');
+        await content.advanceStatus(tx, actor, id, body.to);
+        moved++;
+      }
+      return { moved };
+    });
   });
 
   r.post('/admin/questions', { summary: 'Create a question (as DRAFT)', tag: 'bank', auth: O, permission: 'content.write', body: 'QuestionInput' }, async (req, reply) => {

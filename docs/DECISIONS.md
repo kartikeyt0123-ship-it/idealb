@@ -14,7 +14,7 @@ defaults are **demo defaults that organizers must confirm**.
 | Sprints | 4 sprints per slot, 30 active minutes each (STANDARD). The organizer **explicitly starts every sprint**; dates and clock times never start anything. |
 | Slot kick-in | Each slot is **opened** by an organizer (Open slot). Before that, its crews can sign in but wait on a "slot not opened" screen. After it, crews board and roam the ship, but **nothing is visible or solvable until the organizer starts Sprint 1**. Sprint 1 cannot start before the slot is open (preflight blocker). Boarding can be closed again only before Sprint 1. |
 | Attendance | Rule `attendanceGatesLogin` (default on): a crew can sign in only after it is marked **present**. The roll call is in Crews → Slot rosters. Unmarking signs the crew out. A blank `checked_in` cell on re-import keeps the current value. |
-| Question flow per slot | **60 initial** questions per sprint (10 per domain), released when the organizer starts the sprint. A **20-question reserve pool** (mixed domains): **Refill** releases reserves into the domains depleted by solves, largest deficit first (or one chosen domain). A **10-question bonus pool** (mixed domains): **Release bonus** sends the next one whenever the organizer decides (rule `bonusMode` MANUAL, default; SCHEDULED keeps the automatic blueprint offsets). Released extras expire with their sprint; unreleased ones carry over to later sprints. Refills and pool bonuses are part of the plan, so they are not fairness deviations. |
+| Question bank and flow per slot | The bank is the organizers' **IDEALab.dev** repository (360 flag problems, 6 domains: Core Compute, Cryptography, Data Decypher, Maker Sandbox, Reconnaissance, Web Exploitation), synced from GitHub. Each slot gets an **initial set of 15 per domain (7 easy, 5 medium, 3 hard)**, auto-picked (new-to-the-slot first, then least used) and **editable before Sprint 1** (remove questions, add specific ones, rebuild with other counts per domain). It is released when the organizer starts Sprint 1. Released questions **stay active for the whole slot** and expire when the slot's last sprint closes. The organizer watches the **live stock** (domain × difficulty: active, solved, planned vs target) and releases more at any time: **Top up** (auto-pick back to target) or **pick specific bank questions**, as regular or bonus, now or at the next sprint start. **Previously used questions may be reused.** These are organizer decisions, not fairness deviations. |
 | Concurrency | One running slot at a time (rule `singleRunningSlot`, enforced in preflight under an advisory lock). |
 | First solve | The first correct, server-accepted answer closes a question **within its slot only**. Slots never share question versions, so there is no cross-slot answer leakage. |
 | Leaderboards | Sprint board (starts at zero each sprint: only ledger rows attributed to that sprint count), slot cumulative board (sum of the four sprints), overall board across slots (**PROVISIONAL** until the event is finalized). |
@@ -30,18 +30,19 @@ when the first sprint of any slot starts.
 
 | Rule key | Demo default | Alternatives |
 |---|---|---|
-| `questionScope` | FRESH_PER_SPRINT: a fresh release of 60 questions each sprint (10 per domain), expiring at sprint end | SLOT_POOL: one 60-question pool per slot carried across the four sprints (solves count for the sprint in which they are accepted) |
-| `initialPerDomain` | 5 easy / 3 medium / 2 hard per domain (30 / 18 / 12 across six domains) | any counts |
-| `extraPools` | 20 reserves + 10 bonuses **per slot**, separate from the initial questions; reserves refill depleted domains on demand, bonuses released manually | |
-| `rewards` | 150 / 400 / 700, bonus 900 IdeaCoins | |
-| `hintCosts` | 30 / 80 / 140, bonus 100; starting wallet 0 | |
+| `questionScope` | **SLOT_POOL**: released questions stay active for all four sprints of the slot; solves count for the sprint in which they are accepted | FRESH_PER_SPRINT: a fresh set every sprint, expiring at sprint end |
+| `initialPerDomain` | **7 easy / 5 medium / 3 hard** per domain = 90 per slot, released at Sprint 1; also the top-up target | any counts (per slot editable per domain) |
+| `extraPools` | Top-ups and bonuses chosen by the organizer from the bank at any time | |
+| `rewards` | 150 / 400 / **750**, bonus 900 IdeaCoins (the repository's base_coins) | |
+| `hintCosts` | Each question's own hint ladder (repository: usually 25 / 50 / 100; a few have two levels, bought in order); fallback 25 / 50 / 100, bonus 100; starting wallet 0 | |
 | `rankingMetric` | **GROSS_EARNED**: score = coins earned; hints reduce the spendable wallet only | NET_COINS: earned − spent |
 | `bonusPolicy` | Open to every active crew in the slot; first correct verified answer wins. No claim / reserve step. | |
 | `elimination` | **Disabled** (the latest format does not restate elimination) | Optional per-sprint counts; ties at the cutoff need a published decision |
 | `tiePolicy` | Shared rank. Ties involving prize places need a published decision (share the place, or a manual order with a note). Never broken by team ID. | |
 | `attendance` | Marking a crew present enables its login (`attendanceGatesLogin: true`) | off: enabled crews can always sign in |
 | `sessions` | Up to 4 concurrent devices per crew, one shared wallet; the oldest device is signed out | REJECT extra sign-ins |
-| `recycling` | Off: solved or expired questions never reopen | |
+| `recycling` | Solved / expired questions never reopen automatically; the organizer may release any question again (reuse) | |
+| `protection` | **On**: crew screens block copy / cut / right-click / print / screenshot shortcuts and blank the screen when it loses focus; crew watermark. Best effort — browsers cannot stop phone cameras | off |
 | `schedule` | 4 × 30 active minutes, each sprint started by an organizer after the slot is opened. With `bonusMode: SCHEDULED`, bonuses 3 / 3 / 2 / 2 at active minutes [8, 16, 24], [8, 16, 24], [10, 20], [10, 20]. The **REHEARSAL** preset makes a sprint 120 s and scales the offsets (8 min → 32 s). | CUSTOM minutes |
 | `singleRunningSlot` | Only one slot may run at a time | allow parallel slots |
 
@@ -76,6 +77,13 @@ correction (pause, adjust with compensating ledger entries, note in the audit lo
 
 ## Question pool sufficiency
 
-With 10 crews and 60 questions per sprint, a sprint rarely runs out. When domains empty out,
-press **Refill**: it releases reserve questions where solves left the biggest gap (no reason needed:
-the reserve pool is part of the plan). A manual override release is a fairness deviation.
+Each domain has 25 easy / 20 medium / 15 hard questions; a slot starts with 7 / 5 / 3 per domain.
+Four slots plus top-ups exceed the fresh supply, so later slots reuse questions (by design). The
+picker prefers questions the slot has not seen, then the least used overall. Solutions of reused
+questions may circulate between slots — run a slot's top-ups from questions marked *new to this
+slot* in the picker when that matters.
+
+## Known data issues in the repository
+
+See [CONTENT_REVIEW.md](CONTENT_REVIEW.md): `core_compute_21` and `recon_60` are broken upstream;
+`maker_41`–`maker_60` are protected by an automatic output gate.

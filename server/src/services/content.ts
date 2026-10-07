@@ -45,12 +45,14 @@ export async function insertVersion(tx: Tx, cfg: AppConfig, questionId: string, 
     tx,
     `INSERT INTO question_version(question_id, version_no, status, title, difficulty, statement, workspace, run_language, run_entry, files, sample_stdin,
                                   answer_format, validation, answer_verifier, hint, solution, source_template, source_seed, created_by,
-                                  reviewed_at, published_at)
+                                  reviewed_at, published_at, runtime, board, hints, source)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-             CASE WHEN $3 IN ('REVIEWED','PUBLISHED') THEN now() END, CASE WHEN $3='PUBLISHED' THEN now() END) RETURNING id`,
+             CASE WHEN $3 IN ('REVIEWED','PUBLISHED') THEN now() END, CASE WHEN $3='PUBLISHED' THEN now() END, $20, $21, $22, $23) RETURNING id`,
     [questionId, versionNo, status, p.variant.title, p.difficulty, p.variant.statement, p.variant.workspace, p.variant.runLanguage, p.variant.runEntry ?? null,
       JSON.stringify(p.variant.files), p.variant.sampleStdin ?? null, p.variant.answerFormat, JSON.stringify(sealed.validation), sealed.verifier,
-      p.variant.hint, JSON.stringify(p.variant.solution), p.sourceTemplate ?? null, p.sourceSeed ?? null, actorId],
+      p.variant.hint, JSON.stringify(p.variant.solution), p.sourceTemplate ?? null, p.sourceSeed ?? null, actorId,
+      p.variant.runtime ? JSON.stringify(p.variant.runtime) : null, p.variant.board ? JSON.stringify(p.variant.board) : null,
+      p.variant.hints ? JSON.stringify(p.variant.hints) : null, p.variant.source ? JSON.stringify(p.variant.source) : null],
   ))!.id;
 }
 
@@ -71,7 +73,7 @@ export async function createQuestion(tx: Tx, cfg: AppConfig, a: { key: string; d
 
 const fileSchema = z.object({
   name: z.string().regex(/^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$/, 'Invalid file name.'),
-  language: z.enum(['javascript', 'python', 'html', 'css', 'text', 'csv', 'json', 'markdown']),
+  language: z.enum(['javascript', 'python', 'html', 'css', 'text', 'csv', 'json', 'markdown', 'sql']),
   content: z.string().max(100_000),
   readOnly: z.boolean().optional(),
 });
@@ -89,12 +91,12 @@ const validationSchema = z.discriminatedUnion('mode', [
 export const questionInputSchema = z
   .object({
     key: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{2,80}$/, 'key: lowercase letters, digits and dashes').optional(),
-    domain: z.enum(['web', 'data', 'ds', 'basic', 'design', 'misc']),
+    domain: z.string().trim().regex(/^[a-z][a-z0-9_]{1,40}$/, 'domain: a domain slug such as core_compute'),
     pool: z.enum(['REGULAR', 'BONUS']).default('REGULAR'),
     title: z.string().trim().min(3).max(120),
     difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']),
     statement: z.string().trim().min(20).max(20_000),
-    workspace: z.enum(['WEB', 'DATA', 'DS', 'BASIC', 'DESIGN', 'MISC']),
+    workspace: z.enum(['WEB', 'DATA', 'DS', 'BASIC', 'DESIGN', 'MISC', 'SHELL', 'SQL', 'JSON', 'EVIDENCE']),
     runLanguage: z.enum(['javascript', 'python']).nullable(),
     runEntry: z.string().nullable().optional(),
     files: z.array(fileSchema).max(12),
@@ -164,9 +166,9 @@ export async function adminNewDraft(tx: Tx, actor: Actor, questionId: string) {
   const r = await one<{ id: string }>(
     tx,
     `INSERT INTO question_version(question_id, version_no, status, title, difficulty, statement, workspace, run_language, run_entry, files, sample_stdin,
-                                  answer_format, validation, answer_verifier, hint, solution, source_template, source_seed, created_by)
+                                  answer_format, validation, answer_verifier, hint, solution, source_template, source_seed, created_by, runtime, board, hints, source)
      SELECT question_id, $2, 'DRAFT', title, difficulty, statement, workspace, run_language, run_entry, files, sample_stdin, answer_format, validation,
-            answer_verifier, hint, solution, source_template, source_seed, $3 FROM question_version WHERE id=$1 RETURNING id`,
+            answer_verifier, hint, solution, source_template, source_seed, $3, runtime, board, hints, source FROM question_version WHERE id=$1 RETURNING id`,
     [latest.id, latest.version_no + 1, actor.id],
   );
   await audit(tx, actor, 'question.version_drafted', { type: 'question', id: questionId }, { versionNo: latest.version_no + 1 });
@@ -242,6 +244,8 @@ export async function getVersion(q: Queryable, versionId: string, includeSolutio
   delete v.answer_verifier;
   if (!includeSolution) {
     delete v.solution;
+    // Hidden setup / checks / filesystems / tables / expected state reveal answers.
+    if (v.runtime) v.runtime = { kind: (v.runtime as { kind: string }).kind, hidden: true };
     const val = v.validation as Record<string, unknown>;
     if (val?.mode === 'CODE_TESTS') v.validation = { ...val, tests: `${(val.tests as unknown[]).length} hidden tests`, harness: val.harness ? 'hidden' : undefined };
     if (val?.mode === 'NUMERIC') v.validation = { ...val, answer: 'hidden' };

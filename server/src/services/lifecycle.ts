@@ -91,12 +91,14 @@ export async function preflight(q: Queryable, slotId: string, sprintNumber: numb
   const initial = await one<{ n: number }>(
     q,
     `SELECT count(qi.id)::int AS n FROM release r JOIN question_instance qi ON qi.release_id=r.id
-      WHERE r.slot_id=$1 AND r.type='INITIAL' AND r.status IN ('SCHEDULED','PENDING','RELEASED')
-        AND (${ev.rules.questionScope === 'FRESH_PER_SPRINT' ? 'r.sprint_id=$2' : 'r.sprint_id IS NULL'})`,
+      WHERE r.slot_id=$1 AND r.type='INITIAL' AND r.status IN ('SCHEDULED','PENDING') AND (r.sprint_id=$2 OR r.sprint_id IS NULL)`,
     [slotId, target?.id ?? null],
   );
-  if (!initial?.n) blockers.push('No initial questions are planned for this sprint. Build the slot plan from the blueprint first.');
-  else summary.push(`${initial.n} initial question(s) ${ev.rules.questionScope === 'FRESH_PER_SPRINT' ? `for sprint ${sprintNumber}` : 'in the slot pool'}.`);
+  const active = await one<{ n: number }>(q, `SELECT count(*)::int AS n FROM question_instance qi JOIN release r ON r.id=qi.release_id WHERE qi.slot_id=$1 AND r.status='RELEASED' AND qi.status='AVAILABLE' AND qi.expires_with_sprint_id IS NULL`, [slotId]);
+  const needsSet = sprintNumber === 1 || ev.rules.questionScope === 'FRESH_PER_SPRINT';
+  if (needsSet && !initial?.n) blockers.push(`No questions are planned for sprint ${sprintNumber}. Build the initial set (Releases → Initial set) first.`);
+  else if (initial?.n) summary.push(`${initial.n} question(s) will be released when sprint ${sprintNumber} starts.`);
+  if (!needsSet) summary.push(`${active?.n ?? 0} question(s) remain active from earlier sprints. Top up low domains from the bank if needed.`);
   if (target) summary.push(`Sprint ${sprintNumber}: ${Math.round(target.duration_seconds / 6) / 10} active minutes (${ev.rules.preset}).`);
   // Comparability against the other slots: same counts and reward budget per sprint & type.
   const mine = await planStats(q, slotId);
@@ -244,7 +246,10 @@ export async function closeSprint(tx: Tx, actor: Actor, slotId: string, reason: 
   if (!sp || !['RUNNING', 'PAUSED'].includes(sp.status)) throw new AppError('INVALID_TRANSITION', 'Sprint is not running.');
   if (reason === 'DEADLINE' && (sp.status !== 'RUNNING' || !sp.overdue)) return null;
   if (reason === 'ORGANIZER' && (!opts.note || opts.note.trim().length < 4)) throw new AppError('VALIDATION_FAILED', 'Give a reason for closing early.');
-  const expired = await tx.query(`UPDATE question_instance SET status='EXPIRED', version=version+1 WHERE expires_with_sprint_id=$1 AND status='AVAILABLE'`, [sp.id]);
+  // Fresh-per-sprint questions expire with their sprint; slot-pool questions expire when the slot's last sprint closes.
+  const expired = sp.number === 4
+    ? await tx.query(`UPDATE question_instance SET status='EXPIRED', version=version+1 WHERE slot_id=$1 AND status='AVAILABLE'`, [slotId])
+    : await tx.query(`UPDATE question_instance SET status='EXPIRED', version=version+1 WHERE expires_with_sprint_id=$1 AND status='AVAILABLE'`, [sp.id]);
   await tx.query(`UPDATE release SET status='CANCELLED', deviation_reason=COALESCE(deviation_reason, 'Sprint closed before release (not replayed)'), version=version+1 WHERE sprint_id=$1 AND status IN ('SCHEDULED','PENDING')`, [sp.id]);
   await tx.query(`UPDATE run_job SET status='CANCELLED', finished_at=now(), error='Sprint closed' WHERE slot_id=$1 AND status IN ('QUEUED','RUNNING')`, [slotId]);
   const ev = await getEvent(tx);

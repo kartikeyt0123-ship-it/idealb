@@ -53,8 +53,11 @@ export function CrewsTab() {
           </div>
         </SectionHead>
         {overview.rules.attendanceGatesLogin && (
-          <p className="mb-3 text-[11px] text-muted">Tick <b>Present</b> to mark attendance — that is what enables a crew’s login. Unticking signs the crew out. Import crews from CSV/XLSX in the IMPORT tab.</p>
+          <p className="mb-3 text-[11px] text-muted">Tick <b>Present</b> to mark attendance — that is what enables a crew’s login. Unticking signs the crew out.</p>
         )}
+        <p className="mb-3 text-[11px] text-muted">
+          Every registered crew is listed — imported or added by hand. Import CSV/XLSX in the IMPORT tab or <b>Add crew</b> here. Drag a crew card between Unassigned and the slot columns (or use its dropdown) to place it in a slot.
+        </p>
         <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
           <input className="input !py-2" placeholder="Search crew ID, team, email, captain…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search crews" />
           <Select ariaLabel="Filter by slot" value={slotF} onChange={setSlotF} options={[{ value: 'ALL', label: 'All slots' }, { value: 'NONE', label: 'Unassigned' }, ...overview.slots.map((s) => ({ value: String(s.number), label: `${s.name} · ${fmtDate(s.date)}` }))]} />
@@ -75,6 +78,7 @@ export function CrewsTab() {
         <Loadable state={st} title="Crews">
           {(all) => (
             <RosterBoard
+              archived={all.filter((t) => t.status === 'ARCHIVED').length}
               teams={all.filter((t) => t.status !== 'ARCHIVED' && (!q || `${t.crew_id} ${t.name} ${t.email} ${t.captain_name}`.toLowerCase().includes(q.toLowerCase())))}
               onAttendance={attendance}
               onEdit={(t) => setEdit(t)}
@@ -402,16 +406,21 @@ function BulkAssign({ teamIds, onClose }: { teamIds: string[]; onClose: () => vo
 // Slot rosters: Unassigned + one list per slot. Roll call, move, add into a slot.
 // ---------------------------------------------------------------------------
 
-function RosterBoard({ teams, onAttendance, onEdit, onAdd, reload }: {
+function RosterBoard({ teams, archived = 0, onAttendance, onEdit, onAdd, reload }: {
   teams: TeamRow[];
+  archived?: number;
   onAttendance: (ids: string[], present: boolean) => Promise<void>;
   onEdit: (t: TeamRow) => void;
   onAdd: (slot: number | null) => void;
   reload: () => Promise<void>;
 }) {
   const { overview, can } = useConsole();
-  const { run, busy } = useRun();
+  const { busy } = useRun();
+  const toast = useToast();
   const write = can('teams.write');
+  const [moving, setMoving] = useState<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
   // Optimistic roll call: the tick shows at once; the server value takes over on reload.
   const [pending, setPending] = useState<Record<string, boolean>>({});
   // Clear optimistic ticks only when the server's attendance actually changes (not on every re-render).
@@ -424,23 +433,61 @@ function RosterBoard({ teams, onAttendance, onEdit, onAdd, reload }: {
   };
   const move = async (t: TeamRow, to: string) => {
     const slot = to === 'none' ? null : Number(to);
-    const r = await run('move', () => api.patch(`${V1}/admin/teams/${t.id}`, { slot }), `${t.crew_id} → ${slot ? `Slot ${slot}` : 'unassigned'}.`);
-    if (r) void reload();
+    if (slot === t.slot_number) return;
+    setMoving(t.id);
+    try {
+      await api.patch(`${V1}/admin/teams/${t.id}`, { slot });
+      toast(`${t.crew_id} → ${slot ? overview.slots.find((s) => s.number === slot)?.name ?? `Slot ${slot}` : 'unassigned'}.`, 'good');
+    } catch (e) {
+      const er = toApiError(e);
+      toast(er.code === 'SLOT_CHANGE_BLOCKED' ? `SLOT CHANGE BLOCKED · ${t.crew_id}: ${errText(er)}` : errText(er), 'alert');
+    } finally {
+      setMoving(null);
+      void reload();
+    }
   };
+  const known = new Set(overview.slots.map((s) => s.number));
   const columns: { key: string; title: string; sub: string; slot: number | null; capacity: number | null; opened: boolean; teams: TeamRow[] }[] = [
-    { key: 'none', title: 'Unassigned', sub: 'imported or created without a slot', slot: null, capacity: null, opened: false, teams: teams.filter((t) => t.slot_number === null) },
+    { key: 'none', title: 'Unassigned', sub: 'imported or created without a slot', slot: null, capacity: null, opened: false, teams: teams.filter((t) => t.slot_number === null || !known.has(t.slot_number)) },
     ...overview.slots.map((s) => ({
       key: s.id, title: s.name, sub: `${s.dayLabel ?? ''} · ${fmtDate(s.date)}`, slot: s.number, capacity: s.capacity, opened: !!s.openedAt,
       teams: teams.filter((t) => t.slot_number === s.number),
     })),
   ];
   const slotOptions = [{ value: 'none', label: 'Unassigned' }, ...overview.slots.map((s) => ({ value: String(s.number), label: `→ ${s.name}` }))];
+  const dragged = dragId ? teams.find((t) => t.id === dragId) ?? null : null;
+  const dropKey = (c: { slot: number | null }) => (c.slot === null ? 'none' : String(c.slot));
   return (
+    <div className="space-y-2">
+    {archived > 0 && <p className="text-[10px] text-muted">{archived} archived crew(s) are hidden here — see the Table view.</p>}
     <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-5">
       {columns.map((c) => {
         const present = c.teams.filter(isPresent).length;
+        const target = dropKey(c);
+        const canDrop = !!dragged && (dragged.slot_number === null ? 'none' : String(dragged.slot_number)) !== target;
         return (
-          <section key={c.key} className={CARD} aria-label={`${c.title} roster`}>
+          <section
+            key={c.key}
+            className={`${CARD} transition ${over === c.key && canDrop ? '!border-[#8ae4cf] !bg-[#173f45]' : canDrop ? '!border-dashed' : ''}`}
+            aria-label={`${c.title} roster`}
+            onDragOver={(e) => {
+              if (!write || !dragged) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = canDrop ? 'move' : 'none';
+              if (over !== c.key) setOver(c.key);
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver((o) => (o === c.key ? null : o));
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const id = e.dataTransfer.getData('text/plain') || dragId;
+              setOver(null);
+              setDragId(null);
+              const t = teams.find((x) => x.id === id);
+              if (t && write) void move(t, target);
+            }}
+          >
             <div className="mb-3 flex items-start justify-between gap-2">
               <div>
                 <h3 className="font-display text-base font-bold">{c.title}</h3>
@@ -474,7 +521,21 @@ function RosterBoard({ teams, onAttendance, onEdit, onAdd, reload }: {
                 {c.teams.map((t) => {
                   const scored = !!t.standing && (t.standing.solves > 0 || t.standing.cumulative !== 0);
                   return (
-                    <li key={t.id} className={`rounded-lg border p-2 ${isPresent(t) ? 'border-[#4f8f7f] bg-[#173a3c]' : 'border-[#344d5b] bg-[#112a35]'}`}>
+                    <li
+                      key={t.id}
+                      draggable={write && moving !== t.id}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', t.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                        setDragId(t.id);
+                      }}
+                      onDragEnd={() => {
+                        setDragId(null);
+                        setOver(null);
+                      }}
+                      title={write ? (scored ? 'Has scored — the server blocks slot changes' : 'Drag to another slot column') : undefined}
+                      className={`rounded-lg border p-2 ${write ? 'cursor-grab active:cursor-grabbing' : ''} ${dragId === t.id || moving === t.id ? 'opacity-50' : ''} ${isPresent(t) ? 'border-[#4f8f7f] bg-[#173a3c]' : 'border-[#344d5b] bg-[#112a35]'}`}
+                    >
                       <div className="flex items-start gap-2">
                         <input
                           type="checkbox"
@@ -491,6 +552,7 @@ function RosterBoard({ teams, onAttendance, onEdit, onAdd, reload }: {
                             <span className="font-mono text-[10px] text-muted">{t.crew_id}</span>
                             <span className="truncate text-xs font-bold">{t.name}</span>
                           </div>
+                          {t.slot_number !== null && !known.has(t.slot_number) && <div className="text-[9px] text-[#ebd68c]">slot {t.slot_number} (not configured)</div>}
                           <div className="mt-0.5 truncate text-[10px] text-muted">
                             {t.captain_name} · {t.members?.length ?? 0} members · creds {t.credential_status}{!t.account_enabled ? ' · DISABLED' : ''}
                           </div>
@@ -502,7 +564,7 @@ function RosterBoard({ teams, onAttendance, onEdit, onAdd, reload }: {
                             ariaLabel={`Move ${t.crew_id}`}
                             className="!py-1 !text-[10px]"
                             value={t.slot_number ? String(t.slot_number) : 'none'}
-                            disabled={!!busy || scored}
+                            disabled={!!busy || !!moving || scored}
                             onChange={(v) => void move(t, v)}
                             options={slotOptions}
                           />
@@ -520,6 +582,7 @@ function RosterBoard({ teams, onAttendance, onEdit, onAdd, reload }: {
           </section>
         );
       })}
+    </div>
     </div>
   );
 }

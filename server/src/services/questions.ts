@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import type { AppConfig } from '../config.js';
-import type { StarterFile, Validation } from '../content/types.js';
+import type { HintLevel, Runtime, StarterFile, Validation } from '../content/types.js';
 import { many, one, withTx, type Db, type Queryable, type Tx } from '../db.js';
 import { AppError } from '../errors.js';
 import { judgeCode, type JudgeOutcome } from '../grading/codeJudge.js';
@@ -47,6 +47,13 @@ export interface VersionRow {
   validation: Validation;
   answer_verifier: string | null;
   hint: string;
+  /** SERVER-ONLY run context (hidden setup / checks / filesystem / tables / expected state). */
+  runtime: Runtime | null;
+  /** Visible evidence board. */
+  board: { type: string; content: string } | null;
+  /** Paid hint ladder (server-only until bought). */
+  hints: HintLevel[] | null;
+  solution: { explanation: string; files?: Record<string, string>; answer?: string };
 }
 
 export interface QuestionCard {
@@ -135,6 +142,12 @@ async function currentSprint(q: Queryable, slot: SlotRow) {
   return slot.current_sprint ? one<SprintRow>(q, 'SELECT * FROM sprint WHERE slot_id=$1 AND number=$2', [slot.id, slot.current_sprint]) : undefined;
 }
 
+/** The question's hint ladder; single-hint questions become a one-level ladder at the instance's hint cost. */
+export function hintLadder(v: Pick<VersionRow, 'hint' | 'hints'>, instanceCost: number): HintLevel[] {
+  if (v.hints?.length) return v.hints;
+  return [{ level: 1, cost: instanceCost, text: v.hint }];
+}
+
 function publicValidation(v: Validation) {
   if (v.mode === 'EXACT_TEXT') return { mode: v.mode, caseSensitive: v.caseSensitive, collapseWhitespace: v.collapseWhitespace };
   if (v.mode === 'NUMERIC') return { mode: v.mode, tolerance: v.tolerance };
@@ -146,7 +159,9 @@ export async function questionDetail(q: Queryable, ctx: CrewContext, id: string)
   const { i, v } = await loadInstance(q, id);
   const cur = await currentSprint(q, ctx.slot);
   assertVisible(ctx, i, cur?.id ?? null);
-  const purchase = await one(q, 'SELECT id FROM hint_purchase WHERE enrollment_id=$1 AND instance_id=$2 AND question_version_id=$3', [ctx.enrollment.id, i.id, i.question_version_id]);
+  const bought = new Set((await many<{ level: number }>(q, 'SELECT level FROM hint_purchase WHERE enrollment_id=$1 AND instance_id=$2 AND question_version_id=$3', [ctx.enrollment.id, i.id, i.question_version_id])).map((r) => r.level));
+  const purchase = bought.has(1);
+  const ladder = hintLadder(v, i.hint_cost);
   const domain = await one<{ slug: string; name: string; room: string; color: string; symbol: string }>(q, 'SELECT slug, name, room, color, symbol FROM domain WHERE id=$1', [i.domain_id]);
   const solver = i.solved_by_enrollment_id
     ? await one<{ crew_id: string; name: string }>(q, 'SELECT t.crew_id, t.name FROM slot_enrollment se JOIN team t ON t.id=se.team_id WHERE se.id=$1', [i.solved_by_enrollment_id])
@@ -164,13 +179,18 @@ export async function questionDetail(q: Queryable, ctx: CrewContext, id: string)
     workspace: v.workspace,
     runLanguage: v.run_language,
     runEntry: v.run_entry,
-    files: v.files.map((f) => ({ name: f.name, language: f.language, content: f.content, readOnly: !!f.readOnly })),
+    // WEB preview-only files are sent (the sandboxed preview needs them) but flagged hidden; never shown in the editor.
+    files: v.files.map((f) => ({ name: f.name, language: f.language, content: f.content, readOnly: !!f.readOnly || !!f.hidden, ...(f.hidden ? { hidden: true } : {}) })),
+    board: v.board ?? null,
+    runtimeKind: v.runtime?.kind ?? (v.run_language ? 'code' : null),
+    terminal: v.runtime?.kind === 'shell' ? { cwd: v.runtime.cwd, user: v.runtime.user ?? 'agent', initialCommand: v.runtime.initialCommand ?? null } : null,
     sampleStdin: v.sample_stdin,
     answerFormat: v.answer_format,
     validation: publicValidation(v.validation),
     status: i.status === 'SOLVED' ? (i.solved_by_enrollment_id === ctx.enrollment.id ? 'SOLVED_BY_YOU' : 'SOLVED') : i.status,
     solvedBy: solver ? `${solver.name} (${solver.crew_id})` : null,
-    hint: { cost: i.hint_cost, unlocked: !!purchase, text: purchase ? v.hint : null },
+    hint: { cost: ladder[0]?.cost ?? i.hint_cost, unlocked: purchase, text: purchase ? ladder[0]?.text ?? v.hint : null },
+    hints: ladder.map((h) => ({ level: h.level, cost: h.cost, unlocked: bought.has(h.level), text: bought.has(h.level) ? h.text : null })),
     sprintDeadlineAt: cur?.deadline_at ?? null,
   };
 }
@@ -219,7 +239,7 @@ export async function grade(cfg: AppConfig, v: Pick<VersionRow, 'validation' | '
   // Keyed hash of the submitted text: raw low-entropy answers are never stored or logged.
   const payloadHash = createHmac('sha256', cfg.gradingSecret).update(`submitted:${payload.answer.trim()}`).digest('hex');
   if (val.mode === 'EXACT_TEXT') {
-    const norm = normalizeTextAnswer(payload.answer, { caseSensitive: val.caseSensitive, collapseWhitespace: val.collapseWhitespace });
+    const norm = normalizeTextAnswer(payload.answer, { caseSensitive: val.caseSensitive, collapseWhitespace: val.collapseWhitespace, flag: val.flag });
     return { correct: !!v.answer_verifier && safeEqualHex(answerVerifier(cfg.gradingSecret, norm), v.answer_verifier), payloadHash };
   }
   if (val.mode === 'NUMERIC') {
@@ -323,37 +343,43 @@ export async function submit(db: Db, cfg: AppConfig, ctx: CrewContext, sessionId
 // Paid hints — one debit, one entitlement, shared by every device of the crew
 // ---------------------------------------------------------------------------
 
-export async function purchaseHint(db: Db, ctx: CrewContext, instanceId: string, idemKey: string) {
+/** Buys hint `level` (default: the next unbought one). Levels are bought in order; each is charged once per crew. */
+export async function purchaseHint(db: Db, ctx: CrewContext, instanceId: string, idemKey: string, requestedLevel?: number) {
   return withTx(db, async (tx) => {
-    const idem = await claimIdempotency(tx, `enr:${ctx.enrollment.id}`, `hint:${instanceId}`, idemKey, { instanceId });
+    const idem = await claimIdempotency(tx, `enr:${ctx.enrollment.id}`, `hint:${instanceId}`, idemKey, { instanceId, level: requestedLevel ?? null });
     if (idem.existing) return idem.existing as Record<string, unknown>;
     const { slot, sprint, enr, now } = await lockForScoring(tx, ctx.slot.id, ctx.enrollment.id);
     const inst = await one<InstanceRow & { release_status: string }>(tx, `SELECT qi.*, r.status AS release_status FROM question_instance qi JOIN release r ON r.id=qi.release_id WHERE qi.id=$1 FOR UPDATE OF qi`, [instanceId]);
     if (!inst || inst.slot_id !== slot.id || inst.release_status !== 'RELEASED') throw new AppError('QUESTION_NOT_RELEASED', 'This question is not available.');
     const v = (await one<VersionRow>(tx, 'SELECT * FROM question_version WHERE id=$1', [inst.question_version_id]))!;
+    const ladder = hintLadder(v, inst.hint_cost);
+    const bought = new Set((await many<{ level: number }>(tx, 'SELECT level FROM hint_purchase WHERE enrollment_id=$1 AND instance_id=$2 AND question_version_id=$3', [enr.id, inst.id, inst.question_version_id])).map((r) => r.level));
+    const level = requestedLevel ?? ladder.find((h) => !bought.has(h.level))?.level ?? ladder[ladder.length - 1].level;
+    const h = ladder.find((x) => x.level === level);
+    if (!h) throw new AppError('HINT_UNAVAILABLE', 'This hint level does not exist.');
     // Existing entitlement (any device of the crew) → returned free, even after closure.
-    const existing = await one(tx, 'SELECT id FROM hint_purchase WHERE enrollment_id=$1 AND instance_id=$2 AND question_version_id=$3', [enr.id, inst.id, inst.question_version_id]);
-    if (existing) {
-      const r = { hint: v.hint, cost: inst.hint_cost, charged: false, wallet: enr.wallet_balance };
+    if (bought.has(level)) {
+      const r = { hint: h.text, level, cost: h.cost, charged: false, wallet: enr.wallet_balance };
       await idem.save(r);
       return r;
     }
+    if (ladder.some((x) => x.level < level && !bought.has(x.level))) throw new AppError('HINT_UNAVAILABLE', 'Buy the earlier hint levels first.');
     await assertCanScore(tx, slot, sprint, enr, now);
     if (inst.status === 'SOLVED') throw new AppError('HINT_UNAVAILABLE', 'This question was already solved. No new hints can be bought.');
     assertInstanceOpen(inst, sprint!);
-    if (enr.wallet_balance < inst.hint_cost) throw new AppError('INSUFFICIENT_FUNDS', `Not enough IdeaCoins. This hint costs ${inst.hint_cost}.`, { wallet: enr.wallet_balance, cost: inst.hint_cost });
+    if (enr.wallet_balance < h.cost) throw new AppError('INSUFFICIENT_FUNDS', `Not enough IdeaCoins. This hint costs ${h.cost}.`, { wallet: enr.wallet_balance, cost: h.cost });
     const hp = await one<{ id: string }>(
       tx,
-      `INSERT INTO hint_purchase(slot_id, sprint_id, enrollment_id, instance_id, question_version_id, cost) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-      [slot.id, sprint!.id, enr.id, inst.id, inst.question_version_id, inst.hint_cost],
+      `INSERT INTO hint_purchase(slot_id, sprint_id, enrollment_id, instance_id, question_version_id, cost, level) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+      [slot.id, sprint!.id, enr.id, inst.id, inst.question_version_id, h.cost, level],
     );
     let wallet = enr.wallet_balance;
-    if (inst.hint_cost > 0) {
-      wallet = (await applyLedger(tx, enr, { kind: 'HINT_PURCHASE', sprintId: sprint!.id, wallet: -inst.hint_cost, spent: inst.hint_cost, sourceType: 'hint_purchase', sourceId: hp!.id, reason: `Hint for ${inst.label}` })).wallet_balance;
+    if (h.cost > 0) {
+      wallet = (await applyLedger(tx, enr, { kind: 'HINT_PURCHASE', sprintId: sprint!.id, wallet: -h.cost, spent: h.cost, sourceType: 'hint_purchase', sourceId: hp!.id, reason: `Hint ${level} for ${inst.label}` })).wallet_balance;
       await emit(tx, 'leaderboard.updated', [Rooms.slot(slot.id), Rooms.organizers, Rooms.display], { slotId: slot.id });
     }
-    await emit(tx, 'hint.unlocked', [Rooms.team(ctx.team.id)], { slotId: slot.id, instanceId: inst.id });
-    const r = { hint: v.hint, cost: inst.hint_cost, charged: true, wallet };
+    await emit(tx, 'hint.unlocked', [Rooms.team(ctx.team.id)], { slotId: slot.id, instanceId: inst.id, level });
+    const r = { hint: h.text, level, cost: h.cost, charged: true, wallet };
     await idem.save(r);
     return r;
   });

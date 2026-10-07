@@ -3,6 +3,7 @@ import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleHelp, LayoutGrid, LogO
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AccessCard, Badge, Button, Coin, Crewmate, Label, ShipDialog, StatePanel, Timer, useToast } from '../components/ui';
 import { api, ApiError, serverNow, syncClock, V1, type CrewIdentity, type CrewState, type DomainDto, type QuestionCard, type SprintDto } from '../lib/api';
+import { ContentProtection } from '../lib/contentProtection';
 import { useRealtime, type ConnState, type Topic } from '../lib/realtime';
 import { isMuted, setMuted, sfx } from '../lib/sound';
 import { BonusPanel, Comms, Ejected, FlightManual, QuestionDeck, RankingsDialog, Results, SolvedNotice, SPRINTS_PER_SLOT, SprintClosed, StationsMenu, Survived } from './Dialogs';
@@ -72,6 +73,8 @@ export function Ship({ me, onLogout, onAccessLost }: { me: CrewIdentity; onLogou
   const overlayRef = useRef<Overlay | null>(null);
   overlayRef.current = overlay;
   const myCrewId = state?.identity.crewId ?? me.team.crewId;
+  /** Organizer rule: best-effort copy / screenshot deterrence (see lib/contentProtection — browsers cannot truly prevent captures). */
+  const protect = !!state?.event.protectContent;
 
   // ---------------- data ----------------
   const inflight = useRef<AbortController | null>(null);
@@ -371,6 +374,7 @@ export function Ship({ me, onLogout, onAccessLost }: { me: CrewIdentity; onLogou
                   refetchSoon();
                 }}
                 onChanged={refetchSoon}
+                protect={protect}
               />
             </Suspense>
           </ShipDialog>
@@ -734,6 +738,7 @@ export function Ship({ me, onLogout, onAccessLost }: { me: CrewIdentity; onLogou
       </div>
 
       {dialog}
+      <ContentProtection enabled={protect} watermark={overlay?.type === 'workspace' ? `${identity.crewId} · ${identity.name}` : null} />
     </div>
   );
 }

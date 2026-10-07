@@ -77,6 +77,8 @@ export interface Rules {
   tiePolicy: string;
   sessionLimit: number;
   sessionLimitPolicy: 'EVICT_OLDEST' | 'REJECT';
+  /** Crew screens block copy / cut / right-click / print / screenshot shortcuts and show a watermark. */
+  protectContent: boolean;
   recycling: false;
   singleRunningSlot: boolean;
   sprintsPerSlot: 4;
@@ -205,3 +207,95 @@ export const TEAM_IMPORT_COLUMNS = [
   'slot', 'account_enabled', 'checked_in',
 ] as const;
 export const REQUIRED_IMPORT_COLUMNS = ['team_name', 'captain_email', 'member1_name'];
+
+// ---------------------------------------------------------------------------
+// Slot question control (server/src/services/bank.ts) and GitHub sync (sync.ts)
+// ---------------------------------------------------------------------------
+
+export const DIFFS: Difficulty[] = ['EASY', 'MEDIUM', 'HARD'];
+
+export interface StockCell {
+  active: number;
+  solved: number;
+  solvedThisSprint: number;
+  released: number;
+  planned: number;
+  target: number;
+  low: boolean;
+  bankTotal: number;
+  bankFresh: number;
+}
+
+export interface StockDomain {
+  slug: string;
+  name: string;
+  byDifficulty: Record<Difficulty, StockCell>;
+  totals: { active: number; solved: number; released: number; planned: number; target: number };
+}
+
+export interface SlotStock {
+  slotId: string;
+  slot: { number: number; name: string; phase: string; currentSprint: number; opened: boolean };
+  sprint: { number: number; status: string } | null;
+  running: boolean;
+  targets: Record<Difficulty, number>;
+  domains: StockDomain[];
+  bonus: { active: number; solved: number; released: number };
+  totals: { active: number; planned: number; target: number };
+}
+
+export interface SlotBankRow {
+  versionId: string;
+  questionId: string;
+  key: string;
+  title: string;
+  domainId: string;
+  domain: string;
+  difficulty: Difficulty;
+  pool: 'REGULAR' | 'BONUS';
+  usedInSlot: number;
+  usedTotal: number;
+}
+
+export interface PlannedRow {
+  id: string;
+  label: string;
+  difficulty: Difficulty;
+  reward: number;
+  domain: string;
+  domain_name: string;
+  title: string;
+  key: string;
+  sprint: number | null;
+  workspace: string;
+}
+
+export interface TopUpResult {
+  released: number;
+  when: 'NOW' | 'NEXT_START';
+  short: string[];
+  message?: string;
+  releaseId?: string;
+}
+
+export interface SyncPreview {
+  previewId: string;
+  summary: {
+    source: { repo: string; ref?: string; commit?: string };
+    total: number;
+    new: number;
+    changed: number;
+    unchanged: number;
+    errors: number;
+    byDomain: Record<string, Record<Difficulty, number>>;
+  };
+  rows: { key: string; domain: string; difficulty: Difficulty; title: string; workspace: string; action: 'NEW' | 'CHANGED' | 'UNCHANGED'; status?: string }[];
+  errors: { domain: string; id: string; error: string }[];
+}
+
+export interface SyncResult {
+  created: number;
+  versioned: number;
+  status: 'DRAFT' | 'PUBLISHED';
+  alreadyCommitted?: boolean;
+}

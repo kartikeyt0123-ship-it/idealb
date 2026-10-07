@@ -32,9 +32,9 @@ browsers / projectors ──HTTPS──▶ reverse proxy (TLS) ──▶ api (Fa
    `docker compose run --rm -e ADMIN_BOOTSTRAP_EMAIL=you@org -e ADMIN_BOOTSTRAP_PASSWORD='…' -e EVENT_DAY1=2026-10-08 -e EVENT_DAY2=2026-10-09 api node server/dist/scripts/bootstrap.js`
 4. Sign in at `/command` → **Rules review**. Read every rule and confirm it (or change it first).
    A production event cannot start a sprint while any rule is unconfirmed. Rules freeze at the first start.
-5. **Question bank:** import or author questions → **Verify** → REVIEWED → PUBLISHED. The bank
-   coverage table shows *need vs have* per domain and difficulty for the remaining slots. Then
-   **Build release plan** for each slot. Preflight warns if slots are not comparable.
+5. **Question bank:** Question bank → **Sync from GitHub** (IDEALab.dev) → review → publish (bulk by
+   domain / difficulty). Run `npm run bank:check -w server` after every sync. Then each slot's
+   **initial set (7 / 5 / 3 per domain)** — edit it in Releases before Sprint 1.
 6. **Crews:** Import CSV/XLSX → fix row errors → Commit. Assign slots (in the file or with bulk
    assign) within capacity. Then **Send credentials** (preview first). Crews change their
    password at first sign-in.
@@ -50,7 +50,7 @@ browsers / projectors ──HTTPS──▶ reverse proxy (TLS) ──▶ api (Fa
 | Roll call | Crews → **Slot rosters** → tick **Present** for each crew that reports in (or **All present** per slot). Attendance is what enables a crew's login; absent crews get "attendance has not been marked". |
 | Doors open (kick-in) | Slots → *Slot n* → **Open slot (kick-in)**. Present crews sign in, board and roam the ship. Nothing is visible or solvable yet. (**Close boarding** undoes it before Sprint 1.) |
 | Start | Slots → *Slot n* → **Start sprint 1** when you approve. Preflight must have no blockers (it blocks until the slot is open). Read the warnings: unconfirmed rules (demo only), absent / no-credential crews, comparability, manual deviations. The 60 initial questions (10 per domain) are released at start. |
-| During | **Refill** (Releases tab or the slot card) when stations run dry: it releases reserve questions from the slot's 20-question pool into the domains with the biggest gap (or one domain you pick). **Release bonus** sends the next of the 10 bonus questions (IMPOSTER DETECTED, first correct wins) whenever you like. Neither needs a reason; both are part of the plan. |
+| During | Releases → **question control**: the stock matrix shows active / target per domain and difficulty. **Top up** (a cell, a domain, or all low ones) auto-picks from the bank; **Pick & release** sends specific questions, as regular or **bonus** (IMPOSTER DETECTED, first correct wins). Questions stay active until the slot ends. Previously used questions may be reused. |
 | Emergency (power, network, broken question) | **Pause**: the deadline and every scheduled release stop and shift on Resume. Announce, fix, resume. |
 | Early release of a scheduled batch / manual override | Allowed with a written reason; it is shown as a **fairness deviation** in the plan, preflight and audit log. |
 | Device / account problems | Crews → sessions (revoke), disable / enable, **Send credentials (RESET)** for a new temporary password. |

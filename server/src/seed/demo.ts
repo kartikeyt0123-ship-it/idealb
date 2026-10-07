@@ -8,23 +8,22 @@
  *  - 40 crews CRW-001…CRW-040, 10 per slot. Nexora = CRW-001, Slot 1. Only Nexora is marked
  *    present (attendance enables login); no slot is opened (kick-in) yet.
  *  - 4 slots on 8 and 9 October 2026 (Asia/Kolkata), 4 sprints each
- *  - question bank generated from deterministic seedable templates, PUBLISHED
- *    as demo content, then each slot plan is built from the blueprint:
- *    960 initial instances (60 × 4 sprints × 4 slots) + 120 extras
- *    (20 reserves + 10 bonuses per slot).
+ *  - question bank: the bundled IDEALab.dev snapshot (360 flag problems in
+ *    six domains, 25 easy / 20 medium / 15 hard each), PUBLISHED as demo content
+ *  - each slot gets an initial set of 15 per domain (7 easy, 5 medium, 3 hard)
+ *    = 90 questions, released when its Sprint 1 starts and editable before that;
+ *    organizers top up / release more from the bank during the slot.
  *
  * Idempotent: re-running never duplicates accounts, never overwrites a changed
  * password and never touches existing competition state.
  */
 import type { AppConfig } from '../config.js';
-import { imposterTemplates, regularTemplates } from '../content/index.js';
-import type { TaskTemplate } from '../content/types.js';
 import { one, withTx, type Db, type Tx } from '../db.js';
 import { hashPassword } from '../security/crypto.js';
 import { SYSTEM } from '../services/audit.js';
-import { createQuestion } from '../services/content.js';
+import { seedSnapshot } from '../services/sync.js';
 import type { EnrollmentRow } from '../services/context.js';
-import { buildSlotPlan } from '../services/releases.js';
+import { buildSlotPlan } from '../services/bank.js';
 import { DEFAULT_RULES } from '../services/rules.js';
 import { CREW_COLORS } from '../services/teams.js';
 import { applyLedger } from '../services/wallet.js';
@@ -51,29 +50,12 @@ export function demoCrewPassword(n: number) {
 }
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
-/**
- * How many seeds of each template become published demo questions. Totals per
- * domain: 100 easy, 64 medium, 44 hard (initial need 80/48/32 + reserves);
- * 48 bonus questions (need 40).
- */
-const SEEDS_PER = { EASY: 50, MEDIUM: 32, HARD: 44, BONUS: 12 };
-
+/** The question bank: the bundled IDEALab.dev snapshot (360 problems, 6 domains), PUBLISHED and demo-labelled. */
 async function seedBank(tx: Tx, cfg: AppConfig, log: (m: string) => void) {
   const have = await one<{ n: number }>(tx, 'SELECT count(*)::int AS n FROM question');
   if (have!.n > 0) return;
-  let n = 0;
-  const add = async (t: TaskTemplate, pool: 'REGULAR' | 'BONUS', seeds: number) => {
-    for (let s = 0; s < seeds; s++) {
-      await createQuestion(tx, cfg, {
-        key: `${t.key}-s${String(s).padStart(3, '0')}`, domainSlug: t.domain, pool, isDemo: true, status: 'PUBLISHED',
-        version: { variant: t.variant(s), difficulty: pool === 'BONUS' ? 'HARD' : t.difficulty, sourceTemplate: t.key, sourceSeed: s }, actorId: null,
-      });
-      n++;
-    }
-  };
-  for (const t of regularTemplates) await add(t, 'REGULAR', SEEDS_PER[t.difficulty]);
-  for (const t of imposterTemplates) await add(t, 'BONUS', SEEDS_PER.BONUS);
-  log(`[seed] question bank: ${n} demo questions generated from ${regularTemplates.length + imposterTemplates.length} seedable templates (PUBLISHED, demo-labelled)`);
+  const r = await seedSnapshot(tx, cfg, { isDemo: true });
+  log(`[seed] question bank: ${r.created} questions from ${r.source.repo} @ ${r.source.commit.slice(0, 7)} (PUBLISHED, demo-labelled)`);
 }
 
 function members(i: number) {
@@ -135,7 +117,7 @@ export async function seedDemo(db: Db, cfg: AppConfig, log: (m: string) => void 
       if (planned!.n > 0) continue;
       const r = await buildSlotPlan(tx, SYSTEM, s.id);
       await tx.query(`UPDATE slot SET phase='READY' WHERE id=$1 AND phase='CONFIGURING'`, [s.id]);
-      log(`[seed] Slot ${s.number}: release plan built (${r.instances} instances)`);
+      log(`[seed] Slot ${s.number}: initial set planned (${r.instances} questions, released when Sprint 1 starts)`);
     }
     // Events produced by this seed transaction are not worth delivering.
     await tx.query('DELETE FROM outbox_event WHERE created_at = now()');

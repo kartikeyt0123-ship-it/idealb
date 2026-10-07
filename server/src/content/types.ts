@@ -10,11 +10,21 @@
  * Everything under `solution`, `validation` and `hint` is SERVER-ONLY.
  */
 
-export type DomainSlug = 'web' | 'data' | 'ds' | 'basic' | 'design' | 'misc';
+/** Domain slugs are data-driven (domain table); the demo templates use the legacy six. */
+export type DomainSlug = string;
 export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
-export type WorkspaceKind = 'WEB' | 'DATA' | 'DS' | 'BASIC' | 'DESIGN' | 'MISC';
+export type WorkspaceKind =
+  | 'WEB' | 'DATA' | 'DS' | 'BASIC' | 'DESIGN' | 'MISC'
+  /** Terminal over a virtual filesystem (recon / forensics / network). */
+  | 'SHELL'
+  /** SQL editor over hidden tables (recon SQL). */
+  | 'SQL'
+  /** Edit a JSON config / payload; the server checks it against the expected state (maker). */
+  | 'JSON'
+  /** Read-only evidence board + flag answer (cryptography / OSINT). */
+  | 'EVIDENCE';
 export type RunLanguage = 'javascript' | 'python';
-export type FileLanguage = 'javascript' | 'python' | 'html' | 'css' | 'text' | 'csv' | 'json' | 'markdown';
+export type FileLanguage = 'javascript' | 'python' | 'html' | 'css' | 'text' | 'csv' | 'json' | 'markdown' | 'sql';
 
 export interface StarterFile {
   name: string; // e.g. "main.py", "script.js", "index.html", "sales.csv"
@@ -22,6 +32,39 @@ export interface StarterFile {
   content: string;
   /** Data/asset files participants can read but not edit (datasets, fixtures). */
   readOnly?: boolean;
+  /**
+   * Preview-only file (WEB): sent to the browser so the sandboxed preview can
+   * render it, but never shown in the editor. Not secret — the browser has it.
+   */
+  hidden?: boolean;
+}
+
+/** SERVER-ONLY execution context of a question's Run button. Never sent to participants. */
+export type Runtime =
+  | {
+      kind: 'python';
+      /** Hidden code executed before the participant's file (datasets, helpers). */
+      prefix?: string;
+      /** Hidden code executed after it (validation that prints the flag when the fix is right). */
+      suffix?: string;
+      /** Capture matplotlib figures as PNG images in the output. */
+      plot?: boolean;
+      /**
+       * The check recomputes the answer by itself (it never reads the participant's
+       * variables). The flag is then shown only if the participant's own output
+       * contains a value the check computed — otherwise "Run" alone would reveal it.
+       */
+      gate?: boolean;
+    }
+  | { kind: 'shell'; cwd: string; user?: string; fs: Record<string, string>; initialCommand?: string }
+  | { kind: 'sql'; tables: Record<string, Record<string, unknown>[]> }
+  | { kind: 'json'; expected: unknown; success: string; component?: string; endpoint?: string };
+
+/** Paid hint ladder (server-only until bought, level by level). */
+export interface HintLevel {
+  level: number;
+  cost: number;
+  text: string;
 }
 
 export interface CodeTest {
@@ -39,6 +82,8 @@ export type Validation =
       caseSensitive: boolean;
       /** Collapse internal runs of whitespace to one space (always trims ends). */
       collapseWhitespace: boolean;
+      /** CTF flag: also accepts "FLAG: X", "flag{X}" and surrounding quotes for X. */
+      flag?: boolean;
     }
   | {
       /** Submit a number. Accepted when |submitted - answer| <= tolerance. */
@@ -76,8 +121,16 @@ export interface TaskVariant {
   /** Tells participants exactly what to submit and the comparison rule. */
   answerFormat: string;
   validation: Validation;
-  /** Paid hint (server-only until purchased). */
+  /** Paid hint (server-only until purchased). With `hints`, this is level 1's text. */
   hint: string;
+  /** Multi-level paid hints (bought in order). Optional; costs come from the question. */
+  hints?: HintLevel[];
+  /** SERVER-ONLY run context (hidden setup / validation / filesystem / tables / expected state). */
+  runtime?: Runtime;
+  /** Visible evidence (cryptography / OSINT): text, html (rendered sandboxed) or a sequence. */
+  board?: { type: 'text' | 'html' | 'sequence'; content: string };
+  /** Where the question came from (e.g. the IDEALab.dev repo id). */
+  source?: { repo?: string; id: string; commit?: string; type?: string };
   /** Private reference solution (server/admin only). */
   solution: {
     explanation: string;

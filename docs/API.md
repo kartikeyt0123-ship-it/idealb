@@ -51,7 +51,6 @@ carry `details.fields`.
 | `QUESTION_ALREADY_SOLVED` | 409 | "This problem has already been solved by another crew. Move on to the next task." |
 | `QUESTION_EXPIRED`, `QUESTION_DISABLED`, `STALE_QUESTION` | 409 | Question closed with its sprint / disabled / reset |
 | `INSUFFICIENT_FUNDS`, `HINT_UNAVAILABLE` | 409 | Hint purchase rejected (no charge) |
-| `POOL_EMPTY` | 409 | No reserve (or bonus) questions left in the slot pool |
 | `SLOT_CHANGE_BLOCKED` | 409 | Crew already scored; slot changes are audited corrections |
 | `MAIL_NOT_CONFIGURED` | 409 | No mail transport; nothing was sent |
 | `IDEMPOTENCY_MISMATCH` | 409 | Key reused with different data |
@@ -121,9 +120,12 @@ Generated from the route registry (`server/src/routes/*.ts`). Auth `crew` / `org
 | PUT | `/api/v1/admin/question-versions/:id` | organizer (content.write) | Edit a DRAFT version — body `QuestionInput` |
 | POST | `/api/v1/admin/question-versions/:id/status` | organizer (content.write) | DRAFT → REVIEWED → PUBLISHED (or ARCHIVED); never automatic — body `{ to }` |
 | POST | `/api/v1/admin/question-versions/:id/verify` | organizer (content.write) | Run the private solution and starter through the real validator |
+| POST | `/api/v1/admin/question-versions/bulk-status` | organizer (content.publish) | Move many versions at once (e.g. publish a reviewed domain) — body `{ versionIds, to }` |
 | GET | `/api/v1/admin/questions` | organizer (content.read) | Question bank (latest version of each) |
 | POST | `/api/v1/admin/questions` | organizer (content.write) | Create a question (as DRAFT) — body `QuestionInput` |
 | POST | `/api/v1/admin/questions/:id/drafts` | organizer (content.write) | Start a new draft from the latest version |
+| POST | `/api/v1/admin/questions/sync/commit` | organizer (content.publish) | Apply a previewed sync: new questions are created, changed ones get a new version (DRAFT, or PUBLISHED when chosen) — body `{ previewId, publish }` |
+| POST | `/api/v1/admin/questions/sync/preview` | organizer (content.write) | Fetch the IDEALab.dev bank from GitHub (or the bundled snapshot) and preview new / changed / unchanged questions — body `{ repo?, ref?, source?: GITHUB|SNAPSHOT }` |
 
 ### boards
 
@@ -145,8 +147,8 @@ Generated from the route registry (`server/src/routes/*.ts`). Auth `crew` / `org
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | GET | `/api/v1/question-instances/:id` | crew | Question detail (unreleased or other-slot ids are 404) |
-| POST | `/api/v1/question-instances/:id/hint-purchases` | crew, Idempotency-Key | Buy the hint (wallet only; ranking unaffected under GROSS_EARNED) |
-| POST | `/api/v1/question-instances/:id/run-jobs` | crew | Run code in the isolated runner (never scores) — body `{ files, stdin }` |
+| POST | `/api/v1/question-instances/:id/hint-purchases` | crew, Idempotency-Key | Buy the next (or a given) hint level (wallet only; ranking unaffected under GROSS_EARNED) — body `{ level? }` |
+| POST | `/api/v1/question-instances/:id/run-jobs` | crew | Run: code in the isolated runner, a terminal command, a SQL query or a JSON check (never scores) — body `{ files, stdin, command?, cwd? }` |
 | POST | `/api/v1/question-instances/:id/submissions` | crew, Idempotency-Key | Submit an answer; first correct in the slot wins — body `{ generation, answer? | files? }` |
 | GET | `/api/v1/run-jobs/:id` | crew | Run job status / output |
 | POST | `/api/v1/run-jobs/:id/cancel` | crew | Cancel a running job |
@@ -200,11 +202,14 @@ Generated from the route registry (`server/src/routes/*.ts`). Auth `crew` / `org
 | POST | `/api/v1/admin/question-releases` | organizer (releases.manage) | Manual override release (recorded as a fairness deviation) — body `{ slotId, sprintNumber, type, versionIds, offsetSeconds, expiresAtSprintEnd, announcement?, reason, releaseImmediately }` |
 | POST | `/api/v1/admin/question-releases/:id/cancel` | organizer (releases.manage) | Cancel an unreleased release — body `{ reason }` |
 | POST | `/api/v1/admin/question-releases/:id/release` | organizer (releases.manage) | Release now (idempotent). Early release of a scheduled batch needs a reason — body `{ reason? }` |
-| POST | `/api/v1/admin/slots/:slotId/bonus/next` | organizer (releases.manage) | Release the next bonus question from the slot pool |
-| POST | `/api/v1/admin/slots/:slotId/plan` | organizer (releases.manage) | Build / rebuild the slot release plan from the blueprint (before start only) |
-| GET | `/api/v1/admin/slots/:slotId/pools` | organizer (teams.read) | Per-domain stock (available / solved / deficit) and reserve + bonus pools left |
+| GET | `/api/v1/admin/slots/:slotId/bank` | organizer (content.read) | Bank questions for a slot with usage (new to this slot / used before) — query `domain, difficulty, search, freshOnly` |
+| POST | `/api/v1/admin/slots/:slotId/plan` | organizer (releases.manage) | Build / rebuild the initial set (default 7 easy, 5 medium, 3 hard per domain) before the slot starts — body `{ counts?, perDomain?, domains? }` |
+| GET | `/api/v1/admin/slots/:slotId/plan` | organizer (teams.read) | The unreleased question set(s) of a slot (initial set / next-start set) |
+| DELETE | `/api/v1/admin/slots/:slotId/plan/:instanceId` | organizer (releases.manage) | Remove one question from the unreleased set |
 | GET | `/api/v1/admin/slots/:slotId/question-instances` | organizer (teams.read) | Every instance in the slot plan with solver and status |
-| POST | `/api/v1/admin/slots/:slotId/refill` | organizer (releases.manage) | Release reserve questions into the most depleted domains (count, optional domain) — body `{ count?, domain? }` |
+| POST | `/api/v1/admin/slots/:slotId/releases` | organizer (releases.manage) | Release chosen bank questions now (or at the next sprint start), as regular or bonus — body `{ versionIds, bonus?, when?: NOW|NEXT_START, announcement? }` |
+| GET | `/api/v1/admin/slots/:slotId/stock` | organizer (teams.read) | Live stock per domain x difficulty: active, solved, released, planned vs target; bank availability |
+| POST | `/api/v1/admin/slots/:slotId/top-up` | organizer (releases.manage) | Auto-pick and release enough questions to bring domains back to target (optionally one domain / difficulty, or N each) — body `{ domain?, difficulty?, count? }` |
 
 ### results
 

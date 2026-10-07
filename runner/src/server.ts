@@ -28,7 +28,24 @@ const NODE_BIN = process.env.RUNNER_NODE_BIN ?? process.execPath;
 const PYTHON_BIN = process.env.RUNNER_PYTHON_BIN ?? (process.platform === 'win32' ? 'python' : 'python3');
 const MAX_CONCURRENCY = Number(process.env.RUNNER_MAX_CONCURRENCY ?? 4);
 const MAX_QUEUE = Number(process.env.RUNNER_MAX_QUEUE ?? 200);
-const MAX_OUTPUT = Number(process.env.RUNNER_MAX_OUTPUT_BYTES ?? 64 * 1024);
+const MAX_OUTPUT = Number(process.env.RUNNER_MAX_OUTPUT_BYTES ?? 256 * 1024);
+/**
+ * Extra read-only module paths for Python (numpy / pandas / matplotlib for the
+ * data and maker questions). Docker installs them system-wide, which -I sees.
+ * Locally (non-production) the user's site-packages are added unless
+ * RUNNER_PYTHON_USER_SITE=false; RUNNER_PYTHON_PATHS adds explicit dirs (';' or ':' separated).
+ */
+function pythonExtraPaths(): string[] {
+  const out = (process.env.RUNNER_PYTHON_PATHS ?? '').split(process.platform === 'win32' ? ';' : ':').map((x) => x.trim()).filter(Boolean);
+  const useUser = (process.env.RUNNER_PYTHON_USER_SITE ?? (process.env.NODE_ENV === 'production' ? 'false' : 'true')) === 'true';
+  if (useUser) {
+    const r = spawnSync(process.env.RUNNER_PYTHON_BIN ?? (process.platform === 'win32' ? 'python' : 'python3'), ['-c', 'import site;print(site.getusersitepackages())'], { encoding: 'utf8', timeout: 5000, windowsHide: true });
+    const p = r.stdout?.trim();
+    if (r.status === 0 && p) out.push(p);
+  }
+  return out;
+}
+const PY_EXTRA_PATHS = pythonExtraPaths();
 const MAX_BODY = 512 * 1024;
 const MAX_TIMEOUT_MS = 10_000;
 const DEFAULT_TIMEOUT_MS = 4_000;
@@ -142,7 +159,10 @@ async function execute(req: ExecuteRequest): Promise<ExecuteResult> {
       args.push(entryPath);
     } else {
       bin = PYTHON_BIN;
-      args = ['-I', '-B', entryPath];
+      // Still isolated (-I: no env vars, no implicit user site); allowed library dirs are added explicitly.
+      args = PY_EXTRA_PATHS.length
+        ? ['-I', '-B', '-c', `import sys, runpy; sys.path[:0] = ${JSON.stringify(PY_EXTRA_PATHS)}; sys.argv = [${JSON.stringify(entryPath)}]; runpy.run_path(${JSON.stringify(entryPath)}, run_name='__main__')`]
+        : ['-I', '-B', entryPath];
     }
     const env: Record<string, string> = {
       PATH: process.env.PATH ?? '',
@@ -151,6 +171,10 @@ async function execute(req: ExecuteRequest): Promise<ExecuteResult> {
       PYTHONHASHSEED: '0',
       NODE_OPTIONS: '',
       LANG: 'C.UTF-8',
+      // matplotlib: headless backend, config/cache inside the job dir.
+      MPLBACKEND: 'Agg',
+      MPLCONFIGDIR: dir,
+      HOME: dir,
     };
     if (process.platform === 'win32') {
       // CPython on Windows needs SYSTEMROOT to initialise its random source.
@@ -258,5 +282,5 @@ const server = createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[runner] listening on ${HOST}:${PORT} · javascript=${runtimes.javascript ?? 'unavailable'} · python=${runtimes.python ?? 'unavailable'} · node permission=${nodePermissionFlag ?? 'none'}`);
+  console.log(`[runner] listening on ${HOST}:${PORT} · javascript=${runtimes.javascript ?? 'unavailable'} · python=${runtimes.python ?? 'unavailable'}${PY_EXTRA_PATHS.length ? ` (+${PY_EXTRA_PATHS.length} lib path)` : ''} · node permission=${nodePermissionFlag ?? 'none'}`);
 });

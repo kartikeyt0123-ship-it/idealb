@@ -24,7 +24,7 @@ function socket(c: Client, display = false): Promise<Socket> {
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 describe('demo structure', () => {
-  it('has 4 slots on 8 and 9 October 2026, 10 crews each, 4 sprints of 30 minutes, 270 planned instances per slot', async () => {
+  it('has 4 slots on 8 and 9 October 2026, 10 crews each, 4 sprints of 30 minutes, an initial set of 90 per slot', async () => {
     const ov = (await org.get(`${V}/admin/overview`)).body;
     expect(ov.event).toMatchObject({ name: 'AMONG BUG', organizer: 'IDEALab.h', edition: 'AAROHAN 2026', venue: 'SGSITS Indore', timezone: 'Asia/Kolkata', isDemo: true });
     expect(ov.slots.map((s: { date: string }) => s.date)).toEqual(['2026-10-08', '2026-10-08', '2026-10-09', '2026-10-09']);
@@ -32,7 +32,7 @@ describe('demo structure', () => {
       expect(s.counts.crews).toBe(10);
       expect(s.sprints.map((x: { durationSeconds: number }) => x.durationSeconds)).toEqual([1800, 1800, 1800, 1800]);
       const n = (await one<{ n: number }>(env.db, 'SELECT count(*)::int AS n FROM question_instance WHERE slot_id=$1', [s.id]))!.n;
-      expect(n).toBe(270);
+      expect(n).toBe(90);
       expect(s.preflight.ok).toBe(true);
       expect(s.preflight.warnings.join(' ')).toMatch(/UNCONFIRMED/);
     }
@@ -41,26 +41,21 @@ describe('demo structure', () => {
     expect(nexora).toEqual({ crew_id: 'CRW-001', number: 1 });
   });
 
-  it('per slot: 60 initial per sprint (10/domain, 5E/3M/2H); a 20-question reserve pool and a 10-question bonus pool, mixed domains', async () => {
+  it('per slot: one initial set of 15 per domain (7 easy, 5 medium, 3 hard) for Sprint 1, from the IDEALab bank; no duplicates within a slot', async () => {
     const sid = await slotId(env, 1);
-    const per = await many<{ sprint: number; type: string; n: number; e: number; m: number; h: number }>(
+    const per = await many<{ domain: string; e: number; m: number; h: number; sprint: number; status: string }>(
       env.db,
-      `SELECT sp.number AS sprint, r.type, count(*)::int AS n, count(*) FILTER (WHERE qi.difficulty='EASY')::int AS e, count(*) FILTER (WHERE qi.difficulty='MEDIUM')::int AS m, count(*) FILTER (WHERE qi.difficulty='HARD')::int AS h
-         FROM question_instance qi JOIN release r ON r.id=qi.release_id JOIN sprint sp ON sp.id=r.sprint_id WHERE qi.slot_id=$1 GROUP BY sp.number, r.type ORDER BY 1, 2`,
+      `SELECT d.slug AS domain, sp.number AS sprint, r.status, count(*) FILTER (WHERE qi.difficulty='EASY')::int AS e, count(*) FILTER (WHERE qi.difficulty='MEDIUM')::int AS m, count(*) FILTER (WHERE qi.difficulty='HARD')::int AS h
+         FROM question_instance qi JOIN release r ON r.id=qi.release_id JOIN sprint sp ON sp.id=r.sprint_id JOIN domain d ON d.id=qi.domain_id
+        WHERE qi.slot_id=$1 GROUP BY d.slug, sp.number, r.status ORDER BY 1`,
       [sid],
     );
-    for (let s = 1; s <= 4; s++) expect(per.find((p) => p.sprint === s && p.type === 'INITIAL')).toMatchObject({ n: 60, e: 30, m: 18, h: 12 });
-    expect(per.filter((p) => p.type !== 'INITIAL')).toEqual([]);
-    const pools = await many<{ type: string; n: number; domains: number; pending: number }>(
-      env.db,
-      `SELECT r.type, count(*)::int AS n, count(DISTINCT qi.domain_id)::int AS domains, count(*) FILTER (WHERE r.status='PENDING')::int AS pending
-         FROM release r JOIN question_instance qi ON qi.release_id=r.id WHERE r.slot_id=$1 AND r.sprint_id IS NULL GROUP BY r.type ORDER BY r.type`,
-      [sid],
-    );
-    expect(pools).toEqual([{ type: 'BONUS', n: 10, domains: 4, pending: 10 }, { type: 'RESERVE', n: 20, domains: 6, pending: 20 }]);
-    // No question version is shared between slots.
-    const shared = await one<{ n: number }>(env.db, `SELECT count(*)::int AS n FROM (SELECT question_version_id FROM question_instance GROUP BY 1 HAVING count(DISTINCT slot_id) > 1) x`);
-    expect(shared!.n).toBe(0);
+    expect(per.map((p) => p.domain)).toEqual(['core_compute', 'cryptography', 'data_decypher', 'maker', 'recon', 'web']);
+    for (const p of per) expect(p).toMatchObject({ sprint: 1, status: 'SCHEDULED', e: 7, m: 5, h: 3 });
+    const dup = await one<{ n: number }>(env.db, `SELECT count(*)::int AS n FROM (SELECT question_version_id FROM question_instance WHERE slot_id=$1 GROUP BY 1 HAVING count(*) > 1) x`, [sid]);
+    expect(dup!.n).toBe(0);
+    const bank = await one<{ n: number }>(env.db, `SELECT count(*)::int AS n FROM question WHERE key ~ '^(core_compute|crypto|data|maker|recon|web)_[0-9]+$'`);
+    expect(bank!.n).toBe(360);
   });
 });
 
@@ -84,7 +79,7 @@ describe('slot isolation', () => {
     const a = await crew(env, 1);
     const b = await crew(env, 11); // slot 2
     const st = (await a.get(`${V}/slots/mine/state`)).body;
-    expect(st.questions.length).toBe(60);
+    expect(st.questions.length).toBe(90);
     expect(st.questions.every((q: { kind: string }) => q.kind === 'INITIAL')).toBe(true);
     const stB = (await b.get(`${V}/slots/mine/state`)).body;
     expect(stB.questions).toEqual([]);
@@ -137,25 +132,25 @@ describe('sprint and slot leaderboards', () => {
     const before = (await c.get(`${V}/slots/mine/state`)).body.me;
     const q = (await answerInstances(env, 1))[0];
     const h = await c.post(`${V}/question-instances/${q.id}/hint-purchases`, {}, true);
-    expect(h.body.charged).toBe(true);
+    expect(h.body).toMatchObject({ charged: true, level: 1 });
     const after = (await c.get(`${V}/slots/mine/state`)).body.me;
-    expect(after.wallet).toBe(before.wallet - q.hint_cost);
+    expect(after.wallet).toBe(before.wallet - h.body.cost);
     expect(after.cumulative).toBe(before.cumulative);
     expect(after.sprintScore).toBe(before.sprintScore);
 
     await expireSprint(env, 1);
     const closed = (await c.get(`${V}/slots/mine/state`)).body;
     expect(closed.slot.phase).toBe('WAITING');
-    expect(closed.questions.filter((x: { state: string }) => x.state === 'AVAILABLE')).toEqual([]);
-    const s1expired = await one<{ n: number }>(env.db, `SELECT count(*)::int AS n FROM question_instance qi JOIN sprint sp ON sp.id=qi.expires_with_sprint_id WHERE sp.number=1 AND qi.slot_id=$1 AND qi.status='EXPIRED'`, [await slotId(env, 1)]);
-    expect(s1expired!.n).toBeGreaterThan(50);
+    // Slot pool: unsolved questions stay active for the next sprint (they expire when the slot ends).
+    const stillOpen = closed.questions.filter((x: { state: string }) => x.state === 'AVAILABLE').length;
+    expect(stillOpen).toBeGreaterThan(80);
 
     await startSprint(env, org, 1, 2);
     const s2 = (await c.get(`${V}/slots/mine/state`)).body;
     expect(s2.sprint.number).toBe(2);
     expect(s2.me.sprintScore).toBe(0);
     expect(s2.me.cumulative).toBe(before.cumulative);
-    expect(s2.questions.every((x: { label: string }) => /-S2-/.test(x.label))).toBe(true);
+    expect(s2.questions.filter((x: { state: string }) => x.state === 'AVAILABLE').length).toBe(stillOpen);
     const sb = (await c.get(`${V}/leaderboards?scope=sprint&sprint=1`)).body;
     expect(sb.rows[0]).toMatchObject({ crewId: 'CRW-001' });
     expect(JSON.stringify(sb)).not.toMatch(/@example\.test/);

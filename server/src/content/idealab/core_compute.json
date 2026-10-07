@@ -1,0 +1,1142 @@
+[
+  {
+    "id": "core_compute_01",
+    "name": "The Infinite Staircase",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The robot is supposed to walk down 10 steps and stop, but it keeps drilling into the basement forever. Fix the loop.",
+    "flag": "ROBOT_SAVED_99",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Look closely at the `while steps > 0:` loop. Is the counter actually decreasing?"
+      }
+    ],
+    "editor_state": {
+      "visible_code": "steps = 10\n\n# The robot needs to reach step 0\nwhile steps > 0:\n    steps += 1  # Wait, is it going up or down?\n\nprint(f'Simulation ended. Robot is at step: {steps}')",
+      "hidden_validation_b64": "CmlmIHN0ZXBzID09IDA6CiAgICBwcmludCgnXG5GTEFHOiBST0JPVF9TQVZFRF85OScpCg=="
+    }
+  },
+  {
+    "id": "core_compute_02",
+    "name": "Integer Illusion",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "We divided the \u20b9500 prize between 2 teams. The math says they each get \u20b9250.0, but the computer insists it's 0. Fix the math operator.",
+    "flag": "FAIR_SPLIT_22",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "The modulo operator (%) gives the remainder. You need standard division (/)."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "prize_pool = 500\nteams = 2\n\n# Calculate each team's share\nshare = prize_pool % teams \n\nprint(f\"Each team gets: \u20b9{share}\")",
+      "hidden_validation_b64": "CmlmIHNoYXJlID09IDI1MC4wOgogICAgcHJpbnQoJ1xuRkxBRzogRkFJUl9TUExJVF8yMicpCg=="
+    }
+  },
+  {
+    "id": "core_compute_03",
+    "name": "Identity Crisis",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The vault should only open if the access level is exactly 9. Right now, it's opening for access level 3!",
+    "flag": "VAULT_SECURE_101",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "In Python, a single equals sign (=) assigns a value. How do you compare values?"
+      }
+    ],
+    "editor_state": {
+      "visible_code": "access_level = 3\nvault_status = \"Locked\"\n\n# Check if access level is exactly 9\nif access_level = 9:\n    vault_status = \"Open\"\n\nprint(f\"Vault is {vault_status}\")",
+      "hidden_validation_b64": "CmlmIHZhdWx0X3N0YXR1cyA9PSAiTG9ja2VkIiBhbmQgYWNjZXNzX2xldmVsID09IDM6CiAgICBwcmludCgnXG5GTEFHOiBWQVVMVF9TRUNVUkVfMTAxJykK"
+    }
+  },
+  {
+    "id": "core_compute_04",
+    "name": "Off By One",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "We have a list of 5 agents. The code is trying to print the last agent's name, but the system is throwing an IndexError.",
+    "flag": "AGENT_FOUND_007",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Remember how lists count. If there are 5 items, the first index is 0. What is the last?"
+      }
+    ],
+    "editor_state": {
+      "visible_code": "agents = [\"Aman\", \"Priya\", \"Rahul\", \"Neha\", \"Vikram\"]\n\n# Print the 5th agent in the list\nlast_agent = agents[5]\n\nprint(f\"Last agent is: {last_agent}\")",
+      "hidden_validation_b64": "CmlmIGxhc3RfYWdlbnQgPT0gIlZpa3JhbSI6CiAgICBwcmludCgnXG5GTEFHOiBBR0VOVF9GT1VORF8wMDcnKQo="
+    }
+  },
+  {
+    "id": "core_compute_05",
+    "name": "The Swapper's Dilemma",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The script tries to swap the values of `battery` and `power`, but they both just end up being the same number.",
+    "flag": "SWAP_SUCCESS_44",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Python has a very clean way to swap two variables on a single line: `a, b = b, a`."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "battery = 100\npower = 50\n\n# Swap the values\nbattery = power\npower = battery\n\nprint(f\"Battery: {battery}, Power: {power}\")",
+      "hidden_validation_b64": "CmlmIGJhdHRlcnkgPT0gNTAgYW5kIHBvd2VyID09IDEwMDoKICAgIHByaW50KCdcbkZMQUc6IFNXQVBfU1VDQ0VTU180NCcpCg=="
+    }
+  },
+  {
+    "id": "core_compute_06",
+    "name": "The Overwritten Total",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The cashier's program should add up the prices of all 4 items, but it only charges the price of the very last item.",
+    "flag": "BILL_PAID_789",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Are you *adding* to the total, or just replacing it entirely? Check your assignment operator."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "prices = [120, 50, 30, 200]\ntotal = 0\n\nfor price in prices:\n    total = price\n\nprint(f\"Total Bill: \u20b9{total}\")",
+      "hidden_validation_b64": "CmlmIHRvdGFsID09IDQwMDoKICAgIHByaW50KCdcbkZMQUc6IEJJTExfUEFJRF83ODknKQo="
+    }
+  },
+  {
+    "id": "core_compute_07",
+    "name": "The Greedy Vending Machine",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The machine should subtract the cost of the chips from your balance, but your balance keeps going up!",
+    "flag": "SNACK_TIME_88",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Check the math symbols. You want to subtract, not add."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "balance = 500\ncost = 40\n\n# Buy the chips\nbalance += cost\n\nprint(f\"Remaining balance: \u20b9{balance}\")",
+      "hidden_validation_b64": "CmlmIGJhbGFuY2UgPT0gNDYwOgogICAgcHJpbnQoJ1xuRkxBRzogU05BQ0tfVElNRV84OCcpCg=="
+    }
+  },
+  {
+    "id": "core_compute_08",
+    "name": "Reverse Gear",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The engine is trying to count backward from 10 to 1, but it instantly finishes without doing anything.",
+    "flag": "COUNTDOWN_GO",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Look at the condition in the `while` loop. If you start at 10, should you keep going while `i < 1`?"
+      }
+    ],
+    "editor_state": {
+      "visible_code": "i = 10\ncount_logs = []\n\nwhile i < 1:\n    count_logs.append(i)\n    i -= 1\n\nprint(f\"Countdown sequence: {count_logs}\")",
+      "hidden_validation_b64": "CmlmIGNvdW50X2xvZ3MgPT0gWzEwLCA5LCA4LCA3LCA2LCA1LCA0LCAzLCAyLCAxXToKICAgIHByaW50KCdcbkZMQUc6IENPVU5URE9XTl9HTycpCg=="
+    }
+  },
+  {
+    "id": "core_compute_09",
+    "name": "Boolean Blindness",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The VIP room requires you to be over 18 AND on the guest list. A 16-year-old just got in because they were on the list!",
+    "flag": "BOUNCER_ACTIVE",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Check the logic operators. `or` means only one condition needs to be true. You want both."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "age = 16\non_list = True\naccess = False\n\nif age >= 18 or on_list:\n    access = True\n\nprint(f\"Access granted: {access}\")",
+      "hidden_validation_b64": "CmlmIGFjY2VzcyA9PSBGYWxzZToKICAgIHByaW50KCdcbkZMQUc6IEJPVU5DRVJfQUNUSVZFJykK"
+    }
+  },
+  {
+    "id": "core_compute_10",
+    "name": "The Impatient Grader",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "A student scored 85. The system correctly prints 'Grade B', but then also prints 'Grade C' right after it!",
+    "flag": "GRADE_A_OKAY",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "If you use multiple `if` statements, they all get checked. Use `elif` so it stops once it finds the right grade."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "score = 85\ngrades_given = []\n\nif score >= 90:\n    grades_given.append('A')\nif score >= 80:\n    grades_given.append('B')\nif score >= 70:\n    grades_given.append('C')\n\nprint(f\"Grades awarded: {grades_given}\")",
+      "hidden_validation_b64": "CmlmIGdyYWRlc19naXZlbiA9PSBbJ0InXToKICAgIHByaW50KCdcbkZMQUc6IEdSQURFX0FfT0tBWScpCg=="
+    }
+  },
+  {
+    "id": "core_compute_11",
+    "name": "String Glitch",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The system is trying to say 'Hello World', but it's printing 'WorldHello'. Fix the concatenation.",
+    "flag": "HELLO_WORLD_99",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Look at how the strings are being glued together. Order matters!"
+      }
+    ],
+    "editor_state": {
+      "visible_code": "word1 = \"Hello \"\nword2 = \"World\"\n\ngreeting = word2 + word1\nprint(greeting)",
+      "hidden_validation_b64": "CmlmIGdyZWV0aW5nLnN0cmlwKCkgPT0gIkhlbGxvIFdvcmxkIjoKICAgIHByaW50KCdcbkZMQUc6IEhFTExPX1dPUkxEXzk5JykK"
+    }
+  },
+  {
+    "id": "core_compute_12",
+    "name": "Case Closed",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The password is 'admin', but the system rejects 'Admin'. Make the system accept it regardless of capitalization.",
+    "flag": "LOGIN_SUCCESS_1",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Convert the user_input to lowercase entirely using `.lower()` before checking."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "user_input = \"Admin\"\nlogged_in = False\n\n# Make this check case-insensitive\nif user_input == \"admin\":\n    logged_in = True\n\nprint(f\"Logged In: {logged_in}\")",
+      "hidden_validation_b64": "CmlmIGxvZ2dlZF9pbiA9PSBUcnVlOgogICAgcHJpbnQoJ1xuRkxBRzogTE9HSU5fU1VDQ0VTU18xJykK"
+    }
+  },
+  {
+    "id": "core_compute_13",
+    "name": "The Lost Return",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The math function does all the right calculations, but it gives us back `None`.",
+    "flag": "MATH_GENIUS_33",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "The function did the work, but it forgot to hand the answer back to the main program. Look at the end of the function."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def calculate_area(length, width):\n    area = length * width\n    # Something is missing here\n\nresult = calculate_area(5, 10)\nprint(f\"The area is: {result}\")",
+      "hidden_validation_b64": "CmlmIHJlc3VsdCA9PSA1MDoKICAgIHByaW50KCdcbkZMQUc6IE1BVEhfR0VOSVVTXzMzJykK"
+    }
+  },
+  {
+    "id": "core_compute_14",
+    "name": "Array's First Step",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The security scanner checks the 4 bays, but it completely skips the very first bay in the list!",
+    "flag": "BAY_CLEARED_4",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "In programming, we don't start counting from 1. Where should your loop begin?"
+      }
+    ],
+    "editor_state": {
+      "visible_code": "bays = [\"Bay_A\", \"Bay_B\", \"Bay_C\", \"Bay_D\"]\nscanned = []\n\nfor i in range(1, 4):\n    scanned.append(bays[i])\n\nprint(f\"Scanned bays: {scanned}\")",
+      "hidden_validation_b64": "CmlmICJCYXlfQSIgaW4gc2Nhbm5lZCBhbmQgbGVuKHNjYW5uZWQpID09IDQ6CiAgICBwcmludCgnXG5GTEFHOiBCQVlfQ0xFQVJFRF80JykK"
+    }
+  },
+  {
+    "id": "core_compute_15",
+    "name": "Absolute Zero",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The system is trying to figure out if a number is even by dividing it by zero. The system is crashing!",
+    "flag": "DIVIDE_BY_TWO",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "To check for an even number, you don't divide by 0. You look for the remainder when divided by 2."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "num = 42\nis_even = False\n\n# Check if the number is even\nif num % 0 == 0:\n    is_even = True\n\nprint(f\"Is the number even? {is_even}\")",
+      "hidden_validation_b64": "CmlmIGlzX2V2ZW4gPT0gVHJ1ZToKICAgIHByaW50KCdcbkZMQUc6IERJVklERV9CWV9UV08nKQo="
+    }
+  },
+  {
+    "id": "core_compute_16",
+    "name": "Fibonacci's Folly",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The sequence is supposed to go 0, 1, 1, 2, 3, 5. But our generator is stuck outputting 0, 1, 1, 1, 1, 1.",
+    "flag": "FIBO_FIXED_112",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "You are overwriting the old value of `a` before you calculate the next sequence! Use a temporary variable or python's multiple assignment `a, b = b, a + b`."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def generate_fibonacci(n):\n    sequence = []\n    a = 0\n    b = 1\n    for _ in range(n):\n        sequence.append(a)\n        next_val = a + b\n        b = next_val\n        a = b\n    return sequence\n\nresult = generate_fibonacci(6)\nprint(result)",
+      "hidden_validation_b64": "CmlmIHJlc3VsdCA9PSBbMCwgMSwgMSwgMiwgMywgNV06CiAgICBwcmludCgnXG5GTEFHOiBGSUJPX0ZJWEVEXzExMicpCg=="
+    }
+  },
+  {
+    "id": "core_compute_17",
+    "name": "Palindrome Paradox",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The code uses two pointers to check if a word is spelled the same backwards. It crashes instantly on 'racecar'.",
+    "flag": "RACECAR_WIN",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "To move the pointers towards the middle, the left one goes up, but the right one must go down."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def is_palindrome(word):\n    left = 0\n    right = len(word) - 1\n    while left < right:\n        if word[left] != word[right]:\n            return False\n        left += 1\n        right += 1\n    return True\n\nstatus = is_palindrome(\"racecar\")\nprint(f\"Is palindrome? {status}\")",
+      "hidden_validation_b64": "CmlmIHN0YXR1cyA9PSBUcnVlOgogICAgcHJpbnQoJ1xuRkxBRzogUkFDRUNBUl9XSU4nKQo="
+    }
+  },
+  {
+    "id": "core_compute_18",
+    "name": "The Fake Prime",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The prime number checker thinks the number `2` is NOT a prime number.",
+    "flag": "PRIME_TIME_2",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Look at the loop's condition. A prime is divisible only by 1 and itself. Does the loop incorrectly divide 2 by 2?"
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def check_prime(n):\n    if n < 2:\n        return False\n    for i in range(2, n + 1):\n        if n % i == 0:\n            return False\n    return True\n\nresult = check_prime(2)\nprint(f\"Is 2 prime? {result}\")",
+      "hidden_validation_b64": "CmlmIHJlc3VsdCA9PSBUcnVlOgogICAgcHJpbnQoJ1xuRkxBRzogUFJJTUVfVElNRV8yJykK"
+    }
+  },
+  {
+    "id": "core_compute_19",
+    "name": "Matrix Misstep",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The drone should scan the main diagonal of a 3x3 grid (top-left to bottom-right). But it's just scanning the first row!",
+    "flag": "DIAGONAL_SCAN_OK",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "To scan the diagonal, the row index and the column index must be exactly the same (0,0 then 1,1 then 2,2)."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "grid = [\n    [10, 2, 3],\n    [4, 20, 6],\n    [7, 8, 30]\n]\ndiagonal_sum = 0\n\nfor i in range(3):\n    diagonal_sum += grid[0][i]\n\nprint(f\"Diagonal Sum: {diagonal_sum}\")",
+      "hidden_validation_b64": "CmlmIGRpYWdvbmFsX3N1bSA9PSA2MDoKICAgIHByaW50KCdcbkZMQUc6IERJQUdPTkFMX1NDQU5fT0snKQo="
+    }
+  },
+  {
+    "id": "core_compute_20",
+    "name": "Factorial Freeze",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The recursive function calculates 5!. But it keeps multiplying into negative infinity until it crashes.",
+    "flag": "BASE_CASE_MET",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Every recursive function needs a 'base case' to tell it when to stop. When should a factorial stop?"
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def factorial(n):\n    # Fix the missing base case here\n    \n    return n * factorial(n - 1)\n\n# Uncomment below to test once fixed\n# ans = factorial(5)\n# print(ans)",
+      "hidden_validation_b64": "CmFucyA9IGZhY3RvcmlhbCg1KQppZiBhbnMgPT0gMTIwOgogICAgcHJpbnQoJ1xuRkxBRzogQkFTRV9DQVNFX01FVCcpCg=="
+    }
+  },
+  {
+    "id": "core_compute_21",
+    "name": "Two Sum Trap",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The code looks for two distinct numbers that add up to 10. But it\u2019s cheating by adding the number 5 to itself!",
+    "flag": "TWO_SUM_SAFE",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "The inner loop shouldn't start at 0 again. It should start right after the first loop's current position (`i + 1`)."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "nums = [2, 5, 8, 3]\ntarget = 10\nfound_pair = []\n\nfor i in range(len(nums)):\n    for j in range(0, len(nums)):\n        if nums[i] + nums[j] == target:\n            found_pair = [nums[i], nums[j]]\n\nprint(f\"Pair found: {found_pair}\")",
+      "hidden_validation_b64": "CmlmIHNldChmb3VuZF9wYWlyKSA9PSBzZXQoWzIsIDhdKToKICAgIHByaW50KCdcbkZMQUc6IFRXT19TVU1fU0FGRScpCg=="
+    }
+  },
+  {
+    "id": "core_compute_22",
+    "name": "Anagram Agony",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The code checks if 'Listen' and 'Silent' are anagrams by sorting the letters. It says they aren't!",
+    "flag": "ANAGRAM_MATCH_4",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Computers treat uppercase and lowercase letters as completely different. Clean the strings before sorting."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def is_anagram(str1, str2):\n    # Needs a slight modification before sorting\n    return sorted(str1) == sorted(str2)\n\nstatus = is_anagram(\"Listen\", \"Silent\")\nprint(f\"Are they anagrams? {status}\")",
+      "hidden_validation_b64": "CmlmIHN0YXR1cyA9PSBUcnVlOgogICAgcHJpbnQoJ1xuRkxBRzogQU5BR1JBTV9NQVRDSF80JykK"
+    }
+  },
+  {
+    "id": "core_compute_23",
+    "name": "Node Navigator",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The code walks through a chain of connected nodes to find the end. But it's stuck on the first node forever.",
+    "flag": "REACHED_END_NODE",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Inside the `while` loop, you have to tell the pointer to actually move to the `next` node."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "class Node:\n    def __init__(self, val, next_node=None):\n        self.val = val\n        self.next = next_node\n\nhead = Node(1, Node(2, Node(3)))\ncurr = head\nlast_val = None\n\n# Find the last node's value\nwhile curr is not None:\n    last_val = curr.val\n    # Pointer is stuck!\n\nprint(f\"Last node value is: {last_val}\")",
+      "hidden_validation_b64": "CmlmIGxhc3RfdmFsID09IDM6CiAgICBwcmludCgnXG5GTEFHOiBSRUFDSEVEX0VORF9OT0RFJykK"
+    }
+  },
+  {
+    "id": "core_compute_24",
+    "name": "The Biased Coin",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The generator should give a number between 1 and 10. But it generates numbers from 0 to 9!",
+    "flag": "RANDOM_ROLL_10",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "`num % 10` generates numbers from 0 to 9. How do you shift that entire range up by one?"
+      }
+    ],
+    "editor_state": {
+      "visible_code": "import random\nrandom.seed(42) # Keeps output predictable for the test\n\nraw_number = random.randint(0, 100)\n\n# Get a number from 1 to 10\nresult = raw_number % 10\n\nprint(f\"Rolled: {result}\")",
+      "hidden_validation_b64": "CmlmIHJlc3VsdCA9PSAyOgogICAgcHJpbnQoJ1xuRkxBRzogUkFORE9NX1JPTExfMTAnKQo="
+    }
+  },
+  {
+    "id": "core_compute_25",
+    "name": "Bitwise Blunder",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The script checks if a number is even using binary bitwise AND, but the logic is flipped. It thinks 4 is odd!",
+    "flag": "BIT_HACK_EVEN",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "In binary, odd numbers end in 1, and even numbers end in 0. What does `num & 1` equal for an even number?"
+      }
+    ],
+    "editor_state": {
+      "visible_code": "num = 4\nis_even = False\n\nif (num & 1) == 1:\n    is_even = True\n\nprint(f\"Is {num} even? {is_even}\")",
+      "hidden_validation_b64": "CmlmIGlzX2V2ZW4gPT0gVHJ1ZToKICAgIHByaW50KCdcbkZMQUc6IEJJVF9IQUNLX0VWRU4nKQo="
+    }
+  },
+  {
+    "id": "core_compute_26",
+    "name": "Binary Search Blunder",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The search gets stuck in an infinite loop if the target is missing. Fix the pointer updates.",
+    "flag": "BINARY_NOT_FOUND",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "When adjusting boundaries, you can't set them equal to `mid`. Move one step past it: `mid + 1` or `mid - 1`."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def search(arr, target):\n    left, right = 0, len(arr) - 1\n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return True\n        elif arr[mid] < target:\n            left = mid  # Fix this\n        else:\n            right = mid # Fix this\n    return False\n\n# Uncomment to test. Be careful of infinite loops!\n# result = search([1, 3, 5, 7], 4)\n# print(result)",
+      "hidden_validation_b64": "CmltcG9ydCBzaWduYWwKZGVmIGhhbmRsZXIoc2lnbnVtLCBmcmFtZSk6IHJhaXNlIEV4Y2VwdGlvbigpCnNpZ25hbC5zaWduYWwoc2lnbmFsLlNJR0FMUk0sIGhhbmRsZXIpCnNpZ25hbC5hbGFybSgxKQp0cnk6CiAgICByZXMgPSBzZWFyY2goWzEsIDMsIDUsIDddLCA0KQogICAgaWYgcmVzID09IEZhbHNlOgogICAgICAgIHByaW50KCdcbkZMQUc6IEJJTkFSWV9OT1RfRk9VTkQnKQpleGNlcHQ6CiAgICBwYXNzCg=="
+    }
+  },
+  {
+    "id": "core_compute_27",
+    "name": "The Sliding Window",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The sliding window finds the longest sequence, but its length calculation is exactly 1 character too short.",
+    "flag": "WINDOW_SLIDE_MAX",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "If a sequence starts at index 2 and ends at index 4, `4 - 2` is 2. But the sequence contains 3 characters! Add 1."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "arr = [1, 1, 0, 1, 1, 1, 0]\nmax_len = 0\nleft = 3\nright = 5 # Representing the window [1, 1, 1]\n\n# Calculate length of the window\ncurrent_len = right - left\nmax_len = max(max_len, current_len)\n\nprint(f\"Max length is: {max_len}\")",
+      "hidden_validation_b64": "CmlmIG1heF9sZW4gPT0gMzoKICAgIHByaW50KCdcbkZMQUc6IFdJTkRPV19TTElERV9NQVgnKQo="
+    }
+  },
+  {
+    "id": "core_compute_28",
+    "name": "The Reference Riddle",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "When the code prints the final 2D list, every path inside it is an exact copy of the very last path generated!",
+    "flag": "DEEP_COPY_WIN",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Appending a list stores a reference. You need to append a copy: `path[:]` or `path.copy()`."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "results = []\npath = []\n\nfor i in range(1, 3):\n    path.append(i)\n    results.append(path) # Bug is here\n    \nprint(f\"Final paths: {results}\")",
+      "hidden_validation_b64": "CmlmIHJlc3VsdHMgPT0gW1sxXSwgWzEsIDJdXToKICAgIHByaW50KCdcbkZMQUc6IERFRVBfQ09QWV9XSU4nKQo="
+    }
+  },
+  {
+    "id": "core_compute_29",
+    "name": "Merge Sort Mayhem",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The merge function leaves out the last few numbers if one half empties out faster than the other.",
+    "flag": "MERGE_CLEANUP_DONE",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "After the main `while` loop, you need two extra `while` loops or list extends to sweep up the remaining elements."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def merge(left, right):\n    res = []\n    i = j = 0\n    while i < len(left) and j < len(right):\n        if left[i] < right[j]:\n            res.append(left[i])\n            i += 1\n        else:\n            res.append(right[j])\n            j += 1\n    # Leftovers are ignored!\n    return res\n\nans = merge([1, 5], [2, 3, 6, 8])\nprint(ans)",
+      "hidden_validation_b64": "CmlmIGFucyA9PSBbMSwgMiwgMywgNSwgNiwgOF06CiAgICBwcmludCgnXG5GTEFHOiBNRVJHRV9DTEVBTlVQX0RPTkUnKQo="
+    }
+  },
+  {
+    "id": "core_compute_30",
+    "name": "The Climbing Stairs",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The code uses DP to find ways to climb stairs. But it crashes instantly if you ask it for exactly 1 step (n=1).",
+    "flag": "DP_BASE_SAFE",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "If n=1, the array only has a size of 2. `dp[2] = 2` will throw an IndexError. Add an early return for n=1."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def climb(n):\n    dp = [0] * (n + 1)\n    \n    dp[1] = 1\n    dp[2] = 2  # Crashes here if n == 1\n    \n    for i in range(3, n + 1):\n        dp[i] = dp[i-1] + dp[i-2]\n    return dp[n]\n\n# Uncomment to test\n# ways = climb(1)\n# print(ways)",
+      "hidden_validation_b64": "CnRyeToKICAgIHdheXMgPSBjbGltYigxKQogICAgaWYgd2F5cyA9PSAxOgogICAgICAgIHByaW50KCdcbkZMQUc6IERQX0JBU0VfU0FGRScpCmV4Y2VwdDoKICAgIHBhc3MK"
+    }
+  },
+  {
+    "id": "core_compute_31",
+    "name": "The Type Mismatch",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The cluster orchestrator crashed with a TypeError while registering a server node. Convert the numeric node ID so it can combine with the text label.",
+    "flag": "CC_TYPE_MISMATCH_31",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "In Python, you cannot directly add a string and an integer. Convert the integer using str() or use an f-string."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "item = \"Server Node #\"\nnode_id = 42\n\n# Build the node label\nlabel = item + node_id\n\nprint(f\"Node registered: {label}\")",
+      "hidden_validation_b64": "CmlmIGxhYmVsID09ICJTZXJ2ZXIgTm9kZSAjNDIiOgogICAgcHJpbnQoJ1xuRkxBRzogQ0NfVFlQRV9NSVNNQVRDSF8zMScpCg=="
+    }
+  },
+  {
+    "id": "core_compute_32",
+    "name": "Mutable Default Menace",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The background worker's task queue is leaking jobs across separate batches because of Python's mutable default argument behavior.",
+    "flag": "CC_MUTABLE_DEFAULT_32",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Default parameter lists in Python are instantiated only once when the function is defined. Use queue=None and initialize queue = [] inside the function body."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def add_task(task, queue=[]):\n    queue.append(task)\n    return queue\n\nq1 = add_task(\"ping\")\nq2 = add_task(\"status\", [])\nq3 = add_task(\"deploy\")\n# q3 should contain only ['deploy'], but currently contains ['ping', 'deploy']!\nprint(f\"q3 tasks: {q3}\")",
+      "hidden_validation_b64": "CnQxID0gYWRkX3Rhc2soImFscGhhIikKdDIgPSBhZGRfdGFzaygiYmV0YSIpCmlmIHQxID09IFsiYWxwaGEiXSBhbmQgdDIgPT0gWyJiZXRhIl06CiAgICBwcmludCgnXG5GTEFHOiBDQ19NVVRBQkxFX0RFRkFVTFRfMzInKQo="
+    }
+  },
+  {
+    "id": "core_compute_33",
+    "name": "Tuple Immutability Shock",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The autopilot altitude updater failed because waypoints were defined as immutable tuples. Fix the update logic so coordinates update to (10, 20, 50).",
+    "flag": "CC_TUPLE_MUTATION_33",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Tuples cannot be modified after creation. Either convert coords to a list before updating, or construct a new tuple with the updated value."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "# Coordinates of navigation waypoint (x, y, z)\ncoords = (10, 20, 30)\n\n# Update z-altitude to 50\ncoords[2] = 50\n\nprint(f\"Updated coordinates: {coords}\")",
+      "hidden_validation_b64": "CmlmIGNvb3JkcyA9PSAoMTAsIDIwLCA1MCk6CiAgICBwcmludCgnXG5GTEFHOiBDQ19UVVBMRV9NVVRBVElPTl8zMycpCg=="
+    }
+  },
+  {
+    "id": "core_compute_34",
+    "name": "Dictionary Key Despair",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The credential gateway throws an unhandled KeyError when a user profile omits the optional clearance level. Retrieve the level safely with a fallback default of 1.",
+    "flag": "CC_DICT_KEY_SAFE_34",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Direct key indexing throws a KeyError when the key does not exist. Use the dictionary's .get(key, default_value) method."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "user_profile = {\"username\": \"cyber_agent\", \"role\": \"analyst\"}\n\n# Retrieve optional clearance level (defaults to 1 if not set)\nclearance = user_profile[\"clearance_level\"]\n\nprint(f\"Clearance level: {clearance}\")",
+      "hidden_validation_b64": "CmlmIGNsZWFyYW5jZSA9PSAxOgogICAgcHJpbnQoJ1xuRkxBRzogQ0NfRElDVF9LRVlfU0FGRV8zNCcpCg=="
+    }
+  },
+  {
+    "id": "core_compute_35",
+    "name": "The Shadowed Sum",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The scoring engine crashes with 'TypeError: int object is not callable' because a local variable overwrote Python's built-in sum function.",
+    "flag": "CC_SHADOWED_BUILTIN_35",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Avoid naming variables after built-in Python functions like sum. Rename the initial variable so the built-in sum() function works again."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "# Tally initial score\nsum = 100\n\nscores = [10, 20, 30]\n# Calculate total of new scores using Python built-in sum()\ntotal = sum(scores) + sum\n\nprint(f\"Grand total: {total}\")",
+      "hidden_validation_b64": "CmlmIHRvdGFsID09IDE2MDoKICAgIHByaW50KCdcbkZMQUc6IENDX1NIQURPV0VEX0JVSUxUSU5fMzUnKQo="
+    }
+  },
+  {
+    "id": "core_compute_36",
+    "name": "String Strip Slip",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The authentication filter sent dirty tokens with whitespace to the backend API because the string strip method wasn't saved back to the variable.",
+    "flag": "CC_STRING_IMMUTABLE_36",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "In Python, string methods do not modify strings in-place. You must assign the returned result back to the variable: raw_token = raw_token.strip()."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "raw_token = \"   AUTH_BEARER_KEY_887   \\n\"\n\n# Strip leading and trailing whitespace\nraw_token.strip()\n\nprint(f\"Clean token: '{raw_token}'\")",
+      "hidden_validation_b64": "CmlmIHJhd190b2tlbiA9PSAiQVVUSF9CRUFSRVJfS0VZXzg4NyI6CiAgICBwcmludCgnXG5GTEFHOiBDQ19TVFJJTkdfSU1NVVRBQkxFXzM2JykK"
+    }
+  },
+  {
+    "id": "core_compute_37",
+    "name": "List Multiplication Trap",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "Modifying cell (0, 0) of the sensor matrix accidentally sets the first element of all three rows to 1 due to shallow list multiplication.",
+    "flag": "CC_SHALLOW_MATRIX_37",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Multiplying a list containing a list replicates references to the exact same list. Use a list comprehension [[0] * 3 for _ in range(3)] to create independent rows."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "# Create a 3x3 grid filled with zeros\ngrid = [[0] * 3] * 3\n\n# Set top-left corner to 1\ngrid[0][0] = 1\n\nprint(f\"Grid state: {grid}\")",
+      "hidden_validation_b64": "CmlmIGdyaWQgPT0gW1sxLCAwLCAwXSwgWzAsIDAsIDBdLCBbMCwgMCwgMF1dOgogICAgcHJpbnQoJ1xuRkxBRzogQ0NfU0hBTExPV19NQVRSSVhfMzcnKQo="
+    }
+  },
+  {
+    "id": "core_compute_38",
+    "name": "Negative Slicing Surrender",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The crash telemetry reporter is always missing the critical final event because an explicit -1 stop index excludes the last element in slice notation.",
+    "flag": "CC_SLICE_BOUNDARY_38",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "The upper bound in Python slices is non-inclusive. To slice all the way to the end of a list using negative indexing, omit the stop parameter entirely: logs[-3:]."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "logs = [\"boot\", \"init\", \"auth\", \"sync\", \"ready\"]\n\n# Extract the last 3 log messages: [\"auth\", \"sync\", \"ready\"]\nrecent_logs = logs[-3:-1]\n\nprint(f\"Recent events: {recent_logs}\")",
+      "hidden_validation_b64": "CmlmIHJlY2VudF9sb2dzID09IFsiYXV0aCIsICJzeW5jIiwgInJlYWR5Il06CiAgICBwcmludCgnXG5GTEFHOiBDQ19TTElDRV9CT1VOREFSWV8zOCcpCg=="
+    }
+  },
+  {
+    "id": "core_compute_39",
+    "name": "The Premature Generator",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "The thruster controller halted before ignition because the countdown sequence dropped the final T-0 countdown tick.",
+    "flag": "CC_RANGE_INCLUSIVE_39",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Python range() stops one step before the stop value. To include 0 when stepping by -1, set the stop boundary to -1."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "# Countdown from 5 down to 0 inclusive for rocket ignition\ncountdown = list(range(5, 0, -1))\n\nprint(f\"Ignition sequence: {countdown}\")",
+      "hidden_validation_b64": "CmlmIGNvdW50ZG93biA9PSBbNSwgNCwgMywgMiwgMSwgMF06CiAgICBwcmludCgnXG5GTEFHOiBDQ19SQU5HRV9JTkNMVVNJVkVfMzknKQo="
+    }
+  },
+  {
+    "id": "core_compute_40",
+    "name": "Floating Point Precision Trap",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "problem_statement": "A micro-payment transaction validator rejected a legitimate 0.3 credit balance because direct float equality comparison failed on IEEE 754 precision artifacts.",
+    "flag": "CC_FLOAT_EPSILON_40",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Binary floating point numbers cannot represent 0.1 or 0.2 exactly. Use round(total_credit, 2) == 0.3 or abs(total_credit - 0.3) < 1e-9 for floating point comparisons."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "credit_a = 0.1\ncredit_b = 0.2\ntotal_credit = credit_a + credit_b\n\n# Verify if total credit equals 0.3\nis_valid = (total_credit == 0.3)\n\nprint(f\"Transaction verified: {is_valid}\")",
+      "hidden_validation_b64": "CmlmIGlzX3ZhbGlkID09IFRydWU6CiAgICBwcmludCgnXG5GTEFHOiBDQ19GTE9BVF9FUFNJTE9OXzQwJykK"
+    }
+  },
+  {
+    "id": "core_compute_41",
+    "name": "Binary Search First Occurrence",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The audit log indexer needs to find the earliest timestamp entry for duplicate events, but the binary search returns an arbitrary middle match instead of the first occurrence.",
+    "flag": "CC_BISECT_FIRST_41",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "When arr[mid] == target, store mid as a candidate answer and continue searching the left half by setting right = mid - 1."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def find_first_occurrence(arr, target):\n    left, right = 0, len(arr) - 1\n    result = -1\n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid # Bug: Might not be the first occurrence!\n        elif arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n    return result\n\nidx = find_first_occurrence([1, 2, 4, 4, 4, 5, 6], 4)\nprint(f\"First occurrence index: {idx}\")",
+      "hidden_validation_b64": "CnQxID0gZmluZF9maXJzdF9vY2N1cnJlbmNlKFsxLCAyLCA0LCA0LCA0LCA1LCA2XSwgNCkKdDIgPSBmaW5kX2ZpcnN0X29jY3VycmVuY2UoWzMsIDMsIDMsIDNdLCAzKQppZiB0MSA9PSAyIGFuZCB0MiA9PSAwOgogICAgcHJpbnQoJ1xuRkxBRzogQ0NfQklTRUNUX0ZJUlNUXzQxJykK"
+    }
+  },
+  {
+    "id": "core_compute_42",
+    "name": "Stack Invariant Violation",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The code syntax validator accepts unclosed opening brackets like '(()' as valid expressions because it forgets to check if the bracket stack is empty upon completion.",
+    "flag": "CC_STACK_BALANCE_42",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Even if no unmatched closing brackets appear, open brackets might remain in the stack. Check that len(stack) == 0 at the end."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def is_valid_brackets(s):\n    matching = {')': '(', '}': '{', ']': '['}\n    stack = []\n    for char in s:\n        if char in matching.values():\n            stack.append(char)\n        elif char in matching:\n            if not stack or stack.pop() != matching[char]:\n                return False\n    # Bug: Forgot to verify all opened brackets were closed!\n    return True\n\nvalid = is_valid_brackets(\"(()\")\nprint(f\"Is valid: {valid}\")",
+      "hidden_validation_b64": "CmlmIGlzX3ZhbGlkX2JyYWNrZXRzKCIoKCkiKSA9PSBGYWxzZSBhbmQgaXNfdmFsaWRfYnJhY2tldHMoIigpW117fSIpID09IFRydWUgYW5kIGlzX3ZhbGlkX2JyYWNrZXRzKCIoW3t9XSkiKSA9PSBUcnVlOgogICAgcHJpbnQoJ1xuRkxBRzogQ0NfU1RBQ0tfQkFMQU5DRV80MicpCg=="
+    }
+  },
+  {
+    "id": "core_compute_43",
+    "name": "Queue FIFO Flip",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "A real-time telemetry pipe reversed packet delivery order because its internal queue implementation called pop() from the tail instead of the head.",
+    "flag": "CC_QUEUE_FIFO_43",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "In a First-In-First-Out queue, the item removed must be the oldest item added. Calling pop() removes from the end; use pop(0) to remove from the front."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "class MessageQueue:\n    def __init__(self):\n        self.items = []\n\n    def enqueue(self, item):\n        self.items.append(item)\n\n    def dequeue(self):\n        if not self.items:\n            return None\n        # Bug: pop() without index removes the newest item (LIFO)!\n        return self.items.pop()\n\nmq = MessageQueue()\nmq.enqueue(\"msg_1\")\nmq.enqueue(\"msg_2\")\nfirst_out = mq.dequeue()\nprint(f\"Dequeued: {first_out}\")",
+      "hidden_validation_b64": "CnEgPSBNZXNzYWdlUXVldWUoKQpxLmVucXVldWUoIkEiKQpxLmVucXVldWUoIkIiKQpxLmVucXVldWUoIkMiKQpyZXMgPSBbcS5kZXF1ZXVlKCksIHEuZGVxdWV1ZSgpLCBxLmRlcXVldWUoKV0KaWYgcmVzID09IFsiQSIsICJCIiwgIkMiXToKICAgIHByaW50KCdcbkZMQUc6IENDX1FVRVVFX0ZJRk9fNDMnKQo="
+    }
+  },
+  {
+    "id": "core_compute_44",
+    "name": "Recursive Power Overflow",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The cryptography key generator crashed with RecursionError when an exponent of 0 was provided because the base case assumed n is always at least 1.",
+    "flag": "CC_RECURSIVE_EXP_44",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Any number raised to the power of 0 equals 1. Add if n == 0: return 1 as the primary base case."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def power(x, n):\n    # Bug: Base case stops at 1, causing infinite recursion on n = 0\n    if n == 1:\n        return x\n    return x * power(x, n - 1)\n\n# Uncomment below to test:\n# ans = power(2, 0)\n# print(ans)",
+      "hidden_validation_b64": "CnRyeToKICAgIHAwID0gcG93ZXIoNSwgMCkKICAgIHAzID0gcG93ZXIoMiwgMykKICAgIGlmIHAwID09IDEgYW5kIHAzID09IDg6CiAgICAgICAgcHJpbnQoJ1xuRkxBRzogQ0NfUkVDVVJTSVZFX0VYUF80NCcpCmV4Y2VwdDoKICAgIHBhc3MK"
+    }
+  },
+  {
+    "id": "core_compute_45",
+    "name": "Two Pointers Container Collapse",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The hydraulic capacity calculator produces sub-optimal water volume results because its two-pointer loop always advances the left wall instead of the shorter wall.",
+    "flag": "CC_CONTAINER_POINTERS_45",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "In the two-pointer container problem, you must advance the pointer with the smaller height: if heights[left] < heights[right]: left += 1 else: right -= 1."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def max_area(heights):\n    left = 0\n    right = len(heights) - 1\n    max_water = 0\n    while left < right:\n        width = right - left\n        h = min(heights[left], heights[right])\n        max_water = max(max_water, width * h)\n        # Bug: Always moving left pointer regardless of height!\n        left += 1\n    return max_water\n\nans = max_area([1, 8, 100, 100, 4, 2])\nprint(f\"Max water area: {ans}\")",
+      "hidden_validation_b64": "CnJlcyA9IG1heF9hcmVhKFsxLCA4LCAxMDAsIDEwMCwgNCwgMl0pCmlmIHJlcyA9PSAxMDA6CiAgICBwcmludCgnXG5GTEFHOiBDQ19DT05UQUlORVJfUE9JTlRFUlNfNDUnKQo="
+    }
+  },
+  {
+    "id": "core_compute_46",
+    "name": "String Anagram Hash Collision",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The text indexer fails with an unhashable type error when grouping anagrams because it attempts to use a mutable list as a dictionary key.",
+    "flag": "CC_UNHASHABLE_KEY_46",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Dictionary keys must be hashable and immutable. Convert the frequency count list into a tuple using tuple(counts) so it can serve as a valid map key."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def group_anagrams(words):\n    groups = {}\n    for word in words:\n        counts = [0] * 26\n        for char in word:\n            counts[ord(char) - ord('a')] += 1\n        # Bug: lists cannot be used as dictionary keys!\n        key = counts\n        if key not in groups:\n            groups[key] = []\n        groups[key].append(word)\n    return list(groups.values())\n\n# Uncomment below to test:\n# result = group_anagrams([\"eat\", \"tea\", \"tan\", \"ate\", \"nat\", \"bat\"])\n# print(result)",
+      "hidden_validation_b64": "CnRyeToKICAgIHJlcyA9IGdyb3VwX2FuYWdyYW1zKFsiZWF0IiwgInRlYSIsICJ0YW4iLCAiYXRlIiwgIm5hdCIsICJiYXQiXSkKICAgIHNvcnRlZF9yZXMgPSBzb3J0ZWQoW3NvcnRlZChnKSBmb3IgZyBpbiByZXNdKQogICAgaWYgc29ydGVkX3JlcyA9PSBbWydhdGUnLCAnZWF0JywgJ3RlYSddLCBbJ2JhdCddLCBbJ25hdCcsICd0YW4nXV06CiAgICAgICAgcHJpbnQoJ1xuRkxBRzogQ0NfVU5IQVNIQUJMRV9LRVlfNDYnKQpleGNlcHQ6CiAgICBwYXNzCg=="
+    }
+  },
+  {
+    "id": "core_compute_47",
+    "name": "Cycle Detection Infinite Wander",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "Memory leak detector hangs in infinite traversal because the fast pointer in Floyd's cycle finding algorithm moves at the same speed as the slow pointer.",
+    "flag": "CC_TORTOISE_HARE_47",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "In Floyd's Cycle Detection algorithm, the fast pointer must move twice as fast as the slow pointer: fast = fast.next.next."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "class Node:\n    def __init__(self, val):\n        self.val = val\n        self.next = None\n\ndef has_cycle(head):\n    if not head or not head.next:\n        return False\n    slow = head\n    fast = head\n    while fast and fast.next:\n        slow = slow.next\n        # Bug: fast is only moving 1 step instead of 2!\n        fast = fast.next\n        if slow == fast:\n            return True\n    return False\n\nn1, n2, n3 = Node(1), Node(2), Node(3)\nn1.next = n2\nn2.next = n3\nn3.next = n2\nprint(f\"Cycle detected: {has_cycle(n1)}\")",
+      "hidden_validation_b64": "Cm4xLCBuMiwgbjMgPSBOb2RlKDEpLCBOb2RlKDIpLCBOb2RlKDMpCm4xLm5leHQgPSBuMgpuMi5uZXh0ID0gbjMKbjMubmV4dCA9IG4yCmMxID0gaGFzX2N5Y2xlKG4xKQphMSwgYTIgPSBOb2RlKDEwKSwgTm9kZSgyMCkKYTEubmV4dCA9IGEyCmMyID0gaGFzX2N5Y2xlKGExKQppZiBjMSA9PSBUcnVlIGFuZCBjMiA9PSBGYWxzZToKICAgIHByaW50KCdcbkZMQUc6IENDX1RPUlRPSVNFX0hBUkVfNDcnKQo="
+    }
+  },
+  {
+    "id": "core_compute_48",
+    "name": "Interval Merge Gap",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The calendar scheduling aggregator shrunk booking slots when a smaller meeting took place entirely within an existing larger reservation block.",
+    "flag": "CC_INTERVAL_MERGE_48",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "When an interval is swallowed by a previous larger interval, setting prev[1] = current[1] shrinks it. Use prev[1] = max(prev[1], current[1])."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def merge_intervals(intervals):\n    if not intervals:\n        return []\n    intervals.sort(key=lambda x: x[0])\n    merged = [intervals[0]]\n    for current in intervals[1:]:\n        prev = merged[-1]\n        if current[0] <= prev[1]:\n            # Bug: Overwriting end with current[1] can shrink the interval!\n            prev[1] = current[1]\n        else:\n            merged.append(current)\n    return merged\n\nres = merge_intervals([[1, 5], [2, 3], [6, 8]])\nprint(f\"Merged intervals: {res}\")",
+      "hidden_validation_b64": "CnIxID0gbWVyZ2VfaW50ZXJ2YWxzKFtbMSwgNV0sIFsyLCAzXSwgWzYsIDhdXSkKcjIgPSBtZXJnZV9pbnRlcnZhbHMoW1sxLCA0XSwgWzQsIDVdXSkKaWYgcjEgPT0gW1sxLCA1XSwgWzYsIDhdXSBhbmQgcjIgPT0gW1sxLCA1XV06CiAgICBwcmludCgnXG5GTEFHOiBDQ19JTlRFUlZBTF9NRVJHRV80OCcpCg=="
+    }
+  },
+  {
+    "id": "core_compute_49",
+    "name": "Binary Search Tree Boundary Drift",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The database index validator mistakenly marked an invalid binary search tree as healthy because it only checked immediate children rather than ancestral range boundaries.",
+    "flag": "CC_BST_BOUNDARIES_49",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "A valid BST requires every node in the right subtree to be greater than the root ancestor. Pass low and high limits to recursive calls: is_valid_bst(node.left, low, node.val)."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "class TreeNode:\n    def __init__(self, val, left=None, right=None):\n        self.val = val\n        self.left = left\n        self.right = right\n\ndef is_valid_bst(root, low=float('-inf'), high=float('inf')):\n    if not root:\n        return True\n    # Bug: Only checking immediate child values, ignoring ancestral bounds!\n    if root.left and root.left.val >= root.val:\n        return False\n    if root.right and root.right.val <= root.val:\n        return False\n    return is_valid_bst(root.left) and is_valid_bst(root.right)\n\n# Tree: 5 -> right: 7 -> left: 4 (Invalid because 4 < 5!)\ntree = TreeNode(5, None, TreeNode(7, TreeNode(4), None))\nstatus = is_valid_bst(tree)\nprint(f\"Is valid BST: {status}\")",
+      "hidden_validation_b64": "CmJhZF90cmVlID0gVHJlZU5vZGUoNSwgTm9uZSwgVHJlZU5vZGUoNywgVHJlZU5vZGUoNCksIE5vbmUpKQpnb29kX3RyZWUgPSBUcmVlTm9kZSg1LCBUcmVlTm9kZSgzKSwgVHJlZU5vZGUoNykpCmlmIGlzX3ZhbGlkX2JzdChiYWRfdHJlZSkgPT0gRmFsc2UgYW5kIGlzX3ZhbGlkX2JzdChnb29kX3RyZWUpID09IFRydWU6CiAgICBwcmludCgnXG5GTEFHOiBDQ19CU1RfQk9VTkRBUklFU180OScpCg=="
+    }
+  },
+  {
+    "id": "core_compute_50",
+    "name": "Rotated Sorted Array Pivot Drop",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "problem_statement": "The ring buffer search routine missed items sitting directly on the right boundary of a rotated sorted array due to an overly strict inequality check.",
+    "flag": "CC_ROTATED_ARRAY_50",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Check the boundary comparison in the right-half condition. If the target equals nums[right], a strict < excludes it; change it to <= nums[right]."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def search_rotated(nums, target):\n    left, right = 0, len(nums) - 1\n    while left <= right:\n        mid = (left + right) // 2\n        if nums[mid] == target:\n            return mid\n        if nums[left] <= nums[mid]:\n            if nums[left] <= target < nums[mid]:\n                right = mid - 1\n            else:\n                left = mid + 1\n        else:\n            # Bug: Strictly less (<) misses the target when it equals nums[right]!\n            if nums[mid] < target < nums[right]:\n                left = mid + 1\n            else:\n                right = mid - 1\n    return -1\n\nidx = search_rotated([6, 7, 1, 2, 3, 4, 5], 5)\nprint(f\"Found index: {idx}\")",
+      "hidden_validation_b64": "CnQxID0gc2VhcmNoX3JvdGF0ZWQoWzYsIDcsIDEsIDIsIDMsIDQsIDVdLCA1KQp0MiA9IHNlYXJjaF9yb3RhdGVkKFs2LCA3LCAxLCAyLCAzLCA0LCA1XSwgMSkKdDMgPSBzZWFyY2hfcm90YXRlZChbNiwgNywgMSwgMiwgMywgNCwgNV0sIDk5KQppZiB0MSA9PSA2IGFuZCB0MiA9PSAyIGFuZCB0MyA9PSAtMToKICAgIHByaW50KCdcbkZMQUc6IENDX1JPVEFURURfQVJSQVlfNTAnKQo="
+    }
+  },
+  {
+    "id": "core_compute_51",
+    "name": "The LCS Dynamic Transition",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The genomic sequence aligner reported an LCS length of 0 for matching strands because its DP transition used min() instead of max() on non-matching characters.",
+    "flag": "CC_LCS_DP_TRANSITION_51",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "In the Longest Common Subsequence DP table, when characters differ, you carry forward the longest subsequence found so far: use max(dp[i-1][j], dp[i][j-1])."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def longest_common_subsequence(text1, text2):\n    m, n = len(text1), len(text2)\n    dp = [[0] * (n + 1) for _ in range(m + 1)]\n\n    for i in range(1, m + 1):\n        for j in range(1, n + 1):\n            if text1[i - 1] == text2[j - 1]:\n                dp[i][j] = 1 + dp[i - 1][j - 1]\n            else:\n                # Bug: Used min() instead of max() when characters don't match!\n                dp[i][j] = min(dp[i - 1][j], dp[i][j - 1])\n    return dp[m][n]\n\nlcs_len = longest_common_subsequence(\"abcde\", \"ace\")\nprint(f\"LCS length: {lcs_len}\")",
+      "hidden_validation_b64": "CmwxID0gbG9uZ2VzdF9jb21tb25fc3Vic2VxdWVuY2UoImFiY2RlIiwgImFjZSIpCmwyID0gbG9uZ2VzdF9jb21tb25fc3Vic2VxdWVuY2UoImFnZ3RhYiIsICJneHR4YXliIikKaWYgbDEgPT0gMyBhbmQgbDIgPT0gNDoKICAgIHByaW50KCdcbkZMQUc6IENDX0xDU19EUF9UUkFOU0lUSU9OXzUxJykK"
+    }
+  },
+  {
+    "id": "core_compute_52",
+    "name": "Graph Traversal Cycle Trap",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The network topology analyzer crashes with RecursionError when checking for redundant loop cycles because nodes are added to the visited set only after visiting neighbors.",
+    "flag": "CC_GRAPH_DFS_CYCLE_52",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Mark the current node as visited immediately upon entering the DFS function (visited.add(node) at top). If you wait until after iterating neighbors, cycles recurse indefinitely."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def has_cycle(graph):\n    visited = set()\n\n    def dfs(node, parent):\n        # Bug: Adding to visited AFTER exploring neighbors causes infinite recursion!\n        for neighbor in graph.get(node, []):\n            if neighbor == parent:\n                continue\n            if neighbor in visited:\n                return True\n            if dfs(neighbor, node):\n                return True\n        visited.add(node)\n        return False\n\n    for n in graph:\n        if n not in visited:\n            if dfs(n, None):\n                return True\n    return False\n\n# Uncomment below to test:\n# g = {1: [2, 3], 2: [1, 3], 3: [1, 2]}\n# print(has_cycle(g))",
+      "hidden_validation_b64": "CmltcG9ydCBzaWduYWwKZGVmIGhhbmRsZXIoc2lnbnVtLCBmcmFtZSk6IHJhaXNlIEV4Y2VwdGlvbigpCnNpZ25hbC5zaWduYWwoc2lnbmFsLlNJR0FMUk0sIGhhbmRsZXIpCnNpZ25hbC5hbGFybSgxKQp0cnk6CiAgICBnMSA9IHsxOiBbMiwgM10sIDI6IFsxLCAzXSwgMzogWzEsIDJdfQogICAgZzIgPSB7MTogWzJdLCAyOiBbMSwgM10sIDM6IFsyXX0KICAgIGlmIGhhc19jeWNsZShnMSkgPT0gVHJ1ZSBhbmQgaGFzX2N5Y2xlKGcyKSA9PSBGYWxzZToKICAgICAgICBwcmludCgnXG5GTEFHOiBDQ19HUkFQSF9ERlNfQ1lDTEVfNTInKQpleGNlcHQ6CiAgICBwYXNzCg=="
+    }
+  },
+  {
+    "id": "core_compute_53",
+    "name": "Sliding Window Pointer Regress",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The stream deduplicator over-counted unique character sequence lengths on palindromic patterns like 'abba' because the sliding window left pointer drifted backwards.",
+    "flag": "CC_SLIDING_WINDOW_REGRESS_53",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "When encountering a previously seen character, the left pointer must never move backward. Use left = max(left, last_seen[char] + 1)."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def length_of_longest_substring(s):\n    last_seen = {}\n    max_len = 0\n    left = 0\n    for right, char in enumerate(s):\n        if char in last_seen:\n            # Bug: left pointer can jump backward if last_seen[char] is before current left!\n            left = last_seen[char] + 1\n        last_seen[char] = right\n        max_len = max(max_len, right - left + 1)\n    return max_len\n\nans = length_of_longest_substring(\"abba\")\nprint(f\"Max substring length: {ans}\")",
+      "hidden_validation_b64": "CnQxID0gbGVuZ3RoX29mX2xvbmdlc3Rfc3Vic3RyaW5nKCJhYmJhIikKdDIgPSBsZW5ndGhfb2ZfbG9uZ2VzdF9zdWJzdHJpbmcoInB3d2tldyIpCnQzID0gbGVuZ3RoX29mX2xvbmdlc3Rfc3Vic3RyaW5nKCJhYmNhYmNiYiIpCmlmIHQxID09IDIgYW5kIHQyID09IDMgYW5kIHQzID09IDM6CiAgICBwcmludCgnXG5GTEFHOiBDQ19TTElESU5HX1dJTkRPV19SRUdSRVNTXzUzJykK"
+    }
+  },
+  {
+    "id": "core_compute_54",
+    "name": "Power of Four False Positive",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The memory partitioner accepts block sizes that are powers of 2 (like 8 or 32) when allocating 4-way associative cache lines, instead of strictly powers of 4.",
+    "flag": "CC_POWER_OF_FOUR_54",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Every power of 4 is a power of 2, but also satisfies (n - 1) % 3 == 0 (or n % 3 == 1). Add this modular check to eliminate false power-of-two positives like 8 and 32."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def is_power_of_four(n):\n    # Bug: Checks only if n is a power of two, falsely accepting 2, 8, 32, etc.!\n    return n > 0 and (n & (n - 1)) == 0\n\ncheck_8 = is_power_of_four(8)\nprint(f\"Is 8 power of four: {check_8}\")",
+      "hidden_validation_b64": "CmMxID0gaXNfcG93ZXJfb2ZfZm91cigxKQpjNCA9IGlzX3Bvd2VyX29mX2ZvdXIoNCkKYzggPSBpc19wb3dlcl9vZl9mb3VyKDgpCmMxNiA9IGlzX3Bvd2VyX29mX2ZvdXIoMTYpCmMzMiA9IGlzX3Bvd2VyX29mX2ZvdXIoMzIpCmlmIGMxID09IFRydWUgYW5kIGM0ID09IFRydWUgYW5kIGM4ID09IEZhbHNlIGFuZCBjMTYgPT0gVHJ1ZSBhbmQgYzMyID09IEZhbHNlOgogICAgcHJpbnQoJ1xuRkxBRzogQ0NfUE9XRVJfT0ZfRk9VUl81NCcpCg=="
+    }
+  },
+  {
+    "id": "core_compute_55",
+    "name": "0-1 Knapsack Direction Error",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The payload cargo optimizer duplicated single-instance equipment items because the 1D DP table updated capacities from left to right instead of right to left.",
+    "flag": "CC_KNAPSACK_REVERSE_1D_55",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "In 1D dynamic programming for 0-1 Knapsack, you must iterate capacity backwards (range(capacity, weight - 1, -1)) so you don't reuse the current item multiple times."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def knapsack_01(weights, values, capacity):\n    dp = [0] * (capacity + 1)\n    for weight, val in zip(weights, values):\n        # Bug: Forward iteration allows the same item to be picked repeatedly!\n        for w in range(weight, capacity + 1):\n            dp[w] = max(dp[w], dp[w - weight] + val)\n    return dp[capacity]\n\n# Item weight 2, value 10. Capacity 4.\n# Should take it once (10), but forward DP takes it twice (20)!\nans = knapsack_01([2], [10], 4)\nprint(f\"Max value: {ans}\")",
+      "hidden_validation_b64": "CmsxID0ga25hcHNhY2tfMDEoWzJdLCBbMTBdLCA0KQprMiA9IGtuYXBzYWNrXzAxKFsxLCAzLCA0XSwgWzE1LCAyMCwgMzBdLCA0KQppZiBrMSA9PSAxMCBhbmQgazIgPT0gMzU6CiAgICBwcmludCgnXG5GTEFHOiBDQ19LTkFQU0FDS19SRVZFUlNFXzFEXzU1JykK"
+    }
+  },
+  {
+    "id": "core_compute_56",
+    "name": "Dijkstra Priority Inversion",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The routing protocol selected sub-optimal high-latency paths because its priority queue stored node names before edge weights, sorting by alphabetic name rather than shortest distance.",
+    "flag": "CC_DIJKSTRA_HEAP_ORDER_56",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Python's heapq sorts tuples by their first element. The distance must be the first element in the tuple: (dist, node) rather than (node, dist)."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "import heapq\n\ndef dijkstra(graph, start):\n    distances = {node: float('inf') for node in graph}\n    distances[start] = 0\n    visited = set()\n    # Bug: Pushed (start, 0) instead of (0, start), sorting by node name instead of distance!\n    pq = [(start, 0)]\n    \n    while pq:\n        curr_node, curr_dist = heapq.heappop(pq)\n        if curr_node in visited:\n            continue\n        visited.add(curr_node)\n        for neighbor, weight in graph[curr_node]:\n            d = curr_dist + weight\n            if d < distances[neighbor]:\n                distances[neighbor] = d\n                heapq.heappush(pq, (neighbor, d))\n    return distances\n\ng = {\n    'A': [('B', 10), ('C', 3)],\n    'B': [('D', 2)],\n    'C': [('B', 1), ('D', 8)],\n    'D': []\n}\nans = dijkstra(g, 'A')\nprint(f\"Distances: {ans}\")",
+      "hidden_validation_b64": "CmcgPSB7CiAgICAnQSc6IFsoJ0InLCAxMCksICgnQycsIDMpXSwKICAgICdCJzogWygnRCcsIDIpXSwKICAgICdDJzogWygnQicsIDEpLCAoJ0QnLCA4KV0sCiAgICAnRCc6IFtdCn0KcmVzID0gZGlqa3N0cmEoZywgJ0EnKQppZiByZXMgPT0geydBJzogMCwgJ0InOiA0LCAnQyc6IDMsICdEJzogNn06CiAgICBwcmludCgnXG5GTEFHOiBDQ19ESUpLU1RSQV9IRUFQX09SREVSXzU2JykK"
+    }
+  },
+  {
+    "id": "core_compute_57",
+    "name": "Topological Sort Cycle Omission",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The build dependency resolver attempted to compile packages in impossible cyclic dependency graphs because Kahn's topological sort failed to check if all tasks were processed.",
+    "flag": "CC_KAHN_CYCLE_DETECT_57",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "If a dependency graph contains a cycle, Kahn's algorithm cannot resolve all nodes. Verify len(order) == num_tasks; if not, return []."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "from collections import deque\n\ndef find_order(num_tasks, prerequisites):\n    adj = {i: [] for i in range(num_tasks)}\n    indegree = [0] * num_tasks\n    for dest, src in prerequisites:\n        adj[src].append(dest)\n        indegree[dest] += 1\n\n    queue = deque([i for i in range(num_tasks) if indegree[i] == 0])\n    order = []\n\n    while queue:\n        curr = queue.popleft()\n        order.append(curr)\n        for neighbor in adj[curr]:\n            indegree[neighbor] -= 1\n            if indegree[neighbor] == 0:\n                queue.append(neighbor)\n\n    # Bug: If a cycle exists, order contains partial tasks instead of empty list!\n    return order\n\ncycle_res = find_order(3, [[1, 2], [2, 1]])\nprint(f\"Schedule: {cycle_res}\")",
+      "hidden_validation_b64": "CmNfcmVzID0gZmluZF9vcmRlcigzLCBbWzEsIDJdLCBbMiwgMV1dKQp2YWxpZF9yZXMgPSBmaW5kX29yZGVyKDMsIFtbMSwgMF0sIFsyLCAxXV0pCmlmIGNfcmVzID09IFtdIGFuZCB2YWxpZF9yZXMgPT0gWzAsIDEsIDJdOgogICAgcHJpbnQoJ1xuRkxBRzogQ0NfS0FITl9DWUNMRV9ERVRFQ1RfNTcnKQo="
+    }
+  },
+  {
+    "id": "core_compute_58",
+    "name": "Monotonic Stack Temperature Index",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The weather forecast span tracker threw IndexErrors because the monotonic stack pushed raw temperature values rather than day index positions.",
+    "flag": "CC_MONOTONIC_INDEX_58",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "To calculate the distance between days (i - prev_idx), the monotonic stack must track list indices, not raw temperature values. Change stack.append(temp) to stack.append(i)."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def daily_temperatures(temperatures):\n    n = len(temperatures)\n    ans = [0] * n\n    stack = []  # Stack should store indices\n    for i, temp in enumerate(temperatures):\n        while stack and temperatures[stack[-1]] < temp:\n            prev_idx = stack.pop()\n            ans[prev_idx] = i - prev_idx\n        # Bug: Appending the temperature value instead of the day index i!\n        stack.append(temp)\n    return ans\n\n# Uncomment below to test:\n# res = daily_temperatures([73, 74, 75, 71, 69, 72, 76, 73])\n# print(res)",
+      "hidden_validation_b64": "CnJlcyA9IGRhaWx5X3RlbXBlcmF0dXJlcyhbNzMsIDc0LCA3NSwgNzEsIDY5LCA3MiwgNzYsIDczXSkKaWYgcmVzID09IFsxLCAxLCA0LCAyLCAxLCAxLCAwLCAwXToKICAgIHByaW50KCdcbkZMQUc6IENDX01PTk9UT05JQ19JTkRFWF81OCcpCg=="
+    }
+  },
+  {
+    "id": "core_compute_59",
+    "name": "Trie Prefix Over-Match",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The dictionary lookup autocompleter returned full word matches for partial prefixes because the search method omitted the terminal node end-of-word boolean check.",
+    "flag": "CC_TRIE_END_MARKER_59",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "In a prefix tree, a path match is only a valid complete word if the terminal node's end-of-word flag is set. Change return True in search to return node.is_end."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "class TrieNode:\n    def __init__(self):\n        self.children = {}\n        self.is_end = False\n\nclass Trie:\n    def __init__(self):\n        self.root = TrieNode()\n\n    def insert(self, word):\n        node = self.root\n        for char in word:\n            if char not in node.children:\n                node.children[char] = TrieNode()\n            node = node.children[char]\n        node.is_end = True\n\n    def search(self, word):\n        node = self.root\n        for char in word:\n            if char not in node.children:\n                return False\n            node = node.children[char]\n        # Bug: Returning True without verifying node.is_end!\n        return True\n\ntrie = Trie()\ntrie.insert(\"apple\")\nprint(f\"Search 'app': {trie.search('app')}\")",
+      "hidden_validation_b64": "CnQgPSBUcmllKCkKdC5pbnNlcnQoImFwcGxlIikKczEgPSB0LnNlYXJjaCgiYXBwbGUiKQpzMiA9IHQuc2VhcmNoKCJhcHAiKQp0Lmluc2VydCgiYXBwIikKczMgPSB0LnNlYXJjaCgiYXBwIikKaWYgczEgPT0gVHJ1ZSBhbmQgczIgPT0gRmFsc2UgYW5kIHMzID09IFRydWU6CiAgICBwcmludCgnXG5GTEFHOiBDQ19UUklFX0VORF9NQVJLRVJfNTknKQo="
+    }
+  },
+  {
+    "id": "core_compute_60",
+    "name": "Two Unique Numbers Bit Isolation",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "problem_statement": "The signal demultiplexer failed to separate two distinct radio beacon IDs from a stream of paired echoes because its bitmask calculation cleared rather than isolated the discriminating bit.",
+    "flag": "CC_BITMASK_ISOLATE_60",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "To isolate the lowest set bit in binary, use x & (-x) using two's complement. x & (x - 1) clears the lowest set bit rather than isolating it."
+      }
+    ],
+    "editor_state": {
+      "visible_code": "def find_two_unique(nums):\n    xor_all = 0\n    for n in nums:\n        xor_all ^= n\n\n    # Bug: 'x & (x - 1)' clears the lowest bit instead of isolating it!\n    diff_bit = xor_all & (xor_all - 1)\n\n    num1, num2 = 0, 0\n    for n in nums:\n        if n & diff_bit:\n            num1 ^= n\n        else:\n            num2 ^= n\n    return sorted([num1, num2])\n\nres = find_two_unique([1, 2, 1, 3, 2, 5])\nprint(f\"Unique numbers: {res}\")",
+      "hidden_validation_b64": "CmFuczEgPSBmaW5kX3R3b191bmlxdWUoWzEsIDIsIDEsIDMsIDIsIDVdKQphbnMyID0gZmluZF90d29fdW5pcXVlKFsyLCAzXSkKaWYgYW5zMSA9PSBbMywgNV0gYW5kIGFuczIgPT0gWzIsIDNdOgogICAgcHJpbnQoJ1xuRkxBRzogQ0NfQklUTUFTS19JU09MQVRFXzYwJykK"
+    }
+  }
+]

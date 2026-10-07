@@ -109,7 +109,7 @@ export async function crewSnapshot(q: Queryable, ctx: CrewContext) {
   return {
     serverTime: new Date(now).toISOString(),
     identity: { role: 'CREW' as const, teamId: ctx.team.id, crewId: ctx.team.crew_id, name: ctx.team.name, color: ctx.team.color, members, mustChangePassword: ctx.team.must_change_password },
-    event: { name: ctx.event.name, edition: ctx.event.edition, organizer: ctx.event.organizer, isDemo: ctx.event.is_demo, metric: ctx.event.rules.rankingMetric, phase: ctx.event.phase },
+    event: { name: ctx.event.name, edition: ctx.event.edition, organizer: ctx.event.organizer, isDemo: ctx.event.is_demo, metric: ctx.event.rules.rankingMetric, phase: ctx.event.phase, protectContent: ctx.event.rules.protectContent },
     slot: { ...slotDto(ctx.slot), date: day?.date ?? null, dayLabel: day?.label ?? null },
     sprint: sprintDto(sh.current, now),
     sprints: sh.sprints.map((s) => sprintDto(s, now)),

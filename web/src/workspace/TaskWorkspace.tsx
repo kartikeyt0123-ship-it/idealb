@@ -6,12 +6,15 @@
  * component never decides correctness, never fakes run output and never puts
  * an unpurchased hint in the DOM.
  */
-import { AlertTriangle, ArrowLeft, Bug, Clock, Eraser, FileText, Lock, PauseCircle, RefreshCw, RotateCcw, ScrollText, Save, ShieldX } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, BellRing, Bug, Clock, Eraser, FileText, Lock, PauseCircle, RefreshCw, RotateCcw, ScrollText, Save, ShieldX, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
-import { ApiError, api, serverNow, V1, type Metric, type QuestionDetail, type SubmitResult } from '../lib/api';
+import { ApiError, api, serverNow, V1, type HintLevelDto, type Metric, type QuestionDetail, type SubmitResult } from '../lib/api';
 import { Badge, Button, Coin, Crewmate, Label, StatePanel, Timer, useToast } from '../components/ui';
 import './monacoSetup';
 import { CodeEditor } from './CodeEditor';
+import { EvidenceBoard } from './EvidenceBoard';
+import { JsonDevice } from './JsonDevice';
+import { Terminal } from './Terminal';
 import { HintPanel, type HintResponse } from './HintPanel';
 import { CsvTable, Modal, SplitPanels, Statement, Tabs, useMediaQuery } from './parts';
 import { PreviewFrame, type PreviewConsoleLevel } from './PreviewFrame';
@@ -49,6 +52,8 @@ export interface WorkspaceProps {
   onSolved: (r: { reward: number; wallet: number }) => void;
   /** Ask the parent to refetch its snapshot (after hint purchase etc.). */
   onChanged: () => void;
+  /** Organizer content protection (event.protectContent): disables Monaco copy/cut and protects the preview. */
+  protect?: boolean;
 }
 
 const CLOSED_TEXT = 'Time is up — this system is closed.';
@@ -167,14 +172,17 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
   const stacked = useMediaQuery('(max-width: 899px)');
   const kind = rightKind(detail);
   const files = detail.files;
-  const editable = useMemo(() => files.filter((f) => !f.readOnly), [files]);
+  /** Hidden (preview-only) files never become editor tabs, but they are part of the live preview. */
+  const visibleFiles = useMemo(() => files.filter((f) => !f.hidden), [files]);
+  const editable = useMemo(() => visibleFiles.filter((f) => !f.readOnly), [visibleFiles]);
+  const protect = !!props.protect;
   const scope = useMemo<DraftScope>(() => ({ crewId: crew.crewId, questionId: detail.id, generation: detail.generation }), [crew.crewId, detail.id, detail.generation]);
   const modelPrefix = `ab/${encodeURIComponent(crew.crewId)}/${detail.id}/g${detail.generation}`;
 
   // ---- editor contents & drafts -------------------------------------------------
   const [contents, setContents] = useState<Record<string, string>>(() => {
     const out: Record<string, string> = {};
-    for (const f of files) out[f.name] = f.readOnly ? f.content : (readDraft(scope, f.name) ?? f.content);
+    for (const f of files) out[f.name] = f.readOnly || f.hidden ? f.content : (readDraft(scope, f.name) ?? f.content);
     return out;
   });
   const [notes, setNotes] = useState(() => readDraft(scope, '__notes') ?? '');
@@ -221,7 +229,7 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
 
   const [activeFile, setActiveFile] = useState(() => {
     const entry = detail.runEntry && editable.find((f) => f.name === detail.runEntry);
-    return (entry || editable[0] || files[0])?.name ?? '';
+    return (entry || editable[0] || visibleFiles[0])?.name ?? '';
   });
 
   // ---- status ---------------------------------------------------------------------
@@ -288,8 +296,26 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
   // ---- server run ------------------------------------------------------------------
   const runner = useServerRun(detail.id);
   const editableFiles = useCallback(() => Object.fromEntries(editable.map((f) => [f.name, contents[f.name] ?? f.content])), [editable, contents]);
-  const canServerRun = !!detail.runLanguage && kind !== 'WEB';
-  const doRun = () => void runner.run(editableFiles(), stdin);
+  const runtime = detail.runtimeKind ?? (detail.runLanguage ? 'code' : null);
+  const canServerRun = !!runtime && runtime !== 'shell' && kind !== 'WEB' && kind !== 'SHELL' && kind !== 'EVIDENCE';
+  const jsonFile = kind === 'JSON' ? (editable[0] ?? visibleFiles[0] ?? null) : null;
+  const jsonText = jsonFile ? (contents[jsonFile.name] ?? jsonFile.content) : '';
+  const jsonError = useMemo(() => {
+    if (!jsonFile) return null;
+    try {
+      JSON.parse(jsonText);
+      return null;
+    } catch (e) {
+      return (e as Error).message;
+    }
+  }, [jsonFile, jsonText]);
+  const doRun = () => {
+    if (kind === 'JSON' && jsonError) {
+      notify(`Fix the JSON first: ${jsonError}`, 'alert');
+      return;
+    }
+    void runner.run(editableFiles(), kind === 'RUN' || kind === 'DATA' ? stdin : '');
+  };
   useEffect(() => {
     if (runner.state.phase === 'error' && (CLOSED_CODES.has(runner.state.code) || ELIMINATED_CODES.has(runner.state.code))) handleError(runner.state.code, runner.state.message);
   }, [runner.state, handleError]);
@@ -304,6 +330,14 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
       return next.length > 300 ? next.slice(next.length - 300) : next;
     });
   }, []);
+  const [lastAlert, setLastAlert] = useState<string | null>(null);
+  const onPreviewConsole = useCallback(
+    (level: PreviewConsoleLevel, text: string) => {
+      pushLine(level, text);
+      if (level === 'alert') setLastAlert(text);
+    },
+    [pushLine],
+  );
   const refreshPreview = () => {
     pushLine('system', `— preview refreshed ${new Date().toLocaleTimeString()} —`);
     setPreview((p) => ({ doc: buildPreviewDoc(files, contents), nonce: p.nonce + 1 }));
@@ -311,21 +345,30 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
 
   // ---- tabs ------------------------------------------------------------------------
   const [leftTab, setLeftTab] = useState<'statement' | 'code'>('statement');
-  type RT = 'preview' | 'console' | 'output' | 'dataset' | 'input' | 'evidence' | 'notes';
+  type RT = 'preview' | 'console' | 'output' | 'dataset' | 'input' | 'evidence' | 'notes' | 'terminal' | 'result' | 'device';
+  const csvFiles = visibleFiles.filter(isCsv);
+  const alertCount = lines.filter((l) => l.level === 'alert').length;
   const rightTabs: { id: RT; label: string; icon?: ReactNode }[] =
     kind === 'WEB'
-      ? [{ id: 'preview', label: 'Live Preview' }, { id: 'console', label: `Console${lines.length ? ` (${lines.length})` : ''}` }]
+      ? [{ id: 'preview', label: 'Live Preview' }, { id: 'console', label: `Console${lines.length ? ` (${lines.length})` : ''}${alertCount ? ' ●' : ''}` }]
       : kind === 'DATA'
-        ? [{ id: 'output', label: 'Output' }, { id: 'dataset', label: 'Dataset' }]
+        ? [{ id: 'output', label: 'Output' }, ...(csvFiles.length ? [{ id: 'dataset' as const, label: 'Dataset' }] : [])]
         : kind === 'RUN'
           ? [{ id: 'console', label: 'Console' }, { id: 'input', label: 'Input' }]
-          : [{ id: 'evidence', label: 'Evidence' }, { id: 'notes', label: 'Notes' }];
+          : kind === 'SHELL'
+            ? [{ id: 'terminal', label: 'Terminal' }, { id: 'notes', label: 'Notes' }]
+            : kind === 'SQL'
+              ? [{ id: 'result', label: 'Query Result' }, { id: 'notes', label: 'Notes' }]
+              : kind === 'JSON'
+                ? [{ id: 'device', label: jsonFile?.name === 'payload.json' ? 'Endpoint' : 'Device' }, { id: 'notes', label: 'Notes' }]
+                : [{ id: 'evidence', label: 'Evidence' }, { id: 'notes', label: 'Notes' }];
   const [rightTab, setRightTab] = useState<RT>(rightTabs[0].id);
 
-  const csvFiles = files.filter(isCsv);
   const [csvActive, setCsvActive] = useState(csvFiles[0]?.name ?? '');
-  const evidence = files.filter((f) => f.readOnly);
-  const [evidenceActive, setEvidenceActive] = useState((evidence[0] ?? files[0])?.name ?? '');
+  const BOARD = '__board__';
+  const evidence = visibleFiles.filter((f) => f.readOnly);
+  const evidenceTabs = [...(detail.board ? [{ name: BOARD, label: 'Evidence board' }] : []), ...evidence.map((f) => ({ name: f.name, label: f.name }))];
+  const [evidenceActive, setEvidenceActive] = useState(evidenceTabs[0]?.name ?? '');
 
   // ---- dialogs ---------------------------------------------------------------------
   const [confirmReset, setConfirmReset] = useState(false);
@@ -341,14 +384,16 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
   };
 
   const [ackSolved, setAckSolved] = useState(false);
-  const [hintText, setHintText] = useState<string | null>(detail.hint.unlocked ? detail.hint.text : null);
+  const [hints, setHints] = useState<HintLevelDto[]>(() =>
+    detail.hints?.length ? detail.hints : [{ level: 1, cost: detail.hint.cost, unlocked: detail.hint.unlocked, text: detail.hint.unlocked ? detail.hint.text : null }],
+  );
   const onCorrect = (r: SubmitResult) => {
     setSolvedByYou(true);
     setWalletOverride(r.wallet);
     onSolved({ reward: r.reward ?? detail.reward, wallet: r.wallet });
   };
-  const onHint = (r: HintResponse) => {
-    setHintText(r.hint);
+  const onHint = (r: HintResponse, level: number) => {
+    setHints((hs) => hs.map((h) => (h.level === level ? { ...h, unlocked: true, text: r.hint } : h)));
     setWalletOverride(r.wallet);
     onChanged();
   };
@@ -382,7 +427,7 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
         onChange={setLeftTab}
         tabs={[
           { id: 'statement', label: 'Problem Statement', icon: <ScrollText size={12} /> },
-          { id: 'code', label: 'Code Editor', icon: <FileText size={12} /> },
+          ...(visibleFiles.length ? [{ id: 'code' as const, label: kind === 'JSON' ? 'JSON Editor' : kind === 'SQL' ? 'SQL Editor' : 'Code Editor', icon: <FileText size={12} /> }] : []),
         ]}
         right={
           leftTab === 'code' && editable.length > 0 ? (
@@ -413,10 +458,11 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
           <Label className={imposter ? '!text-[#f0b8a2]' : ''}>REPAIR OBJECTIVE</Label>
           <h3 className="mb-3 mt-1 font-display text-lg font-bold text-[#e9f2ee]">{detail.title}</h3>
           <Statement text={detail.statement} />
+          {visibleFiles.length > 0 && (
           <div className="mt-5 border-t border-white/10 pt-3">
             <Label>SHIP FILES</Label>
             <ul className="mt-2 flex flex-wrap gap-2">
-              {files.map((f) => (
+              {visibleFiles.map((f) => (
                 <li key={f.name}>
                   <button
                     type="button"
@@ -433,10 +479,12 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
               ))}
             </ul>
           </div>
+          )}
         </div>
         <div role="tabpanel" className={leftTab === 'code' ? 'h-full' : 'hidden'}>
           <CodeEditor
-            files={files}
+            files={visibleFiles}
+            protect={protect}
             contents={contents}
             active={activeFile}
             onActive={setActiveFile}
@@ -448,13 +496,15 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
         </div>
       </div>
       <div className="flex shrink-0 justify-between gap-2 border-t border-[#36515f] px-3 py-1.5 font-mono text-[8px] tracking-wider text-[#6c929d]">
-        <span>{(detail.runLanguage ?? detail.workspace).toUpperCase()} / UTF-8</span>
+        <span>{(kind === 'SHELL' ? 'TERMINAL' : kind === 'SQL' ? 'SQLITE' : kind === 'JSON' ? 'JSON' : (detail.runLanguage ?? detail.workspace)).toUpperCase()} / UTF-8</span>
         <span>{detail.validation.mode === 'CODE_TESTS' ? 'SERVER VERIFICATION · HIDDEN TESTS' : 'SERVER VERIFICATION'}</span>
       </div>
     </div>
   );
 
-  const runControls = canServerRun ? <RunButtons state={runner.state} onRun={doRun} onCancel={() => void runner.cancel()} disabled={locked || paused} /> : null;
+  const runControls = canServerRun ? (
+    <RunButtons state={runner.state} onRun={doRun} onCancel={() => void runner.cancel()} disabled={locked || paused || (kind === 'JSON' && !!jsonError)} label={kind === 'JSON' ? 'Apply' : kind === 'SQL' ? 'Run query' : 'Run'} />
+  ) : null;
 
   const rightRight =
     kind === 'WEB' ? (
@@ -484,25 +534,45 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
           <>
             <div role="tabpanel" className={rightTab === 'preview' ? 'flex h-full flex-col' : 'hidden'}>
               <div className="min-h-0 flex-1 p-2">
-                <PreviewFrame doc={preview.doc} nonce={preview.nonce} onConsole={pushLine} onRendered={() => undefined} />
+                <PreviewFrame doc={preview.doc} nonce={preview.nonce} onConsole={onPreviewConsole} onRendered={() => undefined} protect={protect} />
               </div>
-              <p className="shrink-0 border-t border-[#36515f] px-3 py-1.5 font-mono text-[9px] text-[#6c929d]">Preview is a sandbox; final verification runs on the server.</p>
+              {lastAlert != null && (
+                <div role="alert" className="flex shrink-0 items-start gap-2 border-t-2 border-[#e5cf8f] bg-[#3a3424] px-3 py-2 font-mono text-[11px] text-[#f5e3a8]">
+                  <BellRing size={13} className="mt-0.5 shrink-0" />
+                  <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+                    <b className="mr-2 tracking-widest">ALERT</b>
+                    {lastAlert}
+                  </span>
+                  <button type="button" aria-label="Dismiss alert" onClick={() => setLastAlert(null)} className="rounded p-0.5 hover:bg-white/10">
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+              <p className="shrink-0 border-t border-[#36515f] px-3 py-1.5 font-mono text-[9px] text-[#6c929d]">Preview is a sandbox — click inside it to use the keyboard. Final verification runs on the server.</p>
             </div>
             <div role="tabpanel" className={rightTab === 'console' ? 'h-full overflow-y-auto p-3 font-mono text-[11px] leading-5' : 'hidden'} aria-live="polite">
               {lines.length === 0 ? (
-                <p className="text-[#537681]">{'> console is quiet — console.log output from the preview appears here'}</p>
+                <p className="text-[#537681]">{'> console is quiet — console.log output and alert() messages from the preview appear here'}</p>
               ) : (
-                lines.map((l) => (
-                  <div
-                    key={l.id}
-                    className={`whitespace-pre-wrap break-words border-b border-white/5 py-0.5 ${
-                      l.level === 'error' ? 'text-[#f49386]' : l.level === 'warn' ? 'text-[#ebd68c]' : l.level === 'system' ? 'text-[#537681]' : 'text-[#d8ede3]'
-                    }`}
-                  >
-                    {l.level !== 'system' && <span className="mr-2 text-[#537681]">{l.level}</span>}
-                    {l.text}
-                  </div>
-                ))
+                lines.map((l) =>
+                  l.level === 'alert' ? (
+                    <div key={l.id} className="my-1 whitespace-pre-wrap break-words rounded border-2 border-[#e5cf8f] bg-[#3a3424] px-2 py-1.5 text-[#f5e3a8]">
+                      <BellRing size={12} className="mr-1.5 inline" />
+                      <b className="mr-2 tracking-widest">ALERT</b>
+                      {l.text}
+                    </div>
+                  ) : (
+                    <div
+                      key={l.id}
+                      className={`whitespace-pre-wrap break-words border-b border-white/5 py-0.5 ${
+                        l.level === 'error' ? 'text-[#f49386]' : l.level === 'warn' ? 'text-[#ebd68c]' : l.level === 'system' ? 'text-[#537681]' : 'text-[#d8ede3]'
+                      }`}
+                    >
+                      {l.level !== 'system' && <span className="mr-2 text-[#537681]">{l.level}</span>}
+                      {l.text}
+                    </div>
+                  ),
+                )
               )}
             </div>
           </>
@@ -511,7 +581,7 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
         {kind === 'DATA' && (
           <>
             <div role="tabpanel" className={rightTab === 'output' ? 'h-full' : 'hidden'}>
-              {canServerRun ? <RunConsole state={runner.state} language={detail.runLanguage} /> : <p className="p-4 font-mono text-xs text-muted">This system has no server runtime — analyse the dataset and submit your answer below.</p>}
+              {canServerRun ? <RunConsole state={runner.state} language={detail.runLanguage ?? runtime} /> : <p className="p-4 font-mono text-xs text-muted">This system has no server runtime — analyse the dataset and submit your answer below.</p>}
             </div>
             <div role="tabpanel" className={rightTab === 'dataset' ? 'flex h-full flex-col' : 'hidden'}>
               {csvFiles.length > 1 && (
@@ -537,7 +607,7 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
         {kind === 'RUN' && (
           <>
             <div role="tabpanel" className={rightTab === 'console' ? 'h-full' : 'hidden'}>
-              <RunConsole state={runner.state} language={detail.runLanguage} />
+              <RunConsole state={runner.state} language={detail.runLanguage ?? runtime} />
             </div>
             <div role="tabpanel" className={rightTab === 'input' ? 'flex h-full flex-col p-3' : 'hidden'}>
               <div className="mb-2 flex items-center justify-between">
@@ -559,31 +629,59 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
           </>
         )}
 
+        {kind === 'SHELL' && detail.terminal && (
+          <div role="tabpanel" className={rightTab === 'terminal' ? 'h-full' : 'hidden'}>
+            <Terminal
+              questionId={detail.id}
+              storageKey={`amongbug:term:v1:${crew.crewId}:${detail.id}:g${detail.generation}`}
+              terminal={detail.terminal}
+              disabled={locked || paused}
+              disabledReason={paused ? 'The organizers paused the sprint. Hold position.' : lockReason}
+              onError={handleError}
+            />
+          </div>
+        )}
+        {kind === 'SHELL' && !detail.terminal && rightTab === 'terminal' && <p className="p-4 font-mono text-xs text-muted">This terminal has no session configured.</p>}
+
+        {kind === 'SQL' && (
+          <div role="tabpanel" className={rightTab === 'result' ? 'h-full' : 'hidden'}>
+            <RunConsole state={runner.state} language="sqlite" table idleText="> write a query in the SQL editor and press Run query…" footer="Queries never award IdeaCoins — submit the flag below." />
+          </div>
+        )}
+
+        {kind === 'JSON' && (
+          <div role="tabpanel" className={rightTab === 'device' ? 'h-full' : 'hidden'}>
+            <JsonDevice state={runner.state} parseError={jsonError} fileName={jsonFile?.name ?? 'config.json'} endpoint={jsonFile?.name === 'payload.json'} />
+          </div>
+        )}
+
         {kind === 'EVIDENCE' && (
-          <>
-            <div role="tabpanel" className={rightTab === 'evidence' ? 'flex h-full flex-col' : 'hidden'}>
-              {evidence.length > 1 && (
-                <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-[#36515f] px-2 py-1">
-                  {evidence.map((f) => (
-                    <button key={f.name} type="button" onClick={() => setEvidenceActive(f.name)} className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-[10px] ${evidenceActive === f.name ? 'bg-[#1d3a48] text-primary' : 'text-[#8eafb8]'}`}>
-                      <Lock size={10} /> {f.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className="min-h-0 flex-1 overflow-auto">
-                {(() => {
-                  const f = files.find((x) => x.name === evidenceActive);
-                  if (!f) return <p className="p-4 font-mono text-xs text-muted">No evidence files for this system.</p>;
-                  return isCsv(f) ? <CsvTable name={f.name} text={f.content} /> : <pre className="whitespace-pre-wrap break-words p-4 font-mono text-[11.5px] leading-5 text-[#cadbd7]">{f.content}</pre>;
-                })()}
+          <div role="tabpanel" className={rightTab === 'evidence' ? 'flex h-full flex-col' : 'hidden'}>
+            {evidenceTabs.length > 1 && (
+              <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-[#36515f] px-2 py-1">
+                {evidenceTabs.map((t) => (
+                  <button key={t.name} type="button" onClick={() => setEvidenceActive(t.name)} className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-[10px] ${evidenceActive === t.name ? 'bg-[#1d3a48] text-primary' : 'text-[#8eafb8]'}`}>
+                    <Lock size={10} /> {t.label}
+                  </button>
+                ))}
               </div>
+            )}
+            <div className="min-h-0 flex-1 overflow-auto">
+              {(() => {
+                if (evidenceActive === BOARD && detail.board) return <EvidenceBoard board={detail.board} />;
+                const f = visibleFiles.find((x) => x.name === evidenceActive);
+                if (!f) return <p className="p-4 font-mono text-xs text-muted">No evidence attached to this system.</p>;
+                return isCsv(f) ? <CsvTable name={f.name} text={f.content} /> : <pre className="whitespace-pre-wrap break-words p-4 font-mono text-[11.5px] leading-5 text-[#cadbd7]">{f.content}</pre>;
+              })()}
             </div>
-            <div role="tabpanel" className={rightTab === 'notes' ? 'flex h-full flex-col p-3' : 'hidden'}>
-              <Label className="mb-2">CREW SCRATCHPAD (saved as a draft on this device)</Label>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value.slice(0, 50_000))} aria-label="Notes" className="input min-h-0 flex-1 resize-none font-mono !text-xs" placeholder="Work out the answer here…" />
-            </div>
-          </>
+          </div>
+        )}
+
+        {(kind === 'EVIDENCE' || kind === 'SHELL' || kind === 'SQL' || kind === 'JSON') && (
+          <div role="tabpanel" className={rightTab === 'notes' ? 'flex h-full flex-col p-3' : 'hidden'}>
+            <Label className="mb-2">CREW SCRATCHPAD (saved as a draft on this device)</Label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value.slice(0, 50_000))} aria-label="Notes" className="input min-h-0 flex-1 resize-none font-mono !text-xs" placeholder="Work out the flag here…" />
+          </div>
         )}
       </div>
     </div>
@@ -696,13 +794,12 @@ function LoadedWorkspace(props: WorkspaceProps & { detail: QuestionDetail; reloa
         <HintPanel
           url={`${basePath(detail.id)}/hint-purchases`}
           seed={`${detail.id}:${detail.generation}`}
-          cost={detail.hint.cost}
+          hints={hints}
           wallet={wallet}
-          text={hintText}
           onUnlocked={onHint}
           onSolvedElsewhere={() => setSolvedElsewhere((s) => s ?? 'another crew')}
           locked={locked || solvedByYou || paused}
-          lockedReason={solvedByYou ? 'System already restored — no hint needed.' : paused ? 'Hints are paused with the sprint.' : lockReason}
+          lockedReason={solvedByYou ? 'System already restored — no more hints needed.' : paused ? 'Hints are paused with the sprint.' : lockReason}
           imposter={imposter}
           metric={props.metric}
         />

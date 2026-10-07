@@ -68,6 +68,10 @@ export interface ConsoleCtxValue {
   can: (p: Permission) => boolean;
   reloadOverview: () => Promise<void>;
   confirm: ConfirmFn;
+  /** Switch console tab (optionally focusing a slot in slot-aware tabs). */
+  goTo?: (tab: string, slotId?: string) => void;
+  /** Slot requested by the last goTo (slot pickers start on it). */
+  focusSlot?: string | null;
 }
 
 export const ConsoleCtx = createContext<ConsoleCtxValue | null>(null);
@@ -555,8 +559,8 @@ export function Select<T extends string>({ value, onChange, options, ariaLabel, 
 
 /** Slot picker used by several tabs (defaults to the first slot). */
 export function useSlotPick(): [string, (id: string) => void] {
-  const { overview } = useConsole();
-  const [id, setId] = useState<string>('');
+  const { overview, focusSlot } = useConsole();
+  const [id, setId] = useState<string>(() => focusSlot ?? '');
   const valid = overview.slots.find((s) => s.id === id) ? id : (overview.slots.find((s) => ['RUNNING', 'REVIEW'].includes(s.phase)) ?? overview.slots[0])?.id ?? '';
   return [valid, setId];
 }

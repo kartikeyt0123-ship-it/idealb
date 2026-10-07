@@ -5,6 +5,8 @@ import { AppError } from '../errors.js';
 import { runnerExecute, RunnerError } from '../grading/runnerClient.js';
 import type { CrewContext } from './context.js';
 import { instanceForRun } from './questions.js';
+import { buildPythonJob, buildSqlJob, runJsonCheck } from './runtimes.js';
+import { runShell } from './shell.js';
 
 /**
  * Non-scoring "Run" jobs, executed by the isolated runner service. Results are
@@ -16,25 +18,58 @@ export class RunService {
   private inflight = new Map<string, AbortController>();
   constructor(private readonly db: Db, private readonly cfg: AppConfig) {}
 
-  async create(ctx: CrewContext, sessionId: string, instanceId: string, files: Record<string, string>, stdin: string) {
+  async create(ctx: CrewContext, sessionId: string, instanceId: string, files: Record<string, string>, stdin: string, extra: { command?: string; cwd?: string } = {}) {
     if (ctx.enrollment.status !== 'ACTIVE') throw new AppError(ctx.enrollment.status === 'ELIMINATED' ? 'TEAM_ELIMINATED' : 'TEAM_DISQUALIFIED', 'Your crew can no longer run code.');
     if (ctx.slot.phase !== 'RUNNING') throw new AppError('SPRINT_NOT_RUNNING', 'Code can only be run while your slot sprint is running.');
     if (typeof stdin !== 'string' || stdin.length > 20_000) throw new AppError('VALIDATION_FAILED', 'stdin must be text up to 20 KB.');
     const { i, v } = await instanceForRun(this.db, ctx, instanceId);
-    if (!v.run_language || !v.run_entry) throw new AppError('RUNTIME_UNAVAILABLE', 'This question has no server runtime. Use the live preview or submit your answer.');
-    const merged = mergeFiles(v.files, files);
+    const rt = v.runtime;
+    const kind = rt?.kind ?? (v.run_language ? 'code' : null);
+    if (!kind) throw new AppError('RUNTIME_UNAVAILABLE', 'This question has no runner. Use the preview / evidence and submit your answer.');
+    const merged = mergeFiles(v.files.filter((f) => !f.hidden), files);
     const job = (await one<{ id: string }>(
       this.db,
       `INSERT INTO run_job(slot_id, enrollment_id, session_id, instance_id, language, status) VALUES ($1,$2,$3,$4,$5,'RUNNING') RETURNING id`,
-      [ctx.slot.id, ctx.enrollment.id, sessionId, i.id, v.run_language],
+      [ctx.slot.id, ctx.enrollment.id, sessionId, i.id, kind === 'code' ? v.run_language : kind],
     ))!;
+    const done = async (result: Record<string, unknown>, ok = true) => {
+      await this.db.query(`UPDATE run_job SET status=$3, result=$2, finished_at=now() WHERE id=$1 AND status='RUNNING'`, [job.id, JSON.stringify(result), ok ? 'DONE' : 'FAILED']);
+    };
+    // Server-side runtimes answer immediately (no process is started).
+    if (rt?.kind === 'shell') {
+      if (!extra.command?.trim()) throw new AppError('VALIDATION_FAILED', 'Type a command.');
+      const t0 = Date.now();
+      const r = runShell(rt, extra.command, extra.cwd);
+      await done({ stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode, timedOut: false, outputTruncated: false, durationMs: Date.now() - t0, runtime: 'terminal', cwd: r.cwd });
+      return this.status(ctx, job.id);
+    }
+    if (rt?.kind === 'json') {
+      const name = v.files[0]?.name ?? 'config.json';
+      const r = runJsonCheck(rt, merged[name] ?? '');
+      await done({ ...r, timedOut: false, outputTruncated: false, durationMs: 0, runtime: rt.endpoint ? 'api' : 'device', component: rt.component ?? null });
+      return this.status(ctx, job.id);
+    }
+    let req: { language: 'javascript' | 'python'; files: Record<string, string>; entry: string; stdin: string; timeoutMs: number };
+    let finish: (stdout: string) => { stdout: string; images: string[] } = (o) => ({ stdout: o, images: [] });
+    if (rt?.kind === 'python') {
+      const flag = v.solution?.answer;
+      const p = buildPythonJob(rt, merged['main.py'] ?? '', stdin, flag);
+      req = { language: 'python', files: p.files, entry: p.entry, stdin: p.stdin, timeoutMs: 10_000 };
+      finish = p.finish;
+    } else if (rt?.kind === 'sql') {
+      const p = buildSqlJob(rt, merged['query.sql'] ?? '');
+      req = { language: 'python', files: p.files, entry: p.entry, stdin: '', timeoutMs: 5_000 };
+    } else {
+      if (!v.run_language || !v.run_entry) throw new AppError('RUNTIME_UNAVAILABLE', 'This question has no server runtime.');
+      req = { language: v.run_language, files: merged, entry: v.run_entry, stdin, timeoutMs: 4000 };
+    }
     const ac = new AbortController();
     this.inflight.set(job.id, ac);
     const exec = (async () => {
       try {
-        const r = await runnerExecute(this.cfg.runner, { language: v.run_language!, files: merged, entry: v.run_entry!, stdin, timeoutMs: 4000 }, ac.signal);
-        const result = { stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode, timedOut: r.timedOut, outputTruncated: r.outputTruncated, durationMs: r.durationMs, runtime: r.runtime };
-        await this.db.query(`UPDATE run_job SET status='DONE', result=$2, finished_at=now() WHERE id=$1 AND status='RUNNING'`, [job.id, JSON.stringify(result)]);
+        const r = await runnerExecute(this.cfg.runner, req, ac.signal);
+        const out = finish(r.stdout);
+        await done({ stdout: out.stdout, stderr: r.stderr, exitCode: r.exitCode, timedOut: r.timedOut, outputTruncated: r.outputTruncated, durationMs: r.durationMs, runtime: kind === 'sql' ? 'sqlite' : r.runtime, ...(out.images.length ? { images: out.images } : {}) });
       } catch (err) {
         const msg = err instanceof RunnerError ? err.message : (err as Error).name === 'AbortError' ? 'Cancelled.' : 'Runner error.';
         await this.db.query(`UPDATE run_job SET status=CASE WHEN status='RUNNING' THEN 'FAILED' ELSE status END, error=$2, finished_at=now() WHERE id=$1`, [job.id, msg]);
@@ -42,7 +77,7 @@ export class RunService {
         this.inflight.delete(job.id);
       }
     })();
-    await Promise.race([exec, new Promise((r) => setTimeout(r, 9000))]);
+    await Promise.race([exec, new Promise((r) => setTimeout(r, 12_000))]);
     return this.status(ctx, job.id);
   }
 

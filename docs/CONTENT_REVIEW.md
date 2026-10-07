@@ -1,88 +1,101 @@
-# Demo challenge content — review checklist
+# Question bank — IDEALab.dev
 
-All seeded content is **DEMO material**. Organizers must review it before using any of it at the real event.
-Sources are in `server/src/content/templates/*.ts`. Every template is **seedable**:
-`variant(seed)` is deterministic for every integer seed ≥ 0 (no `Math.random`, no dates), and
-different seeds give different data, statements and answers.
+The competition bank is the organizers' repository
+**https://github.com/Idealab-Sgsits/IDEALab.dev** (`data/<domain>.json`).
+- **Size:** 360 flag-based problems, 60 per domain (25 easy / 20 medium / 15 hard).
+- **Snapshot:** commit `f406d64` is bundled in `server/src/content/idealab/` (`SOURCE.json` records
+  the commit). The demo seed loads it, and it is the offline fallback for **Question bank → Sync
+  from GitHub**.
+- **Answers:** every problem is answered with a **flag** (case-insensitive; `FLAG: X` and
+  `flag{X}` wrappers are accepted).
 
-The demo seed publishes 1,296 questions:
+## How the repository format is used
 
-| Template group | Seeds per template | Count |
+| Domain (station) | Repository fields | AMONG BUG workspace |
 |---|---|---|
-| 2 easy templates per domain | `s000`–`s049` | 6 domains × 2 × 50 = 600 |
-| 2 medium templates per domain | `s000`–`s031` | 6 × 2 × 32 = 384 |
-| 1 hard template per domain | `s000`–`s043` | 6 × 44 = 264 |
-| 4 bonus templates | `s000`–`s011` | 4 × 12 = 48 |
+| Core Compute (`core_compute`) | `editor_state.visible_code`, `hidden_validation_b64` | Python editor. **Run** = the crew's code + the hidden check, which prints `FLAG: …` once the bug is fixed. |
+| Data Decypher (`data_decypher`) | `visible_code`, `hidden_setup(_b64)`, `hidden_validation`, `output_type` | Python editor with the hidden dataset pre-loaded (numpy / pandas available). `plot` questions return the matplotlib figure as an image. |
+| Maker Sandbox (`maker`) | micropython: `visible_code` / `hidden_setup` / `hidden_validation`; `json_tweak`: `initial_state` / `expected_state_b64` / `visual_render_b64`; `api_intercept`: `initial_payload` / `expected_payload` / `endpoint` | Python editor, or a **JSON editor + Apply**. The server compares the edited JSON with the expected state and shows the device (bulb / padlock) and the success message with the flag. |
+| Cryptography (`cryptography`) | `evidence_board {type: text / html / sequence, content}` | Evidence board (html rendered in a script-less sandbox) + flag field. |
+| Reconnaissance (`recon`) | bash / forensic / network: `file_system_b64`, `current_directory`, `current_user`, `initial_command`; sql: `database_schema_b64`, `default_query`; osint: `evidence_board` | **Terminal** over the virtual filesystem (server-side shell, see below), **SQL editor** (SQLite in the runner), or evidence board. |
+| Web Exploitation (`web`) | `editor_state.files {path: {content, is_editable, is_visible}}`, `active_file` | Web editor + live sandboxed preview. Non-visible files are preview-only (not shown as tabs). Console output and `alert()` are shown in the preview console. |
 
-Question keys look like `basic-reactor-sum-s007`. Each slot plan takes unused versions in seed
-order, so no question version is ever shared between slots (enforced by the planner and checked by
-the tests).
+**Hidden material is server-only:**
+- What it covers: setup code, validation code, filesystems, tables and expected states.
+- Python checks are passed to the runner through stdin, never as a readable file.
+- The literal flag in a check is replaced by a random per-run marker, which the server swaps back
+  only in the output.
+- Reading `__file__` or stdin from the crew's code does not reveal the flag (covered by a test).
+- **Exception — web preview files:** these are sent to the browser because the preview needs them,
+  so a determined crew with devtools can read them. Content protection blocks the devtools shortcuts
+  (best effort).
 
-## Automated consistency proof
+### Terminal (Reconnaissance)
+
+A deterministic, in-process shell over the question's files; nothing touches the real OS.
+
+- **Syntax:**
+  - pipes and sequences: `|`, `;`, `&&`;
+  - quotes, `$VAR`, `~`, globs, `>` (session only).
+- **Commands:**
+  - files and navigation: `ls cd pwd cat head tail file stat du history`;
+  - search and text: `grep (-i -v -n -r -o -c -E -w -A -B -C) find (-name -type -size -empty -path) wc sort uniq cut tr rev strings`;
+  - encoding and dumps: `base64 -d`, `xxd`, `hexdump`;
+  - scripting: `awk` (a safe interpreted subset: patterns, `print`, `printf`, `+=`, `END`), `sed s///`, `xargs`, `echo printf`;
+  - system: `env export whoami id`, `curl` (answers from `mock_response.txt`), `ss` / `netstat`.
+- **Bank conventions:**
+  - files live in the starting directory;
+  - `env_dump.txt` provides environment variables;
+  - a missing absolute path falls back to the file with the same name.
+
+## Automated check
 
 ```bash
 npm run build -w runner
-npm run content:check                                   # all templates, runner proof for seeds 0-5, structural pass over 64 seeds
-npm run content:check -- --domain web --seeds 0-63      # widen the runner proof
+npm run bank:check -w server              # bundled snapshot
+npm run bank:check -w server -- --github  # straight from GitHub (main)
+npm run bank:check -w server -- --notes   # also list informational notes
 ```
 
-For every checked seed, the check proves that:
+For every question it verifies:
+- **Python:** the hidden setup and the starter run without missing libraries, and the untouched
+  starter does not already print the flag.
+- **SQL:** the default query runs, and the flag is in the tables.
+- **Terminal:** the flag is discoverable, and every command quoted in a hint is supported.
+- **JSON:** the expected state is accepted and reveals the flag.
+- **Web:** `index.html` exists.
+- **Evidence:** the board is not empty.
 
-- the buggy starter **fails** the hidden tests and the private solution **passes** all of them;
-- typed answers verify, and the fixed program prints exactly the accepted answer while the starter does not.
+The repository has no reference solutions, so the intended fix itself cannot be proven.
 
-The structural pass (`--distinct 64`) checks every seed's shape and requires at least 90 % distinct
-statements and answers or test sets per template (each template reached 64 / 64 when written).
-It also checks that each domain has 5 templates (2 easy / 2 medium / 1 hard) and that there are
-at least 4 bonus templates.
+**Last run (snapshot `f406d64`): 360 checked, 1 problem, 12 notes.**
 
-Last run: see the README "Verified" table.
+### Issues found in the repository data (please fix upstream)
 
-## Templates
+| Question | Issue | What AMONG BUG does |
+|---|---|---|
+| `core_compute_21` (Two-sum) | The unfixed code already ends with `found_pair = [8, 2]`, so the check passes and Run prints the flag without any fix. | Reported only; avoid it, or change its check upstream. |
+| `maker_41` – `maker_60` | The hidden check recomputes the answer itself and never reads the participant's code, so Run on the empty starter would print the flag. | **Gated automatically:** the flag is shown only if the participant's own output contains a value the check computed ("Your printed result is not the expected one yet" otherwise). |
+| `recon_60` | `vault_stage1.txt` decodes to `ERONA_FTAGT_FOYI_v0`, which cannot become `RECON_STAGE_SOLVE_60` with the described base64 → reverse → rot13 pipeline. | Reported; avoid it until fixed. |
+| `recon_44` | Its data defines a table called `sqlite_master` (reserved in SQLite). | The real SQLite catalogue is used; the tables it lists are created, so the intended query works. |
 
-| Domain | Key | Difficulty | Lang | Validation | Bug |
-|---|---|---|---|---|---|
-| Web | web-cart-total | EASY | JS | hidden harness | subtotal adds price + qty instead of price × qty |
-| Web | web-mission-timer | EASY | JS | harness | seconds not zero-padded |
-| Web | web-log-pager | MEDIUM | JS | harness | page count floors; 1-based page offset |
-| Web | web-crew-leaderboard | MEDIUM | JS | harness | tie order reversed; ties don't share a rank |
-| Web | web-cargo-undo | HARD | JS | harness | reducer mutates shared items, corrupting undo history |
-| Data | data-o2-mean | EASY | Python | numeric ±0.01 | header row counted |
-| Data | data-coin-leaderboard | EASY | Python | tests | coin column sorted as strings |
-| Data | data-cabin-median | MEDIUM | Python | numeric ±0.01 | NA counted as 0; even-count median |
-| Data | data-deck-power | MEDIUM | Python | tests | `=` instead of `+=`; floor division |
-| Data | data-sensor-anomaly | HARD | Python | tests | NA as 0, shared history, self-inclusive window |
-| DS | ds-bracket-airlock | EASY | JS | tests | stack not checked empty at end |
-| DS | ds-docking-lower-bound | EASY | Python | tests | `hi = len - 1` |
-| DS | ds-cargo-queue | MEDIUM | JS | tests | two-stack queue transfer / size bugs |
-| DS | ds-vent-bfs | MEDIUM | Python | tests | wrong neighbour list |
-| DS | ds-relay-dijkstra | HARD | Python | tests | one-way edges, wrong relaxation, `inf` output |
-| Basic | basic-reactor-sum | EASY | JS | tests | loop stops one early |
-| Basic | basic-o2-vent-cycler | EASY | Python | tests | FizzBuzz condition order |
-| Basic | basic-squad-roster | MEDIUM | Python | tests | mutable default argument |
-| Basic | basic-hull-extremes | MEDIUM | JS | tests | max starts at 0; digit sum of negatives |
-| Basic | basic-roman-launch-codes | HARD | Python | tests | subtractive pairs both ways |
-| Design | design-box-width | EASY | – | numeric exact | content-box width arithmetic |
-| Design | design-hex-to-rgb | EASY | JS | harness | wrong slice for blue |
-| Design | design-grid-track | MEDIUM | – | numeric ±0.01 | fr track width with gaps / padding |
-| Design | design-contrast-check | MEDIUM | JS | harness | contrast ratio order; WCAG levels swapped |
-| Design | design-flex-shrink | HARD | – | numeric ±0.01 | weighted flex-shrink distribution |
-| Misc | misc-caesar-ship-log | EASY | – | text (case-insensitive) | Caesar decode |
-| Misc | misc-signal-frames | EASY | – | text | hex / binary frames to ASCII |
-| Misc | misc-crew-id-regex | MEDIUM | JS | tests | unanchored regex, `[A-z]` |
-| Misc | misc-badge-checksum | MEDIUM | Python | tests | Luhn parity from the wrong end |
-| Misc | misc-emergency-meeting-logic | HARD | – | text | logic puzzle (solver-verified unique) |
-| Bonus | imposter-o2-rounding | HARD | Python | tests | banker's rounding |
-| Bonus | imposter-reactor-threshold | HARD | JS | tests | binary search bounds |
-| Bonus | imposter-comms-median | HARD | JS (web) | harness | lexicographic sort, wrong middle |
-| Bonus | imposter-nav-drift | HARD | JS | numeric exact | negative modulo heading |
+Notes (expected, not errors):
+- `core_compute_01` and `core_compute_23` are infinite loops until fixed.
+- 5 data questions are plotting tasks: the starter draws nothing yet.
+- `recon_27` / `recon_30` flags are computed or decoded in the terminal.
+- `web_27` / `web_29` are keyboard puzzles with no editable file.
 
-## Review checklist per problem
+## Bank workflow
 
-1. Is the statement clear and unambiguous, and does it state the exact submission and comparison rule?
-2. Is the difficulty right, and is it solvable in time (especially bonus questions in the REHEARSAL preset)?
-3. Does the hint help without giving the full fix?
-4. Run **Verify** in Question bank after any edit. Reviewed and published versions are frozen;
-   edit by creating a new draft version. Publishing is always explicit (DRAFT → REVIEWED → PUBLISHED).
-5. Subjective design judging is **not** implemented by design. Design tasks are deterministic
-   (computed layout values or tested utility functions).
+- **Sync from GitHub** (Question bank tab) previews NEW / CHANGED / UNCHANGED questions by
+  repository id, then commits:
+  - new ones are created;
+  - changed ones get a new version (status DRAFT, or PUBLISHED when you tick *Publish
+    immediately*);
+  - instances already released keep the version they were released with.
+- Only PUBLISHED questions can be planned or released. **Previously used questions can be released
+  again** in later sprints and slots. The auto-picker prefers questions new to the slot, then the
+  least used.
+- **Legacy content:** the seedable demo templates (`server/src/content/templates`, checked by
+  `npm run content:check`) and JSON / CSV imports still work for extra questions. Use the six
+  IDEALab domain slugs.

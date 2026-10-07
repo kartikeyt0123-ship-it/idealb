@@ -14,7 +14,13 @@ const submitSchema = z.object({
   answer: z.string().max(500).optional(),
   files: z.record(z.string().max(200_000)).optional(),
 });
-const runSchema = z.object({ files: z.record(z.string().max(200_000)).default({}), stdin: z.string().max(20_000).default('') });
+const runSchema = z.object({
+  files: z.record(z.string().max(200_000)).default({}),
+  stdin: z.string().max(20_000).default(''),
+  /** Terminal questions: the command line and the session's working directory. */
+  command: z.string().max(4000).optional(),
+  cwd: z.string().max(500).optional(),
+});
 const uuid = z.string().uuid();
 const slotParam = z.object({ slotId: uuid });
 const idParam = z.object({ id: uuid });
@@ -58,21 +64,22 @@ export async function crewRoutes(app: FastifyInstance, deps: Deps) {
     return submit(db, cfg, ctx, auth.session.id, id, body.generation, body, idemKey(req));
   });
 
-  r.post('/question-instances/:id/hint-purchases', { summary: 'Buy the hint (wallet only; ranking unaffected under GROSS_EARNED)', tag: 'crew', auth: 'crew', idempotent: true }, async (req) => {
+  r.post('/question-instances/:id/hint-purchases', { summary: 'Buy the next (or a given) hint level (wallet only; ranking unaffected under GROSS_EARNED)', tag: 'crew', auth: 'crew', body: '{ level? }', idempotent: true }, async (req) => {
     const { id } = idParam.parse(req.params);
     const { ctx } = await requireCrew(deps, req);
     requireActiveEnrollment(ctx);
     deps.limiters.hint.enforce(`enr:${ctx.enrollment.id}`);
-    return purchaseHint(db, ctx, id, idemKey(req));
+    const body = z.object({ level: z.number().int().min(1).max(10).optional() }).parse(req.body ?? {});
+    return purchaseHint(db, ctx, id, idemKey(req), body.level);
   });
 
-  r.post('/question-instances/:id/run-jobs', { summary: 'Run code in the isolated runner (never scores)', tag: 'crew', auth: 'crew', body: '{ files, stdin }' }, async (req) => {
+  r.post('/question-instances/:id/run-jobs', { summary: 'Run: code in the isolated runner, a terminal command, a SQL query or a JSON check (never scores)', tag: 'crew', auth: 'crew', body: '{ files, stdin, command?, cwd? }' }, async (req) => {
     const { id } = idParam.parse(req.params);
     const { auth, ctx } = await requireCrew(deps, req);
     requireActiveEnrollment(ctx);
     deps.limiters.run.enforce(`enr:${ctx.enrollment.id}`, 'Runner cooling down — too many runs. Wait a few seconds.');
     const body = runSchema.parse(req.body);
-    return deps.runs.create(ctx, auth.session.id, id, body.files, body.stdin);
+    return deps.runs.create(ctx, auth.session.id, id, body.files, body.stdin, { command: body.command, cwd: body.cwd });
   });
 
   r.get('/run-jobs/:id', { summary: 'Run job status / output', tag: 'crew', auth: 'crew' }, async (req) => {

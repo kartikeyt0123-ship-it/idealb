@@ -83,67 +83,98 @@ describe('slot kick-in', () => {
     await org.post(`${V}/admin/slots/${sid}/open`, {});
     const start = await org.post(`${V}/admin/slots/${sid}/sprints/1/start`, {});
     expect(start.status).toBe(200);
-    expect((await c.get(`${V}/slots/mine/state`)).body.questions.length).toBe(60);
+    expect((await c.get(`${V}/slots/mine/state`)).body.questions.length).toBe(90);
     expect((await org.post(`${V}/admin/slots/${sid}/close-boarding`, { reason: 'too late now' })).status).toBe(409);
   });
 });
 
-describe('reserve refills and the bonus pool', () => {
-  it('refill tops up the domain depleted by solves from the 20-question reserve pool', async () => {
+describe('question control: stock, top-up, picking from the bank, bonuses, reuse', () => {
+  it('stock shows active / solved per domain and difficulty; Top up brings a depleted cell back to target', async () => {
     const sid = await slotId(env, 1);
     const c = await crew(env, 1);
-    const misc = await many<{ id: string }>(
+    const st0 = (await org.get(`${V}/admin/slots/${sid}/stock`)).body;
+    expect(st0.running).toBe(true);
+    expect(st0.targets).toEqual({ EASY: 7, MEDIUM: 5, HARD: 3 });
+    expect(st0.domains.map((d: { slug: string }) => d.slug)).toEqual(['core_compute', 'cryptography', 'data_decypher', 'maker', 'recon', 'web']);
+    for (const d of st0.domains) for (const k of ['EASY', 'MEDIUM', 'HARD']) expect(d.byDifficulty[k]).toMatchObject({ active: st0.targets[k], low: false });
+
+    // Solve 2 easy cryptography questions → that cell drops to 5/7.
+    const crypto = await many<{ id: string }>(
       env.db,
-      `SELECT qi.id FROM question_instance qi JOIN release r ON r.id=qi.release_id JOIN question_version qv ON qv.id=qi.question_version_id JOIN domain d ON d.id=qi.domain_id
-        WHERE qi.slot_id=$1 AND r.status='RELEASED' AND qi.status='AVAILABLE' AND d.slug='misc' AND qv.validation->>'mode'<>'CODE_TESTS' ORDER BY qi.label LIMIT 3`,
+      `SELECT qi.id FROM question_instance qi JOIN release r ON r.id=qi.release_id JOIN domain d ON d.id=qi.domain_id
+        WHERE qi.slot_id=$1 AND r.status='RELEASED' AND qi.status='AVAILABLE' AND d.slug='cryptography' AND qi.difficulty='EASY' ORDER BY qi.label LIMIT 2`,
       [sid],
     );
-    expect(misc.length).toBe(3);
-    for (const q of misc) expect((await solve(env, c, q.id)).body.correct).toBe(true);
+    for (const q of crypto) expect((await solve(env, c, q.id)).body.correct).toBe(true);
+    const st1 = (await org.get(`${V}/admin/slots/${sid}/stock`)).body;
+    const cell = st1.domains.find((d: { slug: string }) => d.slug === 'cryptography').byDifficulty.EASY;
+    expect(cell).toMatchObject({ active: 5, solved: 2, solvedThisSprint: 2, target: 7, low: true });
 
-    const before = (await org.get(`${V}/admin/slots/${sid}/pools`)).body;
-    expect(before.reservesLeft).toBe(20);
-    expect(before.bonusesLeft).toBe(10);
-    const m = before.domains.find((d: { slug: string }) => d.slug === 'misc');
-    expect(m).toMatchObject({ available: 7, solved: 3, target: 10, deficit: 3, pool: 3 });
-    expect(before.totalDeficit).toBe(3);
-
-    const r = await org.post(`${V}/admin/slots/${sid}/refill`, {}); // default: the total deficit
-    expect(r.status).toBe(200);
-    expect(r.body.released.map((x: { domain: string }) => x.domain)).toEqual(['misc', 'misc', 'misc']);
-    expect(r.body.status.domains.find((d: { slug: string }) => d.slug === 'misc')).toMatchObject({ available: 10, deficit: 0, pool: 0 });
-    expect(r.body.status.reservesLeft).toBe(17);
-
-    const st = (await c.get(`${V}/slots/mine/state`)).body;
-    expect(st.questions.filter((q: { kind: string; domain: string; state: string }) => q.kind === 'RESERVE' && q.domain === 'misc' && q.state === 'AVAILABLE').length).toBe(3);
-    const empty = await org.post(`${V}/admin/slots/${sid}/refill`, { domain: 'misc' });
-    expect(empty.status).toBe(409);
-    expect(empty.body.error).toBe('POOL_EMPTY');
-    // Refills are part of the plan, not fairness deviations.
-    expect(await one(env.db, `SELECT id FROM release WHERE slot_id=$1 AND type='RESERVE' AND manual`, [sid])).toBeUndefined();
+    const up = await org.post(`${V}/admin/slots/${sid}/top-up`, {});
+    expect(up.body).toMatchObject({ released: 2, when: 'NOW' });
+    const st2 = (await org.get(`${V}/admin/slots/${sid}/stock`)).body;
+    expect(st2.domains.find((d: { slug: string }) => d.slug === 'cryptography').byDifficulty.EASY).toMatchObject({ active: 7, low: false });
+    expect((await org.post(`${V}/admin/slots/${sid}/top-up`, {})).body.released).toBe(0); // nothing low
+    // Crews see the new questions immediately.
+    const visible = (await c.get(`${V}/slots/mine/state`)).body.questions.filter((q: { domain: string; difficulty: string; state: string }) => q.domain === 'cryptography' && q.difficulty === 'EASY' && q.state === 'AVAILABLE');
+    expect(visible.length).toBe(7);
   });
 
-  it('bonus questions are released one at a time from a 10-question pool; open to everyone; unreleased ones carry over', async () => {
+  it('the organizer picks specific bank questions (regular or bonus); previously used questions can be reused', async () => {
     const sid = await slotId(env, 1);
+    const bank = (await org.get(`${V}/admin/slots/${sid}/bank?domain=web&difficulty=HARD`)).body as { versionId: string; key: string; usedInSlot: number }[];
+    expect(bank.length).toBe(15);
+    const fresh = bank.filter((b) => b.usedInSlot === 0);
+    const used = bank.filter((b) => b.usedInSlot > 0);
+    expect(used.length).toBe(3); // the initial set's 3 hard web questions
+    const r = await org.post(`${V}/admin/slots/${sid}/releases`, { versionIds: [fresh[0].versionId, used[0].versionId] });
+    expect(r.body).toMatchObject({ count: 2, kind: 'RESERVE', when: 'NOW' });
+    const b = await org.post(`${V}/admin/slots/${sid}/releases`, { versionIds: [fresh[1].versionId], bonus: true });
+    expect(b.body).toMatchObject({ count: 1, kind: 'BONUS', when: 'NOW' });
     const c = await crew(env, 2);
-    const b = await org.post(`${V}/admin/slots/${sid}/bonus/next`, {});
-    expect(b.status).toBe(200);
-    expect(b.body.release).toMatchObject({ type: 'BONUS', status: 'RELEASED', manual: false });
-    expect(b.body.status.bonusesLeft).toBe(9);
     const st = (await c.get(`${V}/slots/mine/state`)).body;
     expect(st.bonuses.length).toBe(1);
     expect(st.bonuses[0]).toMatchObject({ reward: 900, state: 'AVAILABLE' });
+    // Releases from the bank are organizer decisions, not fairness deviations.
+    expect(await one(env.db, `SELECT id FROM release WHERE slot_id=$1 AND manual`, [sid])).toBeUndefined();
+  });
 
-    // Sprint 1 ends: the released bonus expires, the 9 unreleased stay in the pool for later sprints.
+  it('released questions carry over to the next sprint and expire when the slot ends; NEXT_START queues for the next sprint', async () => {
+    const sid = await slotId(env, 1);
+    const active1 = (await org.get(`${V}/admin/slots/${sid}/stock`)).body.totals.active;
     await expireSprint(env, 1);
-    const after = (await org.get(`${V}/admin/slots/${sid}/pools`)).body;
-    expect(after.bonusesLeft).toBe(9);
-    expect(after.reservesLeft).toBe(17);
-    expect((await org.post(`${V}/admin/slots/${sid}/bonus/next`, {})).body.error).toBe('SPRINT_NOT_RUNNING');
-    expect((await org.post(`${V}/admin/slots/${sid}/refill`, {})).body.error).toBe('SPRINT_NOT_RUNNING');
+    const pick = (await org.get(`${V}/admin/slots/${sid}/bank?domain=maker&freshOnly=true`)).body[0];
+    // Between sprints a release defaults to the next sprint start.
+    const q = await org.post(`${V}/admin/slots/${sid}/releases`, { versionIds: [pick.versionId] });
+    expect(q.body.when).toBe('NEXT_START');
+    expect((await org.post(`${V}/admin/slots/${sid}/releases`, { versionIds: [pick.versionId], when: 'NOW' })).body.error).toBe('SPRINT_NOT_RUNNING');
     await org.post(`${V}/admin/slots/${sid}/sprints/2/start`, {});
-    for (let i = 0; i < 9; i++) expect((await org.post(`${V}/admin/slots/${sid}/bonus/next`, {})).status).toBe(200);
-    expect((await org.post(`${V}/admin/slots/${sid}/bonus/next`, {})).body.error).toBe('POOL_EMPTY');
+    const st = (await org.get(`${V}/admin/slots/${sid}/stock`)).body;
+    expect(st.totals.active).toBe(active1 + 1);
+    // Run the slot to its end: everything unsolved expires.
+    for (const n of [3, 4]) {
+      await expireSprint(env, 1);
+      await org.post(`${V}/admin/slots/${sid}/sprints/${n}/start`, {});
+    }
+    await expireSprint(env, 1);
+    const left = await one<{ n: number }>(env.db, `SELECT count(*)::int AS n FROM question_instance WHERE slot_id=$1 AND status='AVAILABLE'`, [sid]);
+    expect(left!.n).toBe(0);
+  });
+
+  it('the initial set is editable before Sprint 1: rebuild with other counts, remove one, add from the bank', async () => {
+    const sid = await slotId(env, 2);
+    const rebuilt = await org.post(`${V}/admin/slots/${sid}/plan`, { counts: { EASY: 3, MEDIUM: 2, HARD: 1 }, perDomain: { recon: { EASY: 0, MEDIUM: 0, HARD: 0 } } });
+    expect(rebuilt.body.instances).toBe(5 * 6);
+    const plan = (await org.get(`${V}/admin/slots/${sid}/plan`)).body as { id: string; domain: string }[];
+    expect(plan.length).toBe(30);
+    expect(plan.some((p) => p.domain === 'recon')).toBe(false);
+    expect((await org.del(`${V}/admin/slots/${sid}/plan/${plan[0].id}`)).body.removed).toBeTruthy();
+    const pick = (await org.get(`${V}/admin/slots/${sid}/bank?domain=recon&difficulty=HARD`)).body[0];
+    const add = await org.post(`${V}/admin/slots/${sid}/releases`, { versionIds: [pick.versionId] });
+    expect(add.body).toMatchObject({ kind: 'INITIAL', when: 'NEXT_START' });
+    expect(((await org.get(`${V}/admin/slots/${sid}/plan`)).body as unknown[]).length).toBe(30);
+    // Restore the default 7/5/3 set.
+    expect((await org.post(`${V}/admin/slots/${sid}/plan`, {})).body.instances).toBe(90);
   });
 });
 

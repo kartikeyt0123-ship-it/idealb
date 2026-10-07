@@ -10,7 +10,7 @@ import { Badge, Button, Field, Label, StatePanel, useToast } from '../components
 import {
   CARD, Check, Countdown, Empty, Modal, Notice, NumInput, SMALL, SUBCARD, SectionHead, Select, errText, fmtDate, fmtDuration, fmtTime, toApiError, useConsole, useRun,
 } from './kit';
-import { PoolControls } from './PoolControls';
+import { StockSummary } from './QuestionControl';
 import type { OverviewSlot, Preflight, ReviewRow, TopConflict } from './types';
 
 export function SlotsTab() {
@@ -76,7 +76,7 @@ function EventCard({ onFinalize }: { onFinalize: () => void }) {
         )}
         {short.length > 0 && (
           <Notice tone="warn">
-            Question bank short for slots without a release plan: {short.map((r) => `${r.domain}/${r.difficulty} ${r.have}/${r.need}`).join(', ')}. Reserves {overview.bank.reserves.have}/{overview.bank.reserves.need}, bonuses {overview.bank.bonuses.have}/{overview.bank.bonuses.need}.
+            Published bank short for an initial set: {short.map((r) => `${r.domain}/${r.difficulty} ${r.have}/${r.need}`).join(', ')}. Publish or sync more questions in QUESTION BANK (questions may be reused across slots).
           </Notice>
         )}
       </div>
@@ -152,7 +152,13 @@ function SlotCard({ slot, onFinalize, onElimination }: { slot: OverviewSlot; onF
       confirmLabel: pf.ok ? `Start sprint ${n} now` : 'Blocked by preflight',
       ack: pf.ok ? 'I reviewed the preflight. Start the sprint now (rules freeze on the first start).' : undefined,
       body: <PreflightView pf={pf} />,
-      effects: pf.ok ? [`Sprint ${n} starts immediately; the timer runs on server time.`, 'The initial question set (60 questions, 10 per domain) is released to every crew in this slot.', overview.rules.bonusMode === 'SCHEDULED' ? 'Bonus releases follow their active-minute offsets.' : 'Reserves (Refill) and bonuses are released by you from the slot pools.'] : undefined,
+      effects: pf.ok ? [
+        `Sprint ${n} starts immediately; the timer runs on server time.`,
+        n === 1
+          ? `The initial set (${overview.rules.initialPerDomain.EASY} easy, ${overview.rules.initialPerDomain.MEDIUM} medium, ${overview.rules.initialPerDomain.HARD} hard per domain, as edited in RELEASES) is released to every crew in this slot.`
+          : 'Questions queued for this sprint start are released to every crew in this slot.',
+        overview.rules.bonusMode === 'SCHEDULED' ? 'Bonus releases follow their active-minute offsets.' : 'Top-ups and bonuses are released by you from the bank (RELEASES → question control).',
+      ] : undefined,
     });
     if (!ok) return;
     await run('start', async () => {
@@ -179,20 +185,23 @@ function SlotCard({ slot, onFinalize, onElimination }: { slot: OverviewSlot; onF
     if (!r) return;
     await run('close', () => api.post(`${base}/sprints/${slot.currentSprint}/close`, { note: r.reason }), 'Sprint closed. Standings frozen.');
   };
+  const ipd = overview.rules.initialPerDomain;
+  const ipdText = `${ipd.EASY}/${ipd.MEDIUM}/${ipd.HARD}`;
   const plan = async () => {
     const existing = slot.releases.length;
     const ok = await confirm({
-      title: `Build release plan · ${slot.name}`,
+      title: `Build initial set (${ipdText}) · ${slot.name}`,
       tone: 'warning',
       effects: [
-        'Creates the slot plan: 4 × 60 initial questions (one fresh set per sprint), a 20-question reserve pool for refills and a 10-question bonus pool.',
-        existing ? `Replaces the existing unreleased plan (${existing} release(s)).` : 'No plan exists yet.',
-        'Picks unused PUBLISHED questions only (never auto-publishes).',
+        `Picks ${ipd.EASY} easy, ${ipd.MEDIUM} medium and ${ipd.HARD} hard PUBLISHED questions per domain — released when you start Sprint 1.`,
+        existing ? 'Replaces the existing unreleased initial set (released questions are never touched).' : 'No set exists yet.',
+        'Questions new to this slot are preferred; previously used ones may be reused. Never auto-publishes.',
+        'Edit the set afterwards in RELEASES → question control (remove / add / rebuild with other counts).',
       ],
-      confirmLabel: 'Build plan',
+      confirmLabel: 'Build initial set',
     });
     if (!ok) return;
-    await run('plan', () => api.post<{ instances: number }>(`${base}/plan`, {}), (r) => `Plan built: ${r.instances} question instance(s).`);
+    await run('plan', () => api.post<{ instances: number; short: string[] }>(`${base}/plan`, {}), (r) => `Initial set built: ${r.instances} question(s).${r.short?.length ? ` Bank short: ${r.short.join(', ')}.` : ''}`);
   };
 
   const openSlot = async () => {
@@ -247,7 +256,7 @@ function SlotCard({ slot, onFinalize, onElimination }: { slot: OverviewSlot; onF
       <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {slot.sprints.map((sp) => <SprintChip key={sp.id} sp={sp} current={sp.number === slot.currentSprint} />)}
       </div>
-      {slot.releases.length === 0 && PRE_START.includes(slot.phase) && <div className="mb-3"><Notice tone="warn">No release plan yet. Build it before opening the slot.</Notice></div>}
+      {slot.releases.length === 0 && PRE_START.includes(slot.phase) && <div className="mb-3"><Notice tone="warn">No initial set yet. Build it ({ipdText} per domain) before opening the slot.</Notice></div>}
       {!slot.openedAt && slot.releases.length > 0 && slot.phase !== 'COMPLETED' && (
         <div className="mb-3">
           <Notice tone="info">
@@ -291,13 +300,13 @@ function SlotCard({ slot, onFinalize, onElimination }: { slot: OverviewSlot; onF
           <Button className={SMALL} onClick={onFinalize}><Trophy size={12} /> Finalize slot</Button>
         )}
         {can('releases.manage') && slot.currentSprint === 0 && PRE_START.includes(slot.phase) && (
-          <Button secondary className={SMALL} disabled={!!busy} onClick={() => void plan()}><Hammer size={12} /> {slot.releases.length ? 'Rebuild release plan' : 'Build release plan'}</Button>
+          <Button secondary className={SMALL} disabled={!!busy} onClick={() => void plan()}><Hammer size={12} /> {slot.releases.length ? `Rebuild initial set (${ipdText})` : `Build initial set (${ipdText})`}</Button>
         )}
       </div>
 
-      {slot.openedAt && slot.currentSprint > 0 && slot.phase !== 'COMPLETED' && (
+      {!['REVIEW', 'COMPLETED'].includes(slot.phase) && (slot.currentSprint > 0 || slot.releases.length > 0) && (
         <div className="mt-4">
-          <PoolControls slotId={slot.id} compact />
+          <StockSummary slot={slot} />
         </div>
       )}
       {slot.result && (

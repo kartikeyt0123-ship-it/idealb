@@ -1,7 +1,8 @@
 /**
- * Release plan per slot (INITIAL / RESERVE / BONUS by sprint), release-now and
- * cancel controls, manual override releases (fairness deviations) and the
- * slot's question instances.
+ * Slot question control: live stock per domain × difficulty with top-ups,
+ * pick & release from the bank (regular / bonus, now / next start), the
+ * initial-set editor, the release log (release-now / cancel), manual override
+ * releases (fairness deviations) and the slot's question instances.
  */
 import { AlertTriangle, Ban, Send } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -10,7 +11,7 @@ import { Badge, Button, Field, Label } from '../components/ui';
 import {
   CARD, Check, DataTable, Empty, Loadable, Notice, SMALL, SUBCARD, SectionHead, Select, SlotPicker, TD, TR, fmtOffset, fmtTime, useAdminData, useConsole, useRun, useSlotPick,
 } from './kit';
-import { PoolControls } from './PoolControls';
+import { QuestionControl } from './QuestionControl';
 import type { BankResponse, OverviewSlot, ReleaseRow } from './types';
 
 export function ReleasesTab() {
@@ -21,13 +22,7 @@ export function ReleasesTab() {
   return (
     <div className="space-y-6">
       <SlotPicker value={slotId} onChange={setSlotId} />
-      <div className={CARD}>
-        <SectionHead label="LIVE STOCK" title={`${slot.name} · refill domains & release bonuses`} />
-        <p className="mb-3 text-[11px] leading-5 text-muted">
-          Each sprint opens with 60 questions (10 per domain). Solved questions leave a domain short; <b>Refill</b> releases reserve questions from the slot’s 20-question pool into the most depleted domains. <b>Release bonus</b> sends the next of the 10 bonus questions (IMPOSTER DETECTED, open to everyone, first correct wins).
-        </p>
-        <PoolControls key={slot.id} slotId={slot.id} />
-      </div>
+      <QuestionControl key={slot.id} slot={slot} />
       <Plan slot={slot} />
       <ManualRelease slot={slot} />
       <Instances slotId={slot.id} />
@@ -73,12 +68,12 @@ function Plan({ slot }: { slot: OverviewSlot }) {
 
   return (
     <div className={CARD}>
-      <SectionHead label={`RELEASE PLAN · ${slot.name.toUpperCase()}`} title="Initial · reserve · bonus releases">
+      <SectionHead label={`RELEASE LOG · ${slot.name.toUpperCase()}`} title="Initial sets · top-ups · bonus releases">
         <Badge>{slot.phase}</Badge>
         {deviations.length > 0 && <Badge>{`${deviations.length} FAIRNESS DEVIATION(S)`}</Badge>}
       </SectionHead>
       {slot.phase !== 'RUNNING' && <div className="mb-3"><Notice>Questions can only be released while this slot’s sprint is RUNNING (pause suspends releases).</Notice></div>}
-      {groups.length === 0 ? <Empty>No release plan. Build it from SLOTS &amp; SPRINTS (before the slot starts).</Empty> : (
+      {groups.length === 0 ? <Empty>No releases yet. Build the initial set above (or from SLOTS &amp; SPRINTS) before Sprint 1.</Empty> : (
         <div className="space-y-4">
           {groups.map(([k, rows]) => (
             <div key={k}>

@@ -1,0 +1,6 @@
+{
+  "repo": "https://github.com/Idealab-Sgsits/IDEALab.dev",
+  "ref": "main",
+  "commit": "f406d64c62b8008089ff90760cbea69b957e6c61",
+  "note": "Snapshot of data/*.json used by the demo seed and as the offline fallback for the GitHub sync."
+}

@@ -91,7 +91,16 @@ export function RunButtons({ state, onRun, onCancel, disabled, label = 'Run' }: 
   );
 }
 
-export function RunConsole({ state, language }: { state: RunState; language: string | null }) {
+export function RunConsole({
+  state, language, table = false, idleText, footer,
+}: {
+  state: RunState;
+  language: string | null;
+  /** Monospace, no wrapping (SQL ASCII tables). */
+  table?: boolean;
+  idleText?: string;
+  footer?: string;
+}) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-auto p-4 font-mono text-[11.5px] leading-5" aria-live="polite">
@@ -99,7 +108,7 @@ export function RunConsole({ state, language }: { state: RunState; language: str
           <p className="text-primary">
             {'> diagnostic system ready'}
             <br />
-            {`> press Run to execute on the server${language ? ` (${language})` : ''}…`}
+            {idleText ?? `> press Run to execute on the server${language ? ` (${language})` : ''}…`}
           </p>
         )}
         {state.phase === 'running' && (
@@ -113,14 +122,14 @@ export function RunConsole({ state, language }: { state: RunState; language: str
             <div className="whitespace-pre-wrap break-words">{state.message}</div>
           </div>
         )}
-        {state.phase === 'done' && <RunOutput run={state.run} />}
+        {state.phase === 'done' && <RunOutput run={state.run} table={table} />}
       </div>
-      <p className="shrink-0 border-t border-[#36515f] px-4 py-2 font-mono text-[9px] tracking-wide text-[#6c929d]">Run never awards IdeaCoins — only “Submit” is verified and scored.</p>
+      <p className="shrink-0 border-t border-[#36515f] px-4 py-2 font-mono text-[9px] tracking-wide text-[#6c929d]">{footer ?? 'Run never awards IdeaCoins — only “Submit” is verified and scored.'}</p>
     </div>
   );
 }
 
-function RunOutput({ run }: { run: RunResult }) {
+export function RunOutput({ run, table = false }: { run: RunResult; table?: boolean }) {
   if (run.status === 'CANCELLED') return <p className="text-[#ebd68c]">{'> run cancelled'}{run.error ? ` — ${run.error}` : ''}</p>;
   if (run.status === 'FAILED' || !run.result) return <p role="alert" className="whitespace-pre-wrap text-[#f49386]">{`> RUN FAILED — ${run.error ?? 'Runner error.'}`}</p>;
   const r = run.result;
@@ -128,8 +137,20 @@ function RunOutput({ run }: { run: RunResult }) {
     <div className="space-y-3">
       <div>
         <div className="mb-1 text-[9px] tracking-[.16em] text-[#6c929d]">STDOUT</div>
-        <pre className="whitespace-pre-wrap break-words text-[#d8ede3]">{r.stdout || <span className="text-[#537681]">(no output)</span>}</pre>
+        <pre className={`${table ? 'overflow-x-auto whitespace-pre' : 'whitespace-pre-wrap break-words'} text-[#d8ede3]`}>{r.stdout || <span className="text-[#537681]">(no output)</span>}</pre>
       </div>
+      {r.images && r.images.length > 0 && (
+        <div>
+          <div className="mb-1 text-[9px] tracking-[.16em] text-[#6c929d]">FIGURES ({r.images.length})</div>
+          <div className="flex flex-col gap-3">
+            {r.images.map((b64, i) =>
+              /^[A-Za-z0-9+/=\s]+$/.test(b64) ? (
+                <img key={i} src={`data:image/png;base64,${b64.replace(/\s/g, '')}`} alt={`Figure ${i + 1} from your program`} draggable={false} className="max-w-full rounded border border-white/10 bg-white" />
+              ) : null,
+            )}
+          </div>
+        </div>
+      )}
       {r.stderr && (
         <div>
           <div className="mb-1 text-[9px] tracking-[.16em] text-[#c47c6f]">STDERR</div>

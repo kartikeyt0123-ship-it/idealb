@@ -1,0 +1,1344 @@
+[
+  {
+    "id": "maker_01",
+    "name": "Hardware: RGB Calibrator",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The smart LED is outputting white light. Edit the JSON configuration to make it emit pure Red.",
+    "flag": "RED_NODE_ONLINE",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "In RGB logic, max brightness is 255 and minimum is 0. Set G and B to 0."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"R\": 255,\n  \"G\": 255,\n  \"B\": 255\n}",
+      "expected_state_b64": "eyJSIjoyNTUsIkciOjAsIkIiOjB9",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfYnVsYiIsInN1Y2Nlc3NfbWVzc2FnZSI6IkZMQUc6IFJFRF9OT0RFX09OTElORSJ9"
+    }
+  },
+  {
+    "id": "maker_02",
+    "name": "Fabrication: Z-Offset Crash",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The 3D printer nozzle is going to crash into the bed! Change the `z_offset_mm` variable in the machine config to a safe 0.2mm distance.",
+    "flag": "BED_SAVED",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Look for the variable named `z_offset_mm` in the JSON file and change its value to 0.2."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"bed_temp\": 60,\n  \"nozzle_temp\": 200,\n  \"z_offset_mm\": -1.5\n}",
+      "expected_state_b64": "eyJiZWRfdGVtcCI6NjAsIm5venpsZV90ZW1wIjoyMDAsInpfb2Zmc2V0X21tIjowLjJ9",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfcHJpbnRlciIsInN1Y2Nlc3NfbWVzc2FnZSI6IkZMQUc6IEJFRF9TQVZFRCJ9"
+    }
+  },
+  {
+    "id": "maker_03",
+    "name": "IoT: The Smart Lock",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "api_intercept",
+    "problem_statement": "Directive: The lab door requires a digital payload to open. Intercept the API request and change the lock state.",
+    "flag": "DOOR_BYPASS_22",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Change the \"locked\" variable from true to false."
+      }
+    ],
+    "workspace": {
+      "endpoint": "POST /api/v1/door/status",
+      "initial_payload": "{\n  \"device_id\": \"door_01\",\n  \"locked\": true\n}",
+      "expected_payload": {
+        "device_id": "door_01",
+        "locked": false
+      },
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfcGFkbG9jayIsInN1Y2Nlc3NfbWVzc2FnZSI6IjIwMCBPSzogRE9PUl9CWVBBU1NfMjIifQ=="
+    }
+  },
+  {
+    "id": "maker_04",
+    "name": "Physics: Cannon Calibration",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: Our projectile keeps falling short of the target. Increase the `launch_velocity` in the physics config so it hits the target exactly 100 meters away.",
+    "flag": "BULLSEYE",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "The projectile needs to go twice as fast. Double the current velocity."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"gravity\": 9.8,\n  \"launch_velocity\": 50\n}",
+      "expected_state_b64": "eyJncmF2aXR5Ijo5LjgsImxhdW5jaF92ZWxvY2l0eSI6MTAwfQ==",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJjYW52YXNfY2Fubm9uIiwic3VjY2Vzc19tZXNzYWdlIjoiRkxBRzogQlVMTFNFWUUifQ=="
+    }
+  },
+  {
+    "id": "maker_05",
+    "name": "Hardware: Servo Unlock",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The mechanical safe is controlled by a servo motor. It needs to rotate exactly a half-circle to unlock. Update the JSON angle.",
+    "flag": "SERVO_180",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "A full circle is 360 degrees. A half-circle is 180."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"pin\": 9,\n  \"angle\": 0\n}",
+      "expected_state_b64": "eyJwaW4iOjksImFuZ2xlIjoxODB9",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfc2Vydm8iLCJzdWNjZXNzX21lc3NhZ2UiOiJGTEFHOiBTRVJWT18xODAifQ=="
+    }
+  },
+  {
+    "id": "maker_06",
+    "name": "Fabrication: Laser Power",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The CO2 laser is just scratching the acrylic. It needs maximum power to cut through. Update the configuration.",
+    "flag": "LASER_FULL_POWER",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Set \"power_percent\" to 100."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"speed_mm_s\": 20,\n  \"power_percent\": 15\n}",
+      "expected_state_b64": "eyJzcGVlZF9tbV9zIjoyMCwicG93ZXJfcGVyY2VudCI6MTAwfQ==",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfbGFzZXIiLCJzdWNjZXNzX21lc3NhZ2UiOiJGTEFHOiBMQVNFUl9GVUxMX1BPV0VSIn0="
+    }
+  },
+  {
+    "id": "maker_07",
+    "name": "IoT: RFID Spoof",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "api_intercept",
+    "problem_statement": "Directive: The RFID scanner only lets the Admin in. Change the `uid` in your intercepted payload to match the Admin's Hex ID: 0x4A.",
+    "flag": "SPOOF_SUCCESS",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Replace your user ID string with \"0x4A\" in the JSON body."
+      }
+    ],
+    "workspace": {
+      "endpoint": "POST /api/v1/auth/rfid",
+      "initial_payload": "{\n  \"scanner\": \"Entrance_1\",\n  \"uid\": \"0x1B\"\n}",
+      "expected_payload": {
+        "scanner": "Entrance_1",
+        "uid": "0x4A"
+      },
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfcmZpZCIsInN1Y2Nlc3NfbWVzc2FnZSI6IkFjY2VzcyBHcmFudGVkLiBGTEFHOiBTUE9PRl9TVUNDRVNTIn0="
+    }
+  },
+  {
+    "id": "maker_08",
+    "name": "Physics: Drone Hover",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The quadcopter weighs 450 grams. It is currently falling out of the sky. Balance the physics engine so it hovers perfectly in place.",
+    "flag": "HOVER_STABLE",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "To hover, \"upward_thrust_g\" must exactly equal the weight of the drone (450)."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"weight_g\": 450,\n  \"upward_thrust_g\": 200\n}",
+      "expected_state_b64": "eyJ3ZWlnaHRfZyI6NDUwLCJ1cHdhcmRfdGhydXN0X2ciOjQ1MH0=",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJjYW52YXNfZHJvbmUiLCJzdWNjZXNzX21lc3NhZ2UiOiJGTEFHOiBIT1ZFUl9TVEFCTEUifQ=="
+    }
+  },
+  {
+    "id": "maker_09",
+    "name": "Hardware: LCD Backlight",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The LCD screen is working but the backlight is off, so we can't read the flag. Turn the PWM signal to maximum.",
+    "flag": "LCD_VISIBLE",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "A standard 8-bit PWM signal reaches maximum at 255. Set \"backlight_pwm\" to 255."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"contrast\": 10,\n  \"backlight_pwm\": 0\n}",
+      "expected_state_b64": "eyJjb250cmFzdCI6MTAsImJhY2tsaWdodF9wd20iOjI1NX0=",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfbGNkIiwic3VjY2Vzc19tZXNzYWdlIjoiRkxBRzogTENEX1ZJU0lCTEUifQ=="
+    }
+  },
+  {
+    "id": "maker_10",
+    "name": "Fabrication: G-Code Square",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The CNC machine is drawing a 10x10 square but the last coordinate is wrong. Fix the JSON path array so it returns to the origin.",
+    "flag": "CLOSED_LOOP",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "The path goes [0,0] -> [10,0] -> [10,10] -> [0,10] -> [X,Y]. The final point must close the shape at [0,0]."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"path\": [\n    [0, 0],\n    [10, 0],\n    [10, 10],\n    [0, 10],\n    [5, 5]\n  ]\n}",
+      "expected_state_b64": "eyJwYXRoIjpbWzAsMF0sWzEwLDBdLFsxMCwxMF0sWzAsMTBdLFswLDBdXX0=",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfY25jIiwic3VjY2Vzc19tZXNzYWdlIjoiRkxBRzogQ0xPU0VEX0xPT1AifQ=="
+    }
+  },
+  {
+    "id": "maker_11",
+    "name": "Hardware: Conveyor Belt",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The IdeaLab assembly line is running backwards! Reverse the motor polarity in the config.",
+    "flag": "FLOW_FIXED",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Change \"motor_direction\" from \"CCW\" (Counter-Clockwise) to \"CW\" (Clockwise)."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"speed\": 150,\n  \"motor_direction\": \"CCW\"\n}",
+      "expected_state_b64": "eyJzcGVlZCI6MTUwLCJtb3Rvcl9kaXJlY3Rpb24iOiJDVyJ9",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfY29udmV5b3IiLCJzdWNjZXNzX21lc3NhZ2UiOiJGTEFHOiBGTE9XX0ZJWEVEIn0="
+    }
+  },
+  {
+    "id": "maker_12",
+    "name": "IoT: Climate Control",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "api_intercept",
+    "problem_statement": "Directive: The AC API expects the target temperature in Celsius, but it is currently receiving a Fahrenheit value (98). Send a comfortable 24 degrees Celsius.",
+    "flag": "TEMP_OPTIMAL",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Update \"unit\" to \"C\" and \"target_temp\" to 24 in the JSON payload."
+      }
+    ],
+    "workspace": {
+      "endpoint": "PUT /api/v1/hvac/set",
+      "initial_payload": "{\n  \"unit\": \"F\",\n  \"target_temp\": 98\n}",
+      "expected_payload": {
+        "unit": "C",
+        "target_temp": 24
+      },
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfdGhlcm1vbWV0ZXIiLCJzdWNjZXNzX21lc3NhZ2UiOiJGTEFHOiBURU1QX09QVElNQUwifQ=="
+    }
+  },
+  {
+    "id": "maker_13",
+    "name": "Physics: Bouncy Ball",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The ball hits the ground and stops dead. Edit the material properties so it retains 100% of its energy when it bounces.",
+    "flag": "PERFECT_ELASTICITY",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Set the \"restitution\" (bounciness) variable to 1.0."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"mass\": 5,\n  \"restitution\": 0.1\n}",
+      "expected_state_b64": "eyJtYXNzIjo1LCJyZXN0aXR1dGlvbiI6MX0=",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJjYW52YXNfYm91bmNlIiwic3VjY2Vzc19tZXNzYWdlIjoiRkxBRzogUEVSRkVDVF9FTEFTVElDSVRZIn0="
+    }
+  },
+  {
+    "id": "maker_14",
+    "name": "Hardware: NeoPixel Array",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: We have a strip of 8 smart LEDs. Turn on the very last LED in the array to reveal the flag.",
+    "flag": "PIXEL_LIT",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Arrays are zero-indexed. The 8th LED is at \"index\": 7. Set its \"state\" to \"ON\"."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"target_pixel\": {\n    \"index\": 0,\n    \"state\": \"OFF\"\n  }\n}",
+      "expected_state_b64": "eyJ0YXJnZXRfcGl4ZWwiOnsiaW5kZXgiOjcsInN0YXRlIjoiT04ifX0=",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfbmVvcGl4ZWwiLCJzdWNjZXNzX21lc3NhZ2UiOiJGTEFHOiBQSVhFTF9MSVQifQ=="
+    }
+  },
+  {
+    "id": "maker_15",
+    "name": "Hardware: Buzzer Frequency",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The piezo buzzer is emitting a terrible screech. Tune it to the standard concert 'A' note frequency (440 Hz).",
+    "flag": "PITCH_PERFECT",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Set \"frequency_hz\" to 440."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"volume_percent\": 80,\n  \"frequency_hz\": 8500\n}",
+      "expected_state_b64": "eyJ2b2x1bWVfcGVyY2VudCI6ODAsImZyZXF1ZW5jeV9oeiI6NDQwfQ==",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfYnV6emVyIiwic3VjY2Vzc19tZXNzYWdlIjoiRkxBRzogUElUQ0hfUEVSRkVDVCJ9"
+    }
+  },
+  {
+    "id": "maker_16",
+    "name": "Hardware: LDR Nightlight",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: The `ldr_data` list contains analog light readings (0-1023). Count how many times the light level dropped strictly below 100. Format the flag as `<count>_MAKER`.",
+    "flag": "4_MAKER",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Loop through the list. Use an if statement to check if the value is < 100, add to a counter variable, and print f\"{count}_MAKER\"."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "bGRyX2RhdGEgPSBbOTAwLCA4NTAsIDEwNSwgOTksIDUwLCAxMiwgNSwgMTAyXSArIFs4MDBdKjQwMDAK",
+      "visible_code": "# The list 'ldr_data' is loaded. Print the total number of readings < 100 formatted as <count>_MAKER.\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_17",
+    "name": "Fabrication: Step Calculator",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: A stepper motor requires 200 steps for one full revolution. Calculate exactly how many steps are needed to rotate the motor 7.25 revolutions.",
+    "flag": "1450.0",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Multiply revolutions by steps-per-revolution. Print the answer."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "",
+      "visible_code": "# Calculate 7.25 revolutions for a 200-step motor.\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_18",
+    "name": "Hardware: Debounce the Button",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: A button press is recorded as an array of 1s and 0s. Find the length of the solid, continuous block of 1s in the `signal` list.",
+    "flag": "4_18",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Convert the list to a string using \"\".join(map(str, signal)). Then split it by '0' and find the max length block!"
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "c2lnbmFsID0gWzAsIDEsIDAsIDAsIDEsIDEsIDEsIDEsIDBdCg==",
+      "visible_code": "# The 'signal' list is loaded. Print the length of the longest block of 1s.\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_19",
+    "name": "Physics: Gravity Drop",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: An object is dropped from a height of 500 meters. Using `time = sqrt((2 * height) / 9.8)`, calculate how many seconds it takes to hit the ground.",
+    "flag": "10.101525445522107",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Import math. Use math.sqrt() to calculate the formula and print the result."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "",
+      "visible_code": "import math\nheight = 500\n# Calculate the time to hit the ground:\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_20",
+    "name": "IoT: API Rate Limit",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: The server allows 5 requests per second. Write a `for` loop from 1 to 20. Every time the loop reaches a multiple of 5, print \"SLEEP\".",
+    "flag": "SLEEP_LIMITER",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Use the modulo operator: if i % 5 == 0: print(\"SLEEP\")."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "",
+      "visible_code": "# Loop from 1 to 20. Print 'SLEEP' on every 5th iteration.\n\n",
+      "hidden_validation_b64": "CmlmICJTTEVFUFxuU0xFRVBcblNMRUVQXG5TTEVFUCIgaW4gX3Zpc2libGVfY29kZV9zdWJtaXR0ZWQgb3IgJ3ByaW50KCJTTEVFUCIpJyBpbiBfdmlzaWJsZV9jb2RlX3N1Ym1pdHRlZDoKICAgIHBhc3MKIyBWYWxpZGF0ZWQgbWFudWFsbHkgdmlhIGZyb250ZW5kIGxvZyB0cmFjZSB1c3VhbGx5LCBidXQgcHJvdmlkaW5nIGEgdmlzdWFsIGN1ZQo="
+    }
+  },
+  {
+    "id": "maker_21",
+    "name": "Hardware: Ultrasonic Distance",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: The sensor ping took 1500 microseconds to travel to an object and back. Convert this time to distance in cm. (Speed of sound = 0.0343 cm/us).",
+    "flag": "25.725",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "The sound travels there and back! Formula: Distance = (Time / 2) * 0.0343."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "",
+      "visible_code": "time_us = 1500\n# Calculate and print the distance in cm.\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_22",
+    "name": "Fabrication: Laser Raster Time",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: A 10x10 matrix `image` contains 1s (burn) and 0s (skip). Each `1` takes 0.5 seconds to burn. Calculate the total time to engrave the matrix.",
+    "flag": "15.0",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Loop through the matrix rows, count the 1s, and multiply the total by 0.5."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "aW1hZ2UgPSBbWzBdKjEwIGZvciBfIGluIHJhbmdlKDEwKV0KZm9yIGkgaW4gcmFuZ2UoMyk6IGltYWdlW2ldID0gWzFdKjEwCg==",
+      "visible_code": "# The 2D array 'image' is loaded. Calculate burn time.\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_23",
+    "name": "Physics: PID Controller (P-Term)",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: The drone is tilting. The current Error is 12.5. If our Proportional Gain (Kp) is set to 2.0, calculate the necessary Motor Correction speed.",
+    "flag": "25.0",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "The P-term formula is simply: Correction = Error * Kp. Print the result."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "",
+      "visible_code": "error = 12.5\nkp = 2.0\n# Calculate and print the motor correction.\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_24",
+    "name": "IoT: I2C Scanner",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: An OLED screen sits at the hexadecimal I2C address `0x3C`. Convert `0x3C` to decimal (base 10) in Python.",
+    "flag": "60",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "In Python, you can print a hex number's decimal value by just passing it to int(), e.g., print(int(\"0x3C\", 16)) or print(0x3C)."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "",
+      "visible_code": "# Convert 0x3C to decimal and print it.\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_25",
+    "name": "Fabrication: Filament Length",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: The 3D printer draws a straight line from X=0 to X=150, then from X=150 to X=200. Calculate the total absolute distance traveled.",
+    "flag": "200",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Calculate the distance of the first move, then add the distance of the second move."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "",
+      "visible_code": "# Print the total distance traveled.\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_26",
+    "name": "Hardware: Moving Average Filter",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: The pre-loaded `temp_sensor` array contains 1,000 noisy readings. Calculate the average of ONLY the first 10 readings to find the true baseline.",
+    "flag": "24.5",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Slice the first 10 items using temp_sensor[:10]. Then sum() them and divide by 10."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "dGVtcF9zZW5zb3IgPSBbMjQsIDI1LCAyNCwgMjYsIDIzLCAyNSwgMjQsIDI0LCAyNSwgMjVdICsgWzk5XSo5OTAK",
+      "visible_code": "# The 'temp_sensor' list is loaded. Print the average of the first 10 items.\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_27",
+    "name": "IoT: Checksum Bypass",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: Calculate the required security checksum: `(Value A + Value B) % 256`. Print the checksum if A=1050 and B=3422.",
+    "flag": "120",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Add the two numbers together in parentheses, then use the modulo operator % 256."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "",
+      "visible_code": "a = 1050\nb = 3422\n# Calculate and print the checksum.\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_28",
+    "name": "Fabrication: Bounding Box",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: You have lists `x_coords` and `y_coords` for a custom PCB shape. Find the area of the smallest rectangular bounding box enclosing it.",
+    "flag": "2400",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Find the max() and min() of X to get Width. Do the same for Y to get Height. Then Width * Height."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "eF9jb29yZHMgPSBbMTAsIDUwLCAyMCwgMzAsIDcwXQp5X2Nvb3JkcyA9IFs1LCAxNSwgNDUsIDEwLCAyMF0K",
+      "visible_code": "# Find the bounding box area based on 'x_coords' and 'y_coords'.\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_29",
+    "name": "Physics: Trajectory Optimization",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: The height of a ball over time is given by `h = -5*(t**2) + 20*t`. Check time `t` from 0 to 4. What is the absolute maximum height reached?",
+    "flag": "20",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Loop t from 0 to 4. Calculate h. Keep track of the highest value you see."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "",
+      "visible_code": "# Calculate max height for t in range(5).\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_30",
+    "name": "Hardware: The Logic Analyzer",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: The logic analyzer `signal` list contains 10,000 samples. A \"HIGH\" pulse is exactly five `1`s in a row. Count how many valid HIGH pulses were transmitted.",
+    "flag": "42",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Convert the list to a string using \"\".join(map(str, signal)). Then use the .count(\"11111\") string method!"
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "YmFzZSA9IFswLCAxLCAwXSAqIDMwMDAKcHVsc2VzID0gWzEsIDEsIDEsIDEsIDFdICogNDIKc2lnbmFsID0gYmFzZSArIHB1bHNlcwppbXBvcnQgcmFuZG9tCnJhbmRvbS5zaHVmZmxlKHNpZ25hbCkKc2lnbmFsID0gWzAsMCwwXSArIFsxLDEsMSwxLDFdKjQyICsgWzAsMCwwXQo=",
+      "visible_code": "# The 'signal' list is loaded. Count occurrences of exactly 5 consecutive 1s.\n\n",
+      "hidden_validation": ""
+    }
+  },
+  {
+    "id": "maker_31",
+    "name": "Hardware: Stepper Microstepping",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The CNC router stepper driver is vibrating roughly in full-step mode. Change the 'microsteps' setting in the motor config to 16 for smooth motion.",
+    "flag": "MAKER_SMOOTH_STEP_31",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Change \"microsteps\" from 1 to 16 in the JSON file."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"motor_id\": \"axis_x\",\n  \"current_ma\": 1200,\n  \"microsteps\": 1\n}",
+      "expected_state_b64": "eyJtb3Rvcl9pZCI6ImF4aXNfeCIsImN1cnJlbnRfbWEiOjEyMDAsIm1pY3Jvc3RlcHMiOjE2fQ==",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfc3RlcHBlcl9tb3RvciIsInN1Y2Nlc3NfbWVzc2FnZSI6IkZMQUc6IE1BS0VSX1NNT09USF9TVEVQXzMxIn0="
+    }
+  },
+  {
+    "id": "maker_32",
+    "name": "IoT: MQTT Broker Topic",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "api_intercept",
+    "problem_statement": "Directive: The temperature telemetry is published to the wrong MQTT topic. Intercept the publishing payload and redirect it to 'sensors/lab/temp'.",
+    "flag": "MAKER_MQTT_ROUTED_32",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Update the \"topic\" string to \"sensors/lab/temp\"."
+      }
+    ],
+    "workspace": {
+      "endpoint": "POST /api/v1/mqtt/publish",
+      "initial_payload": "{\n  \"topic\": \"sensors/lobby/temp\",\n  \"qos\": 1,\n  \"retain\": false\n}",
+      "expected_payload": {
+        "topic": "sensors/lab/temp",
+        "qos": 1,
+        "retain": false
+      },
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfbXF0dF9icm9rZXIiLCJzdWNjZXNzX21lc3NhZ2UiOiIyMDAgT0s6IEZMQUc6IE1BS0VSX01RVFRfUk9VVEVEXzMyIn0="
+    }
+  },
+  {
+    "id": "maker_33",
+    "name": "Fabrication: Hotend PID Target",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: We are printing with PETG filament which requires a nozzle temperature of 240 C. The printer is currently configured for PLA (205 C). Update the nozzle target in the JSON profile.",
+    "flag": "MAKER_HOTEND_PETG_33",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Set \"nozzle_temp_c\" to 240."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"bed_temp_c\": 70,\n  \"nozzle_temp_c\": 205,\n  \"fan_speed_pct\": 50\n}",
+      "expected_state_b64": "eyJiZWRfdGVtcF9jIjo3MCwibm96emxlX3RlbXBfYyI6MjQwLCJmYW5fc3BlZWRfcGN0Ijo1MH0=",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfaG90ZW5kX3RlbXAiLCJzdWNjZXNzX21lc3NhZ2UiOiJGTEFHOiBNQUtFUl9IT1RFTkRfUEVUR18zMyJ9"
+    }
+  },
+  {
+    "id": "maker_34",
+    "name": "Physics: Resistor Voltage Divider",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The ADC pin can only accept up to 3.3V from a 5V supply. To get exactly 2.5V at the midpoint, set resistor 'r2_ohms' equal to 'r1_ohms' (10000 ohms).",
+    "flag": "MAKER_VOLT_DIVIDE_34",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Set \"r2_ohms\" to 10000 to balance the divider."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"v_in\": 5.0,\n  \"r1_ohms\": 10000,\n  \"r2_ohms\": 2200\n}",
+      "expected_state_b64": "eyJ2X2luIjo1LjAsInIxX29obXMiOjEwMDAwLCJyMl9vaG1zIjoxMDAwMH0=",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfZGl2aWRlcl9zY2hlbWF0aWMiLCJzdWNjZXNzX21lc3NhZ2UiOiJGTEFHOiBNQUtFUl9WT0xUX0RJVklERV8zNCJ9"
+    }
+  },
+  {
+    "id": "maker_35",
+    "name": "Hardware: OLED Contrast Tuning",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The SSD1306 OLED display is too dim in bright room light. Increase the display contrast value from 30 to the maximum 255.",
+    "flag": "MAKER_OLED_BRIGHT_35",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Set the \"contrast\" property to 255."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"i2c_bus\": 1,\n  \"contrast\": 30,\n  \"inverse\": false\n}",
+      "expected_state_b64": "eyJpMmNfYnVzIjoxLCJjb250cmFzdCI6MjU1LCJpbnZlcnNlIjpmYWxzZX0=",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfb2xlZF9zY3JlZW4iLCJzdWNjZXNzX21lc3NhZ2UiOiJGTEFHOiBNQUtFUl9PTEVEX0JSSUdIVF8zNSJ9"
+    }
+  },
+  {
+    "id": "maker_36",
+    "name": "IoT: Smart Relay Toggle",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "api_intercept",
+    "problem_statement": "Directive: The ventilation exhaust fan is turned off during laser cutting. Intercept the smart relay command payload and energize relay channel 2.",
+    "flag": "MAKER_RELAY_ACTIVE_36",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Change \"state\" from \"OFF\" to \"ON\"."
+      }
+    ],
+    "workspace": {
+      "endpoint": "POST /api/v1/relays/channel_2",
+      "initial_payload": "{\n  \"channel\": 2,\n  \"state\": \"OFF\",\n  \"timer_sec\": 0\n}",
+      "expected_payload": {
+        "channel": 2,
+        "state": "ON",
+        "timer_sec": 0
+      },
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfcmVsYXlfYm9hcmQiLCJzdWNjZXNzX21lc3NhZ2UiOiIyMDAgT0s6IEZMQUc6IE1BS0VSX1JFTEFZX0FDVElWRV8zNiJ9"
+    }
+  },
+  {
+    "id": "maker_37",
+    "name": "Fabrication: SLA Exposure Time",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The resin 3D printer prints brittle parts because bottom layers are under-cured. Increase 'bottom_layer_exposure_sec' from 8 to 35 seconds.",
+    "flag": "MAKER_RESIN_CURED_37",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Change \"bottom_layer_exposure_sec\" to 35 in the slicer profile JSON."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"layer_height_um\": 50,\n  \"normal_exposure_sec\": 2.5,\n  \"bottom_layer_exposure_sec\": 8\n}",
+      "expected_state_b64": "eyJsYXllcl9oZWlnaHRfdW0iOjUwLCJub3JtYWxfZXhwb3N1cmVfc2VjIjoyLjUsImJvdHRvbV9sYXllcl9leHBvc3VyZV9zZWMiOjM1fQ==",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfcmVzaW5fdmF0Iiwic3VjY2Vzc19tZXNzYWdlIjoiRkxBRzogTUFLRVJfUkVTSU5fQ1VSRURfMzcifQ=="
+    }
+  },
+  {
+    "id": "maker_38",
+    "name": "Hardware: PWM Fan Curve",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The enclosure heatsink temperature is rising. Increase cooling fan 'duty_cycle_pct' to 85% to prevent thermal throttling.",
+    "flag": "MAKER_COOLING_MAX_38",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Set \"duty_cycle_pct\" to 85."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"fan_mode\": \"manual\",\n  \"duty_cycle_pct\": 20,\n  \"tach_rpm\": 900\n}",
+      "expected_state_b64": "eyJmYW5fbW9kZSI6Im1hbnVhbCIsImR1dHlfY3ljbGVfcGN0Ijo4NSwidGFjaF9ycG0iOjkwMH0=",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfY29vbGluZ19mYW4iLCJzdWNjZXNzX21lc3NhZ2UiOiJGTEFHOiBNQUtFUl9DT09MSU5HX01BWF8zOCJ9"
+    }
+  },
+  {
+    "id": "maker_39",
+    "name": "IoT: BLE Beacon UUID",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "api_intercept",
+    "problem_statement": "Directive: The lab indoor-navigation beacon is broadcasting an unconfigured UUID. Intercept the configuration API call and set the UUID to 'IDEALAB-MAKER-BEACON'.",
+    "flag": "MAKER_BEACON_SYNC_39",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Replace the zeros in the \"uuid\" field with \"IDEALAB-MAKER-BEACON\"."
+      }
+    ],
+    "workspace": {
+      "endpoint": "PUT /api/v1/ble/beacon/config",
+      "initial_payload": "{\n  \"major\": 1,\n  \"minor\": 10,\n  \"uuid\": \"00000000-0000-0000-0000-000000000000\"\n}",
+      "expected_payload": {
+        "major": 1,
+        "minor": 10,
+        "uuid": "IDEALAB-MAKER-BEACON"
+      },
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfYmxlX2JlYWNvbiIsInN1Y2Nlc3NfbWVzc2FnZSI6IjIwMCBPSzogRkxBRzogTUFLRVJfQkVBQ09OX1NZTkNfMzkifQ=="
+    }
+  },
+  {
+    "id": "maker_40",
+    "name": "Physics: Spring Damping Ratio",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "json_tweak",
+    "problem_statement": "Directive: The robotic suspension bounces uncontrollably when landing. In the physics simulator config, set the damping ratio 'zeta' to 1.0 (critically damped) to eliminate oscillation.",
+    "flag": "MAKER_DAMPED_LAND_40",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Set the \"zeta\" damping ratio to 1.0."
+      }
+    ],
+    "workspace": {
+      "initial_state": "{\n  \"mass_kg\": 2.5,\n  \"spring_k\": 500,\n  \"zeta\": 0.15\n}",
+      "expected_state_b64": "eyJtYXNzX2tnIjoyLjUsInNwcmluZ19rIjo1MDAsInpldGEiOjEuMH0=",
+      "visual_render_b64": "eyJjb21wb25lbnQiOiJzdmdfc3VzcGVuc2lvbl9zcHJpbmciLCJzdWNjZXNzX21lc3NhZ2UiOiJGTEFHOiBNQUtFUl9EQU1QRURfTEFORF80MCJ9"
+    }
+  },
+  {
+    "id": "maker_41",
+    "name": "Hardware: PIR Motion Edge Counter",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: The 'pir_samples' array records digital motion sensor levels sampled every 50ms (0 = still, 1 = motion). Count the total number of rising edges (transitions from 0 to 1).",
+    "flag": "MAKER_PIR_EDGES_41",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Loop through pir_samples from index 1. If sample is 1 and previous sample was 0, increment counter."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "cGlyX3NhbXBsZXMgPSBbMCwgMSwgMSwgMCwgMCwgMSwgMCwgMSwgMSwgMSwgMCwgMCwgMSwgMSwgMCwgMSwgMCwgMF0gKyBbMCwgMSwgMF0gKiAyMAo=",
+      "visible_code": "# The list 'pir_samples' is loaded. Count rising edges (0 -> 1 transitions).\n# Print the total count.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "Y291bnQgPSBzdW0oMSBmb3IgaSBpbiByYW5nZSgxLCBsZW4ocGlyX3NhbXBsZXMpKSBpZiBwaXJfc2FtcGxlc1tpXSA9PSAxIGFuZCBwaXJfc2FtcGxlc1tpLTFdID09IDApCmlmIGNvdW50ID09IDI1OgogICAgcHJpbnQoJ0ZMQUc6IE1BS0VSX1BJUl9FREdFU180MScpCg=="
+    }
+  },
+  {
+    "id": "maker_42",
+    "name": "Hardware: PWM Duty Cycle Mapper",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: MicroPython's 16-bit PWM timer accepts duty values from 0 to 65535. Given a desired LED brightness percentage of 72.5%, calculate the integer 16-bit duty value (rounded to nearest integer).",
+    "flag": "MAKER_PWM_DUTY_42",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Formula: duty_u16 = round(65535 * (target_pct / 100.0)). Print the integer value."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "dGFyZ2V0X3BjdCA9IDcyLjUK",
+      "visible_code": "# Calculate the 16-bit PWM duty value for target_pct = 72.5% (range 0 to 65535).\n# Round to nearest integer and print the result.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "aWYgcm91bmQoNjU1MzUgKiB0YXJnZXRfcGN0IC8gMTAwKSA9PSA0NzUxMzoKICAgIHByaW50KCdGTEFHOiBNQUtFUl9QV01fRFVUWV80MicpCg=="
+    }
+  },
+  {
+    "id": "maker_43",
+    "name": "IoT: UART NMEA Packet Parser",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: The GPS module transmits NMEA sentences over UART. From the preloaded raw stream 'uart_buffer', extract all sentences starting with '$GPGGA' and count how many valid checksums are terminated with '*'.",
+    "flag": "MAKER_UART_PARSED_43",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Split uart_buffer into lines. Count lines where line.startswith('$GPGGA') and '*' in line."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "dWFydF9idWZmZXIgPSAiJEdQR0dBLDEyMzUxOSw0ODA3LjAzOCxOLDAxMTMxLjAwMCxFLDEsMDgsMC45LDU0NS40LE0sNDYuOSxNLCwqNDdcbiRHUFJNQywxMjM1MTksQSw0ODA3LjAzOCxOLDAxMTMxLjAwMCxFLDAyMi40LDA4NC40LDIzMDM5NCwwMDMuMSxXKjZBXG4kR1BHR0EsMTIzNTIwLDQ4MDcuMDM5LE4sMDExMzEuMDAxLEUsMSwwOCwwLjksNTQ1LjUsTSw0Ni45LE0sLCo0OVxuJEdQR0dBLDEyMzUyMSw0ODA3LjA0MCxOLDAxMTMxLjAwMixFLDEsMDgsMC45LDU0NS42LE0sNDYuOSxNLCwqNEJcbiRHUFZURywwNTQuNyxULDAzNC40LE0sMDA1LjUsTiwwMTAuMixLKjQ4XG4iCg==",
+      "visible_code": "# 'uart_buffer' contains raw NMEA strings from UART.\n# Count how many lines begin with '$GPGGA' and contain '*' before newline.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "bGluZXMgPSBbbCBmb3IgbCBpbiB1YXJ0X2J1ZmZlci5zcGxpdGxpbmVzKCkgaWYgbC5zdGFydHN3aXRoKCckR1BHR0EnKSBhbmQgJyonIGluIGxdCmlmIGxlbihsaW5lcykgPT0gMzoKICAgIHByaW50KCdGTEFHOiBNQUtFUl9VQVJUX1BBUlNFRF80MycpCg=="
+    }
+  },
+  {
+    "id": "maker_44",
+    "name": "Hardware: Temperature Threshold Filter",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: The analog temperature probe 'adc_readings' holds 500 samples in millivolts. Convert mV to Celsius using 'temp_c = (mv - 500) / 10'. Count how many readings indicate an overheating condition above 45.0 C.",
+    "flag": "MAKER_TEMP_OVERHEAT_44",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Count readings where mv > 950, which corresponds to temp_c > 45.0."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "YWRjX3JlYWRpbmdzID0gWzkwMCwgOTIwLCA5NjAsIDk4MCwgMTAyMCwgOTQwLCA5NTUsIDk2NV0gKyBbODUwXSAqIDQ5Mgo=",
+      "visible_code": "# 'adc_readings' is loaded. Compute temp_c = (mv - 500) / 10 for each sample.\n# Count how many samples exceed 45.0 C and print the count.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "b3ZlcmhlYXQgPSBzdW0oMSBmb3IgbXYgaW4gYWRjX3JlYWRpbmdzIGlmIChtdiAtIDUwMCkgLyAxMC4wID4gNDUuMCkKaWYgb3ZlcmhlYXQgPT0gNToKICAgIHByaW50KCdGTEFHOiBNQUtFUl9URU1QX09WRVJIRUFUXzQ0JykK"
+    }
+  },
+  {
+    "id": "maker_45",
+    "name": "Fabrication: Extruder E-Steps Calibration",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: We requested the 3D printer to extrude 100mm of filament, but measuring with calipers showed only 93.2mm was actually fed. Given the current E-steps value of 93.0 steps/mm, calculate the new calibrated E-steps value using 'new_e = current_e * (requested / actual)'. Round to 2 decimal places.",
+    "flag": "MAKER_ESTEPS_TUNED_45",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Use round(current_e * (requested_mm / actual_mm), 2). Print the float."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "cmVxdWVzdGVkX21tID0gMTAwLjAKYWN0dWFsX21tID0gOTMuMgpjdXJyZW50X2UgPSA5My4wCg==",
+      "visible_code": "# Calculate calibrated E-steps: new_e = current_e * (requested_mm / actual_mm)\n# Print the result rounded to 2 decimal places.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "aWYgcm91bmQoY3VycmVudF9lICogKHJlcXVlc3RlZF9tbSAvIGFjdHVhbF9tbSksIDIpID09IDk5Ljc5OgogICAgcHJpbnQoJ0ZMQUc6IE1BS0VSX0VTVEVQU19UVU5FRF80NScpCg=="
+    }
+  },
+  {
+    "id": "maker_46",
+    "name": "IoT: Modbus RTU CRC16 Verification",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: An industrial power meter returns Modbus frame bytes 'frame = [0x01, 0x03, 0x00, 0x00, 0x00, 0x0A]'. Implement the standard Modbus CRC-16 algorithm (polynomial 0xA001, initial 0xFFFF) over 'frame' and print the calculated 16-bit CRC in uppercase hexadecimal without 0x prefix.",
+    "flag": "MAKER_MODBUS_CRC_46",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Initialize crc = 0xFFFF. For each byte, crc ^= byte, then 8 times: if crc & 1: crc = (crc >> 1) ^ 0xA001 else crc >>= 1."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "ZnJhbWUgPSBbMHgwMSwgMHgwMywgMHgwMCwgMHgwMCwgMHgwMCwgMHgwQV0K",
+      "visible_code": "# 'frame' is loaded. Calculate Modbus CRC16.\n# Print the 4-character uppercase hex string (e.g. 'CDC5').\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "Y3JjID0gMHhGRkZGCmZvciBiIGluIGZyYW1lOgogICAgY3JjIF49IGIKICAgIGZvciBfIGluIHJhbmdlKDgpOgogICAgICAgIGNyYyA9IChjcmMgPj4gMSkgXiAweEEwMDEgaWYgKGNyYyAmIDEpIGVsc2UgKGNyYyA+PiAxKQppZiBoZXgoY3JjKS51cHBlcigpWzI6XSA9PSAnQ0RDNSc6CiAgICBwcmludCgnRkxBRzogTUFLRVJfTU9EQlVTX0NSQ180NicpCg=="
+    }
+  },
+  {
+    "id": "maker_47",
+    "name": "Hardware: Ultrasonic Median Window Filter",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: Ultrasonic distance sensors frequently suffer from acoustic multipath spikes. In the 'ping_distances' list, apply a 3-sample sliding median filter to smooth the values. Count how many anomalous raw readings differed from their median-filtered value by more than 15 cm.",
+    "flag": "MAKER_MEDIAN_PING_47",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "For window w = sorted(ping_distances[i-1:i+2]), median is w[1]. Check if abs(ping_distances[i] - median) > 15."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "cGluZ19kaXN0YW5jZXMgPSBbMjUsIDI2LCAxODAsIDI1LCAyNywgMjQsIDI1MCwgMjYsIDI1LCAyNiwgMjQsIDIwMCwgMjUsIDI3XSArIFsyNV0gKiA4Ngo=",
+      "visible_code": "# 'ping_distances' is loaded (100 readings). Apply 3-sample median filter to indices 1..len-2.\n# Count how many samples have abs(raw - median) > 15. Print the count.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "c3Bpa2VzID0gc3VtKDEgZm9yIGkgaW4gcmFuZ2UoMSwgbGVuKHBpbmdfZGlzdGFuY2VzKS0xKSBpZiBhYnMocGluZ19kaXN0YW5jZXNbaV0gLSBzb3J0ZWQocGluZ19kaXN0YW5jZXNbaS0xOmkrMl0pWzFdKSA+IDE1KQppZiBzcGlrZXMgPT0gMzoKICAgIHByaW50KCdGTEFHOiBNQUtFUl9NRURJQU5fUElOR180NycpCg=="
+    }
+  },
+  {
+    "id": "maker_48",
+    "name": "Physics: Rotary Encoder Quadrature State Machine",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: A rotary encoder produces two digital channels (A, B). The preloaded list 'transitions' contains tuples of consecutive 2-bit states (prev_state, curr_state) where state = (A << 1) | B. CW rotation transitions are (0,1), (1,3), (3,2), (2,0) (+1 tick) while CCW transitions are (0,2), (2,3), (3,1), (1,0) (-1 tick). Compute the net encoder position starting from 0.",
+    "flag": "MAKER_ENCODER_NET_48",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Define sets cw = {(0,1), (1,3), (3,2), (2,0)} and ccw = {(0,2), (2,3), (3,1), (1,0)}. Add 1 for CW, subtract 1 for CCW."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "dHJhbnNpdGlvbnMgPSBbKDAsIDEpLCAoMSwgMyksICgzLCAyKSwgKDIsIDApXSAqIDE1ICsgWygwLCAyKSwgKDIsIDMpLCAoMywgMSksICgxLCAwKV0gKiAzCg==",
+      "visible_code": "# 'transitions' contains (prev_state, curr_state) tuples.\n# Compute net position (+1 for CW, -1 for CCW) and print the final integer.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "Y3cgPSB7KDAsIDEpLCAoMSwgMyksICgzLCAyKSwgKDIsIDApfQpjY3cgPSB7KDAsIDIpLCAoMiwgMyksICgzLCAxKSwgKDEsIDApfQpwb3MgPSBzdW0oMSBpZiB0IGluIGN3IGVsc2UgKC0xIGlmIHQgaW4gY2N3IGVsc2UgMCkgZm9yIHQgaW4gdHJhbnNpdGlvbnMpCmlmIHBvcyA9PSA0ODoKICAgIHByaW50KCdGTEFHOiBNQUtFUl9FTkNPREVSX05FVF80OCcpCg=="
+    }
+  },
+  {
+    "id": "maker_49",
+    "name": "IoT: CoAP Packet Header Extraction",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: IoT smart meters use Constrained Application Protocol (CoAP). The byte list 'coap_header' contains the 4-byte header: byte 0 is (Ver[2b] | Type[2b] | TKL[4b]), byte 1 is Code, and bytes 2-3 are Message ID. Extract and print the 16-bit Message ID as an integer.",
+    "flag": "MAKER_COAP_MSGID_49",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Calculate msg_id = (coap_header[2] << 8) | coap_header[3]."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "Y29hcF9oZWFkZXIgPSBbMHg0NCwgMHgwMSwgMHgxQSwgMHgzRl0K",
+      "visible_code": "# 'coap_header' is a 4-byte list. Extract bytes 2 and 3 as a 16-bit big-endian integer.\n# Print the integer Message ID.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "aWYgKChjb2FwX2hlYWRlclsyXSA8PCA4KSB8IGNvYXBfaGVhZGVyWzNdKSA9PSA2NzE5OgogICAgcHJpbnQoJ0ZMQUc6IE1BS0VSX0NPQVBfTVNHSURfNDknKQo="
+    }
+  },
+  {
+    "id": "maker_50",
+    "name": "Fabrication: CNC Rapid Traverse Time",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "micropython",
+    "problem_statement": "Directive: A CNC mill executes rapid G00 moves between points in 'toolpath_xy' (list of [x, y] coordinates in mm). Rapid traverse speed is 3000 mm/min. Calculate the total traverse time in seconds using Euclidean distance between consecutive points. Round to 2 decimal places.",
+    "flag": "MAKER_CNC_RAPID_50",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Calculate sqrt((x2-x1)**2 + (y2-y1)**2) for each segment. Sum and divide by (feed_rate_mm_min / 60.0)."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "dG9vbHBhdGhfeHkgPSBbWzAsIDBdLCBbMTIwLCA1MF0sIFsyMDAsIDIwMF0sIFs1MCwgMTUwXSwgWzAsIDBdXQpmZWVkX3JhdGVfbW1fbWluID0gMzAwMC4wCg==",
+      "visible_code": "# 'toolpath_xy' is loaded. Calculate total Euclidean distance of moves.\n# Divide by speed (3000 mm/min = 50 mm/s) to find seconds. Print rounded to 2 decimals.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "aW1wb3J0IG1hdGgKZGlzdCA9IHN1bShtYXRoLnNxcnQoKHRvb2xwYXRoX3h5W2ldWzBdLXRvb2xwYXRoX3h5W2ktMV1bMF0pKioyICsgKHRvb2xwYXRoX3h5W2ldWzFdLXRvb2xwYXRoX3h5W2ktMV1bMV0pKioyKSBmb3IgaSBpbiByYW5nZSgxLCBsZW4odG9vbHBhdGhfeHkpKSkKaWYgcm91bmQoZGlzdCAvIChmZWVkX3JhdGVfbW1fbWluIC8gNjAuMCksIDIpID09IDEyLjMyOgogICAgcHJpbnQoJ0ZMQUc6IE1BS0VSX0NOQ19SQVBJRF81MCcpCg=="
+    }
+  },
+  {
+    "id": "maker_51",
+    "name": "Hardware: 1D Kalman Filter Estimation",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: A noisy barometer stream 'raw_pressure' (hPa) measures altitude. Implement a 1D scalar Kalman filter with process variance Q=0.01, measurement variance R=0.5, initial estimate x=1013.25, and initial error cov P=1.0. Process all samples in 'raw_pressure' and print the final filtered estimate rounded to 2 decimal places.",
+    "flag": "MAKER_KALMAN_ALT_51",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Update step: K = (P + Q) / (P + Q + R); x = x + K * (z - x); P = (1 - K) * (P + Q)."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "cmF3X3ByZXNzdXJlID0gWzEwMTMuMSwgMTAxNC4yLCAxMDEyLjgsIDEwMTMuNSwgMTAxNS4wLCAxMDEyLjQsIDEwMTMuOSwgMTAxMy4wLCAxMDE0LjEsIDEwMTMuM10gKiAxMAo=",
+      "visible_code": "# 'raw_pressure' is loaded (100 readings). Run scalar Kalman filter (Q=0.01, R=0.5, x0=1013.25, P0=1.0).\n# Print the final estimate rounded to 2 decimal places.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "USwgUiwgeCwgUCA9IDAuMDEsIDAuNSwgMTAxMy4yNSwgMS4wCmZvciB6IGluIHJhd19wcmVzc3VyZToKICAgIFAgKz0gUQogICAgSyA9IFAgLyAoUCArIFIpCiAgICB4ICs9IEsgKiAoeiAtIHgpCiAgICBQID0gKDEgLSBLKSAqIFAKaWYgcm91bmQoeCwgMikgPT0gMTAxMy41MzoKICAgIHByaW50KCdGTEFHOiBNQUtFUl9LQUxNQU5fQUxUXzUxJykK"
+    }
+  },
+  {
+    "id": "maker_52",
+    "name": "Physics: PID Full Controller (PID Loop)",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: Simulate a discrete PID motor velocity controller over 20 time steps (dt=0.05s). Setpoint is 100.0 RPM, starting from velocity 0.0 RPM. Constants: Kp=1.2, Ki=0.4, Kd=0.08. Velocity updates as 'vel += output * 0.1'. Calculate the final velocity after 20 iterations rounded to 2 decimal places.",
+    "flag": "MAKER_PID_TUNED_52",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "For each step: error = setpoint - vel; integral += error * dt; derivative = (error - prev_error) / dt; output = kp*error + ki*integral + kd*derivative; vel += output * 0.1; prev_error = error."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "c2V0cG9pbnQgPSAxMDAuMApkdCA9IDAuMDUKa3AsIGtpLCBrZCA9IDEuMiwgMC40LCAwLjA4CnN0ZXBzID0gMjAK",
+      "visible_code": "# Run 20-step discrete PID loop (dt=0.05, Kp=1.2, Ki=0.4, Kd=0.08, setpoint=100.0).\n# Print final velocity rounded to 2 decimal places.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "dmVsLCBpbnRlZ3JhbCwgcHJldl9lcnIgPSAwLjAsIDAuMCwgc2V0cG9pbnQKZm9yIF8gaW4gcmFuZ2Uoc3RlcHMpOgogICAgZXJyID0gc2V0cG9pbnQgLSB2ZWwKICAgIGludGVncmFsICs9IGVyciAqIGR0CiAgICBkZXJpdiA9IChlcnIgLSBwcmV2X2VycikgLyBkdAogICAgb3V0ID0ga3AgKiBlcnIgKyBraSAqIGludGVncmFsICsga2QgKiBkZXJpdgogICAgdmVsICs9IG91dCAqIDAuMQogICAgcHJldl9lcnIgPSBlcnIKaWYgcm91bmQodmVsLCAyKSA9PSA5OC4yNzoKICAgIHByaW50KCdGTEFHOiBNQUtFUl9QSURfVFVORURfNTInKQo="
+    }
+  },
+  {
+    "id": "maker_53",
+    "name": "Hardware: Manchester Phase Encoding Decoder",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: An RFID tag transmits data using IEEE 802.3 Manchester encoding, where bit '0' is represented by transition [LOW, HIGH] ([0, 1]) and bit '1' is represented by transition [HIGH, LOW] ([1, 0]). The list 'rfid_pulses' contains pairs of clock half-cycles. Decode the pulse train into an 8-bit binary string and convert it to its decimal integer value.",
+    "flag": "MAKER_MANCHESTER_DEC_53",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Iterate through rfid_pulses in steps of 2: pair = rfid_pulses[i:i+2]. If pair == [0, 1] bit is '0', if [1, 0] bit is '1'. Convert int(bits, 2)."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "cmZpZF9wdWxzZXMgPSBbMCwgMSwgMSwgMCwgMSwgMCwgMCwgMSwgMCwgMSwgMSwgMCwgMCwgMSwgMSwgMF0K",
+      "visible_code": "# 'rfid_pulses' contains 16 Manchester level samples (8 bit pairs).\n# Decode [0,1]->'0' and [1,0]->'1', then print the integer value of the 8-bit binary string.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "Yml0cyA9ICcnLmpvaW4oJzAnIGlmIHJmaWRfcHVsc2VzW2k6aSsyXSA9PSBbMCwgMV0gZWxzZSAnMScgZm9yIGkgaW4gcmFuZ2UoMCwgbGVuKHJmaWRfcHVsc2VzKSwgMikpCmlmIGludChiaXRzLCAyKSA9PSAxMDE6CiAgICBwcmludCgnRkxBRzogTUFLRVJfTUFOQ0hFU1RFUl9ERUNfNTMnKQo="
+    }
+  },
+  {
+    "id": "maker_54",
+    "name": "IoT: I2C Accelerometer Two's Complement",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: An MPU6050 accelerometer returns acceleration on register 0x3B-0x3C as two bytes: high byte 0xFE and low byte 0x12. Combine them into a 16-bit signed integer using two's complement. If sensitivity scale factor is 16384 LSB/g, calculate acceleration in 'g' rounded to 3 decimal places.",
+    "flag": "MAKER_MPU6050_ACCEL_54",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "val = (reg_high << 8) | reg_low; if val >= 0x8000: val -= 0x10000. Then val / sensitivity."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "cmVnX2hpZ2ggPSAweEZFCnJlZ19sb3cgPSAweDEyCnNlbnNpdGl2aXR5ID0gMTYzODQuMAo=",
+      "visible_code": "# 'reg_high' and 'reg_low' are loaded. Form 16-bit signed integer (two's complement).\n# Divide by sensitivity (16384.0) and print accel in g rounded to 3 decimal places.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "cmF3ID0gKHJlZ19oaWdoIDw8IDgpIHwgcmVnX2xvdwpzaWduZWQgPSByYXcgLSA2NTUzNiBpZiByYXcgPj0gMzI3NjggZWxzZSByYXcKaWYgcm91bmQoc2lnbmVkIC8gc2Vuc2l0aXZpdHksIDMpID09IC0wLjAzMDoKICAgIHByaW50KCdGTEFHOiBNQUtFUl9NUFU2MDUwX0FDQ0VMXzU0JykK"
+    }
+  },
+  {
+    "id": "maker_55",
+    "name": "Hardware: SPI Flash JEDEC ID Decoder",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: A simulated SPI flash chip responds to command 0x9F (Read JEDEC ID) with 3 bytes: Manufacturer ID (0xEF for Winbond), Memory Type (0x40), and Capacity (0x18). Capacity code represents 2^Capacity bytes (e.g. 0x18 = 24 -> 2^24 bytes = 16 MB). The list 'spi_rx_stream' contains raw MISO bytes from a bus analyzer. Find the first occurrence of sequence starting with 0xEF, 0x40 and extract the capacity byte, then print flash capacity in Megabytes (MB).",
+    "flag": "MAKER_SPI_JEDEC_55",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Search for i where spi_rx_stream[i] == 0xEF and spi_rx_stream[i+1] == 0x40. Take spi_rx_stream[i+2] as cap_code. (2**cap_code) // (1024*1024)."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "c3BpX3J4X3N0cmVhbSA9IFsweEZGLCAweDAwLCAweEFBLCAweEVGLCAweDQwLCAweDE4LCAweDAwLCAweEZGXSArIFsweDAwXSAqIDQwCg==",
+      "visible_code": "# 'spi_rx_stream' contains MISO capture. Locate [0xEF, 0x40, cap_code].\n# Compute capacity_mb = (2 ** cap_code) // (1024 * 1024). Print the integer.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "Zm9yIGkgaW4gcmFuZ2UobGVuKHNwaV9yeF9zdHJlYW0pLTIpOgogICAgaWYgc3BpX3J4X3N0cmVhbVtpXSA9PSAweEVGIGFuZCBzcGlfcnhfc3RyZWFtW2krMV0gPT0gMHg0MDoKICAgICAgICBjYXAgPSAoMiAqKiBzcGlfcnhfc3RyZWFtW2krMl0pIC8vICgxMDI0KjEwMjQpCiAgICAgICAgaWYgY2FwID09IDE2OgogICAgICAgICAgICBwcmludCgnRkxBRzogTUFLRVJfU1BJX0pFREVDXzU1JykKICAgICAgICBicmVhawo="
+    }
+  },
+  {
+    "id": "maker_56",
+    "name": "Fabrication: Bresenham Line Drawing Steps",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: A 2D pen plotter uses Bresenham's line algorithm to step from (0, 0) to (180, 75). Implement Bresenham's algorithm and count the total number of diagonal steps taken (where both X and Y increment simultaneously).",
+    "flag": "MAKER_BRESENHAM_DIAG_56",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "When stepping along the primary axis X, if the error accumulator causes Y to increment, that step is diagonal."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "eDAsIHkwID0gMCwgMAp4MSwgeTEgPSAxODAsIDc1Cg==",
+      "visible_code": "# Implement Bresenham's line algorithm from (0, 0) to (180, 75).\n# Count how many steps incremented both X and Y simultaneously. Print the count.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "ZHgsIGR5ID0gYWJzKHgxIC0geDApLCBhYnMoeTEgLSB5MCkKc3gsIHN5ID0gMSBpZiB4MCA8IHgxIGVsc2UgLTEsIDEgaWYgeTAgPCB5MSBlbHNlIC0xCmVyciwgZGlhZ3MgPSBkeCAtIGR5LCAwCngsIHkgPSB4MCwgeTAKd2hpbGUgeCAhPSB4MSBvciB5ICE9IHkxOgogICAgZTIgPSAyICogZXJyCiAgICBteCwgbXkgPSBGYWxzZSwgRmFsc2UKICAgIGlmIGUyID4gLWR5OgogICAgICAgIGVyciAtPSBkeTsgeCArPSBzeDsgbXggPSBUcnVlCiAgICBpZiBlMiA8IGR4OgogICAgICAgIGVyciArPSBkeDsgeSArPSBzeTsgbXkgPSBUcnVlCiAgICBpZiBteCBhbmQgbXk6CiAgICAgICAgZGlhZ3MgKz0gMQppZiBkaWFncyA9PSA3NToKICAgIHByaW50KCdGTEFHOiBNQUtFUl9CUkVTRU5IQU1fRElBR181NicpCg=="
+    }
+  },
+  {
+    "id": "maker_57",
+    "name": "Hardware: Exponential Moving Average (EMA)",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: A load cell weight sensor stream 'raw_grams' suffers from high-frequency vibrations. Implement an Exponential Moving Average (EMA) filter: 'ema = alpha * sample + (1 - alpha) * ema' with smoothing factor alpha=0.15 and initial ema equal to raw_grams[0]. Process all 50 samples in 'raw_grams' and print the final filtered weight rounded to 2 decimal places.",
+    "flag": "MAKER_EMA_WEIGHT_57",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Initialize ema = raw_grams[0]. For sample in raw_grams[1:]: ema = 0.15 * sample + 0.85 * ema. Print round(ema, 2)."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "cmF3X2dyYW1zID0gWzE1MC4yLCAxNTMuOCwgMTQ4LjUsIDE1MS4wLCAxNTQuMiwgMTQ5LjEsIDE1Mi40LCAxNTAuOCwgMTUzLjEsIDE0OS43XSAqIDUK",
+      "visible_code": "# 'raw_grams' is loaded (50 readings). Run EMA with alpha=0.15 starting at raw_grams[0].\n# Print the final EMA weight rounded to 2 decimal places.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "ZSA9IHJhd19ncmFtc1swXQpmb3IgcyBpbiByYXdfZ3JhbXNbMTpdOgogICAgZSA9IDAuMTUgKiBzICsgMC44NSAqIGUKaWYgcm91bmQoZSwgMikgPT0gMTUxLjI2OgogICAgcHJpbnQoJ0ZMQUc6IE1BS0VSX0VNQV9XRUlHSFRfNTcnKQo="
+    }
+  },
+  {
+    "id": "maker_58",
+    "name": "IoT: UART Serial Frame Parity Check",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: A RS-485 telemetry bus transmits 9-bit UART frames formatted as (8 data bits, 1 even parity bit). The list 'uart_frames' contains 9-bit integers. A frame has valid even parity if the total count of 1s across all 9 bits is EVEN. Count how many frames in 'uart_frames' have parity errors (corrupted frames with an ODD number of 1s).",
+    "flag": "MAKER_UART_PARITY_58",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Count 1s in bin(frame). If count % 2 != 0, increment error counter."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "dWFydF9mcmFtZXMgPSBbMGIxMDEwMTAxMDAsIDBiMTEwMDExMDAxLCAwYjExMTEwMDAwMSwgMGIxMDAwMDAwMTAsIDBiMTExMTExMTEwLCAwYjAwMDAwMDAwMV0gKyBbMGIxMDEwMTAxMDBdICogNTAK",
+      "visible_code": "# 'uart_frames' contains 9-bit serial frames.\n# Count frames where bin(frame).count('1') is odd (parity error). Print the count.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "ZXJycyA9IHN1bSgxIGZvciBmIGluIHVhcnRfZnJhbWVzIGlmIGJpbihmKS5jb3VudCgnMScpICUgMiAhPSAwKQppZiBlcnJzID09IDM6CiAgICBwcmludCgnRkxBRzogTUFLRVJfVUFSVF9QQVJJVFlfNTgnKQo="
+    }
+  },
+  {
+    "id": "maker_59",
+    "name": "Physics: FIR Low-Pass Filter Kernel",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: Apply a 5-tap FIR low-pass filter kernel 'taps = [0.1, 0.2, 0.4, 0.2, 0.1]' over a noisy audio sensor signal 'audio_signal'. Perform discrete 1D convolution (valid mode, no padding). Find the maximum amplitude value in the resulting filtered signal, rounded to 2 decimal places.",
+    "flag": "MAKER_FIR_FILTER_59",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "For i in range(len(audio_signal) - len(taps) + 1): val = sum(taps[j] * audio_signal[i+j] for j in range(5)). Track max val."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "dGFwcyA9IFswLjEsIDAuMiwgMC40LCAwLjIsIDAuMV0KYXVkaW9fc2lnbmFsID0gWzEyLCAxOCwgNDUsIDgwLCA5NSwgODgsIDYwLCAzNSwgMjAsIDE1LCAxMCwgOCwgMTIsIDE0LCAxNl0K",
+      "visible_code": "# 'taps' and 'audio_signal' are loaded. Compute valid 1D convolution.\n# Find the maximum amplitude in the output. Print rounded to 2 decimal places.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "bWF4X2FtcCA9IG1heChzdW0odGFwc1tqXSAqIGF1ZGlvX3NpZ25hbFtpK2pdIGZvciBqIGluIHJhbmdlKGxlbih0YXBzKSkpIGZvciBpIGluIHJhbmdlKGxlbihhdWRpb19zaWduYWwpLWxlbih0YXBzKSsxKSkKaWYgcm91bmQobWF4X2FtcCwgMikgPT0gODIuMToKICAgIHByaW50KCdGTEFHOiBNQUtFUl9GSVJfRklMVEVSXzU5JykK"
+    }
+  },
+  {
+    "id": "maker_60",
+    "name": "Hardware: Logic Analyzer PWM Jitter Detection",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "micropython",
+    "problem_statement": "Directive: A digital logic analyzer sampled a 100 kHz PWM signal at 10 MHz (100 samples per period). The 'pwm_pulse_widths' list contains measured HIGH pulse durations in microseconds for 500 consecutive cycles. Nominal width is 45.0 us. Peak-to-peak jitter is defined as 'max(pwm_pulse_widths) - min(pwm_pulse_widths)'. Calculate the jitter in nanoseconds (1 us = 1000 ns).",
+    "flag": "MAKER_PWM_JITTER_60",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Calculate (max(pwm_pulse_widths) - min(pwm_pulse_widths)) * 1000. Round to integer and print."
+      }
+    ],
+    "workspace": {
+      "output_type": "console",
+      "hidden_setup": "cHdtX3B1bHNlX3dpZHRocyA9IFs0NS4wMiwgNDQuOTgsIDQ1LjE1LCA0NC44NSwgNDUuMDAsIDQ1LjIyLCA0NC44MCwgNDUuMDVdICsgWzQ1LjAwXSAqIDQ5Mgo=",
+      "visible_code": "# 'pwm_pulse_widths' contains pulse durations in us.\n# Calculate peak-to-peak jitter = (max - min) in nanoseconds (multiply by 1000). Round to integer.\n\n",
+      "hidden_validation": "",
+      "hidden_validation_b64": "aml0dGVyX25zID0gcm91bmQoKG1heChwd21fcHVsc2Vfd2lkdGhzKSAtIG1pbihwd21fcHVsc2Vfd2lkdGhzKSkgKiAxMDAwKQppZiBqaXR0ZXJfbnMgPT0gNDIwOgogICAgcHJpbnQoJ0ZMQUc6IE1BS0VSX1BXTV9KSVRURVJfNjAnKQo="
+    }
+  }
+]

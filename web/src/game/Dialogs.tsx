@@ -371,10 +371,11 @@ export function FlightManual({ state }: { state: CrewState | null }) {
       </div>
       <div className="mt-6 space-y-2 text-xs leading-6 text-muted">
         <p>Your slot has four sprints. Each one is started by the organizers; between sprints the ship waits in the lobby. Every sprint brings a fresh set of systems, which expire when the sprint ends.</p>
-        <p>Open any system, repair it and verify. The first crew whose fix is accepted by the ship server earns the reward; wrong answers keep it open for everyone. Running code never awards coins.</p>
+        <p>Open any system and find its FLAG — fix the code and Run it, query the database, explore the terminal, tweak the device config, inspect the web page or decode the evidence. Submit the flag (e.g. EXAMPLE_FLAG_42; “FLAG: …” and flag{'{…}'} are accepted). The first crew whose flag is accepted by the ship server earns the reward; wrong answers keep it open for everyone. Running code never awards coins.</p>
         <p>
-          Hints cost IdeaCoins from your wallet{gross ? ' only — your ranking score counts IdeaCoins earned, so buying a hint never lowers your rank' : ' and lower your score (score = earned − spent)'}. A purchased hint is visible on every device of your crew.
+          Hints cost IdeaCoins from your wallet{gross ? ' only — your ranking score counts IdeaCoins earned, so buying a hint never lowers your rank' : ' and lower your score (score = earned − spent)'}. Hints come as a ladder — buy level 1 first, then the next. A purchased hint is visible on every device of your crew.
         </p>
+        {state?.event.protectContent && <p>Content protection is on for this event: copying, printing and screenshots are disabled and the screen is hidden while the window is out of focus. Type flags in by hand.</p>}
         <p>The sprint board starts at zero every sprint; the slot board adds all four sprints; the overall board compares every slot and stays provisional until the organizers finalize it.</p>
         <p>IMPOSTER DETECTED alerts are emergency bonus problems open to every crew — the first correct answer wins the bonus. Find them on the emergency bridge.</p>
       </div>

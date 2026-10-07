@@ -90,7 +90,7 @@ test('organizer console: all ten sections; opens Slot 1 (kick-in), then starts S
   await expect(page.getByText(/RUNNING/).first()).toBeVisible({ timeout: 15_000 });
 });
 
-test('Nexora boards, sees the HUD, 60 questions in Slot 1 and the Sprint / Slot / Overall rankings', async ({ page }) => {
+test('Nexora boards, sees the HUD, 90 questions in Slot 1 and the Sprint / Slot / Overall rankings', async ({ page }) => {
   await signIn(page, 'CREW', 'nexora@example.test', 'CrewDemo123!');
   await expect(page.getByText(/Slot 1/).first()).toBeVisible({ timeout: 15_000 });
   await boardShip(page);
@@ -102,9 +102,9 @@ test('Nexora boards, sees the HUD, 60 questions in Slot 1 and the Sprint / Slot 
   for (const tab of [/^Sprint$/i, /^Slot$/i, /^Overall$/i]) await expect(page.getByRole('tab', { name: tab }).or(page.getByRole('button', { name: tab })).first()).toBeVisible();
   await page.getByRole('tab', { name: /^Overall$/i }).or(page.getByRole('button', { name: /^Overall$/i })).first().click();
   await expect(page.getByText(/PROVISIONAL/).first()).toBeVisible({ timeout: 10_000 });
-  // Server data, not the UI, is the gate: 60 initial questions are visible to this crew.
+  // Server data, not the UI, is the gate: the 90-question initial set (6 domains × 7/5/3) is visible.
   const st = await page.request.get('/api/v1/slots/mine/state');
-  expect((await st.json()).questions.length).toBe(60);
+  expect((await st.json()).questions.length).toBe(90);
 });
 
 test('a crew of another slot is waiting and cannot see Slot 1', async ({ page, browser }) => {
@@ -150,52 +150,53 @@ test('Nexora repairs a question in the workspace: server-verified, wallet and sp
   const q = (await db.query(
     `SELECT qi.id, qi.label, qi.reward, qv.solution->>'answer' AS answer FROM question_instance qi JOIN question_version qv ON qv.id=qi.question_version_id
        JOIN release r ON r.id=qi.release_id JOIN slot s ON s.id=qi.slot_id JOIN domain d ON d.id=qi.domain_id
-      WHERE s.number=1 AND r.status='RELEASED' AND qi.status='AVAILABLE' AND d.slug='misc' AND qv.validation->>'mode'='EXACT_TEXT' ORDER BY qi.label LIMIT 1`,
+      WHERE s.number=1 AND r.status='RELEASED' AND qi.status='AVAILABLE' AND d.slug='cryptography' AND qi.difficulty='EASY' ORDER BY qi.label LIMIT 1`,
   )).rows[0];
   await db.end();
-  expect(q, 'a released misc text question in Slot 1').toBeTruthy();
+  expect(q, 'a released easy cryptography question in Slot 1').toBeTruthy();
 
   await signIn(page, 'CREW', 'nexora@example.test', 'CrewDemo123!');
   await boardShip(page);
   const before = (await (await page.request.get('/api/v1/slots/mine/state')).json()).me;
   await page.getByRole('button', { name: 'Open station menu' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: /Miscellaneous/ }).first().click();
+  await page.getByRole('dialog').getByRole('button', { name: /Cryptography/ }).first().click();
   const card = page.locator('div.rounded-lg', { hasText: q.label }).filter({ has: page.getByRole('button', { name: /Begin repair/ }) }).last();
   await card.getByRole('button', { name: /Begin repair/ }).click();
-  await page.getByPlaceholder('Enter answer').fill(q.answer);
-  await page.getByRole('button', { name: /Verify repair/ }).click();
+  await expect(page.getByText(/EVIDENCE/i).first()).toBeVisible();
+  await page.getByPlaceholder('e.g. EXAMPLE_FLAG_42').fill(`FLAG: ${q.answer}`);
+  await page.getByRole('button', { name: /Submit flag/ }).click();
   await expect.poll(async () => (await (await page.request.get('/api/v1/slots/mine/state')).json()).me.sprintScore, { timeout: 15_000 }).toBe(before.sprintScore + q.reward);
   const after = (await (await page.request.get('/api/v1/slots/mine/state')).json()).me;
   expect(after.wallet).toBe(before.wallet + q.reward);
   expect(after.cumulative).toBe(before.cumulative + q.reward);
 });
 
-test('Releases tab: Refill tops up the depleted domain from the reserve pool; Release bonus sends an IMPOSTER bonus', async ({ browser }) => {
+test('question control: stock shows the solved domain low; Top up refills it; a bonus is released from the bank', async ({ browser }) => {
   const org = await organizerPage(browser);
   const slot1 = ((await orgApi(org, 'GET', '/api/v1/admin/overview')) as { slots: { id: string; number: number }[] }).slots.find((s) => s.number === 1)!;
-  const pools = async () => (await orgApi(org, 'GET', `/api/v1/admin/slots/${slot1.id}/pools`)) as { reservesLeft: number; bonusesLeft: number; domains: { slug: string; deficit: number }[] };
-  const before = await pools();
-  const depleted = [...before.domains].sort((a, b) => b.deficit - a.deficit)[0];
-  expect(depleted.deficit).toBeGreaterThan(0); // the repair test solved a misc question
+  const stock = async () => (await orgApi(org, 'GET', `/api/v1/admin/slots/${slot1.id}/stock`)) as { domains: { slug: string; byDifficulty: Record<string, { active: number; low: boolean }> }[]; bonus: { active: number } };
+  const before = await stock();
+  expect(before.domains.find((d) => d.slug === 'cryptography')!.byDifficulty.EASY).toMatchObject({ active: 6, low: true }); // the repair test solved one
 
   await org.getByText('RELEASES', { exact: true }).first().click();
-  await org.getByRole('button', { name: /^SLOT 1 ·/ }).first().click().catch(() => undefined);
-  await expect(org.getByText(`reserves left ${before.reservesLeft} · bonuses left ${before.bonusesLeft}`).first()).toBeVisible();
-  await org.getByRole('button', { name: /^Refill/ }).first().click();
-  await org.getByRole('button', { name: 'Release refill' }).click();
-  await expect(org.getByText(`reserves left ${before.reservesLeft - depleted.deficit}`, { exact: false }).first()).toBeVisible({ timeout: 15_000 });
-  await org.getByRole('button', { name: `Release bonus (${before.bonusesLeft} left)` }).first().click();
-  await org.getByRole('button', { name: 'Release bonus', exact: true }).click();
-  await expect(org.getByText(`bonuses left ${before.bonusesLeft - 1}`, { exact: false }).first()).toBeVisible({ timeout: 15_000 });
-  const after = await pools();
-  expect(after.reservesLeft).toBe(before.reservesLeft - depleted.deficit);
-  expect(after.domains.find((d) => d.slug === depleted.slug)!.deficit).toBe(0);
+  await org.getByRole('button', { name: /Top up all low \(1\)/ }).first().click();
+  await org.getByRole('button', { name: 'Release now' }).click();
+  await expect.poll(async () => (await stock()).domains.find((d) => d.slug === 'cryptography')!.byDifficulty.EASY.active, { timeout: 15_000 }).toBe(7);
+
+  await org.getByRole('button', { name: /Release bonus/ }).first().click();
+  const dialog = org.getByRole('dialog');
+  await dialog.getByPlaceholder('Search key or title').fill('web_45');
+  // After the search only one question row remains: [only-new, select-all, row].
+  await expect(dialog.getByText('Select all shown (1)')).toBeVisible();
+  await dialog.locator('input[type="checkbox"]').nth(2).check();
+  await dialog.getByRole('button', { name: /Release 1 as bonus/ }).click();
+  await org.getByRole('button', { name: 'Release now' }).click().catch(() => undefined);
+  await expect.poll(async () => (await stock()).bonus.active, { timeout: 15_000 }).toBe(1);
 
   const crewPage = await (await browser.newContext()).newPage();
   await signIn(crewPage, 'CREW', 'nexora@example.test', 'CrewDemo123!');
   await boardShip(crewPage);
   const st = await (await crewPage.request.get('/api/v1/slots/mine/state')).json();
-  expect(st.bonuses.filter((b: { state: string }) => b.state === 'AVAILABLE').length).toBeGreaterThan(0);
-  expect(st.questions.some((q: { kind: string; domain: string }) => q.kind === 'RESERVE' && q.domain === depleted.slug)).toBe(true);
+  expect(st.bonuses.filter((b: { state: string }) => b.state === 'AVAILABLE').length).toBe(1);
   await expect(crewPage.getByText(/IMPOSTER DETECTED/).first()).toBeVisible({ timeout: 15_000 });
 });

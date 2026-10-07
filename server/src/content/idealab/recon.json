@@ -1,0 +1,1221 @@
+[
+  {
+    "id": "recon_01",
+    "name": "Forensics: Read the Manual",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "bash",
+    "problem_statement": "Directive: There is a file called `instructions.txt`. Read what is inside it to find the flag.",
+    "flag": "SYSTEM_READY",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "In Linux, the `cat` command reads files. Type `cat instructions.txt` and hit run."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/home/agent",
+      "file_system_b64": "eyJpbnN0cnVjdGlvbnMudHh0IjoiV2VsY29tZSBvcGVyYXRpdmUuIFlvdXIgYWNjZXNzIGZsYWcgaXM6IFNZU1RFTV9SRUFEWSJ9"
+    }
+  },
+  {
+    "id": "recon_02",
+    "name": "Query: Open the Box",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "sql",
+    "problem_statement": "Directive: The database has a table named `vault`. Look inside to find the hidden code.",
+    "flag": "FLAG_77X",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "SQL uses SELECT. Type `SELECT * FROM vault` to see everything, then read the table output."
+      }
+    ],
+    "workspace": {
+      "default_query": "SELECT * FROM vault LIMIT 1;",
+      "database_schema_b64": "eyJ2YXVsdCI6W3siaWQiOjEsIml0ZW0iOiJPbGQgTWFwIiwic2VjcmV0X2NvZGUiOiJFTVBUWSJ9LHsiaWQiOjIsIml0ZW0iOiJMb2NrZWQgQm94Iiwic2VjcmV0X2NvZGUiOiJGTEFHXzc3WCJ9XX0="
+    }
+  },
+  {
+    "id": "recon_03",
+    "name": "OSINT: The Sticky Note",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "osint",
+    "problem_statement": "Directive: The suspect left a sticky note on their digital desktop. The password is right there.",
+    "flag": "8080",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Look really closely at the ASCII art sticky note rendered on the right pane."
+      }
+    ],
+    "workspace": {
+      "evidence_board": {
+        "type": "ascii",
+        "content": "  _________________\n /                 \\\n|   DON'T FORGET!   |\n|                   |\n|   Server PIN:     |\n|   8080            |\n|                   |\n \\_________________/"
+      }
+    }
+  },
+  {
+    "id": "recon_04",
+    "name": "Forensics: What's in here?",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "bash",
+    "problem_statement": "Directive: You are in a secure folder. What files are in here? Find the file named 'flag_xxx'.",
+    "flag": "flag_092",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Type `ls` (which stands for list) and hit run to see all the files in the directory."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/home/agent/secure",
+      "file_system_b64": "eyJyZWFkbWUubWQiOiJOb3RoaW5nIGhlcmUiLCJzeXN0ZW1fY29uZmlnIjoiQmluYXJ5IGRhdGEiLCJmbGFnXzA5MiI6IllvdSBmb3VuZCBpdCEifQ=="
+    }
+  },
+  {
+    "id": "recon_05",
+    "name": "Query: The Target",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "sql",
+    "problem_statement": "Directive: Look at the `agents` table. Find the name of the agent whose `status` is 'Rogue'.",
+    "flag": "Victor",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Type `SELECT * FROM agents`. Scan the list on the right for the rogue agent's name."
+      }
+    ],
+    "workspace": {
+      "default_query": "SELECT * FROM agents;",
+      "database_schema_b64": "eyJhZ2VudHMiOlt7ImlkIjoxMDEsIm5hbWUiOiJBbWFuIiwic3RhdHVzIjoiQWN0aXZlIn0seyJpZCI6MTAyLCJuYW1lIjoiVmljdG9yIiwic3RhdHVzIjoiUm9ndWUifSx7ImlkIjoxMDMsIm5hbWUiOiJQcml5YSIsInN0YXR1cyI6IkFjdGl2ZSJ9XX0="
+    }
+  },
+  {
+    "id": "recon_06",
+    "name": "OSINT: The Archived Pin",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "osint",
+    "problem_statement": "Directive: The agent's old ID card is in this archived web page text. Find the 4-digit ID.",
+    "flag": "4520",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Just read the text block on the right pane carefully. Look for the phrase 'Legacy Pin'."
+      }
+    ],
+    "workspace": {
+      "evidence_board": {
+        "type": "html",
+        "content": "<div style=\"font-family: monospace; padding: 20px;\"><h2>IdeaLab Member Profile</h2><p>Name: Kabir</p><p>Status: Inactive</p><p>Legacy Pin: 4520</p></div>"
+      }
+    }
+  },
+  {
+    "id": "recon_07",
+    "name": "Forensics: Who am I?",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "bash",
+    "problem_statement": "Directive: The system needs to verify your terminal username.",
+    "flag": "admin_idealab",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Linux has a literal command for this. Type `whoami` and hit run."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/home/admin_idealab",
+      "current_user": "admin_idealab",
+      "file_system_b64": "e30="
+    }
+  },
+  {
+    "id": "recon_08",
+    "name": "Query: Filter the Noise",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "sql",
+    "problem_statement": "Directive: The `inventory` table is huge. Get only the item where the `id` is exactly 77.",
+    "flag": "EMP_GENERATOR",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use a WHERE clause! Type `SELECT * FROM inventory WHERE id = 77`."
+      }
+    ],
+    "workspace": {
+      "default_query": "SELECT * FROM inventory LIMIT 2;",
+      "database_schema_b64": "eyJpbnZlbnRvcnkiOlt7ImlkIjoxMiwiaXRlbV9uYW1lIjoiUmF0aW9ucyIsInF0eSI6MTAwfSx7ImlkIjo3NywiaXRlbV9uYW1lIjoiRU1QX0dFTkVSQVRPUiIsInF0eSI6MX0seyJpZCI6ODksIml0ZW1fbmFtZSI6IkNhYmxlcyIsInF0eSI6NTB9XX0="
+    }
+  },
+  {
+    "id": "recon_09",
+    "name": "OSINT: The Metadata",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "osint",
+    "problem_statement": "Directive: We extracted the raw EXIF data from a photograph. What camera model took this photo?",
+    "flag": "EOS_5D",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Look at the raw metadata text block on the right. Find the line labeled 'Camera Model'."
+      }
+    ],
+    "workspace": {
+      "evidence_board": {
+        "type": "text",
+        "content": "Filename: IMG_9921.CR2\nDate Taken: 2024-10-15\nCamera Maker: Canon\nCamera Model: EOS_5D\nFocal Length: 50mm"
+      }
+    }
+  },
+  {
+    "id": "recon_10",
+    "name": "Forensics: Echo Chamber",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "bash",
+    "problem_statement": "Directive: Make the terminal repeat the word 'SGSITS' back to you to unlock the system.",
+    "flag": "SGSITS",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "The `echo` command prints text. Type `echo SGSITS`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/home/agent",
+      "file_system_b64": "e30="
+    }
+  },
+  {
+    "id": "recon_11",
+    "name": "Query: Count the Spies",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "sql",
+    "problem_statement": "Directive: How many total spies are registered in the `spies` table?",
+    "flag": "4",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "SQL can count for you. Type `SELECT COUNT(*) FROM spies`."
+      }
+    ],
+    "workspace": {
+      "default_query": "SELECT * FROM spies LIMIT 1;",
+      "database_schema_b64": "eyJzcGllcyI6W3siaWQiOjEsImFsaWFzIjoiVmlwZXIifSx7ImlkIjoyLCJhbGlhcyI6Ikdob3N0In0seyJpZCI6MywiYWxpYXMiOiJTaGFkb3cifSx7ImlkIjo0LCJhbGlhcyI6Ikhhd2sifV19"
+    }
+  },
+  {
+    "id": "recon_12",
+    "name": "OSINT: The Fake Website",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "osint",
+    "problem_statement": "Directive: Look at the raw HTML source code on the right. What is the hidden comment?",
+    "flag": "HIDDEN_DEV",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "In HTML, developer comments are invisible on the actual website and look like `<!-- secret text -->`."
+      }
+    ],
+    "workspace": {
+      "evidence_board": {
+        "type": "text",
+        "content": "<!DOCTYPE html>\n<html>\n<head>\n  <title>Login Server</title>\n</head>\n<body>\n  <h1>Access Restricted</h1>\n  <!-- FLAG: HIDDEN_DEV -->\n</body>\n</html>"
+      }
+    }
+  },
+  {
+    "id": "recon_13",
+    "name": "Forensics: Where am I?",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "bash",
+    "problem_statement": "Directive: You are lost deep in a folder structure. Print your current working directory to get the flag.",
+    "flag": "/var/hidden/flag_here",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "The command for 'Print Working Directory' is just its initials: `pwd`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/var/hidden/flag_here",
+      "file_system_b64": "e30="
+    }
+  },
+  {
+    "id": "recon_14",
+    "name": "Query: The Richest",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "sql",
+    "problem_statement": "Directive: Find the absolute highest balance in the `accounts` table.",
+    "flag": "950000",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "SQL has a MAX function. Type `SELECT MAX(balance) FROM accounts`."
+      }
+    ],
+    "workspace": {
+      "default_query": "SELECT balance FROM accounts LIMIT 2;",
+      "database_schema_b64": "eyJhY2NvdW50cyI6W3siYWNjdF9ubyI6IkEwMSIsImJhbGFuY2UiOjQ1MDAwfSx7ImFjY3Rfbm8iOiJBMDIiLCJiYWxhbmNlIjo5NTAwMDB9LHsiYWNjdF9ubyI6IkEwMyIsImJhbGFuY2UiOjEyMDB9XX0="
+    }
+  },
+  {
+    "id": "recon_15",
+    "name": "OSINT: Domain Age",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "osint",
+    "problem_statement": "Directive: Look at the WHOIS domain data on the right. What year was this website registered?",
+    "flag": "2018",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Scan the text block for 'Creation Date' or 'Registered On'."
+      }
+    ],
+    "workspace": {
+      "evidence_board": {
+        "type": "text",
+        "content": "Domain Name: SYNDICATE-NET.ORG\nRegistry Domain ID: 987654321_DOMAIN_ORG-VRSN\nCreation Date: 2018-06-15T12:00:00Z\nRegistrar: NameCheap, Inc."
+      }
+    }
+  },
+  {
+    "id": "recon_16",
+    "name": "Forensics: The Hidden Payload",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "bash",
+    "problem_statement": "Directive: The current directory appears completely empty when you type `ls`, but a concealed script is present. Find its exact filename.",
+    "flag": ".secret_payload.sh",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "In Linux systems, files starting with a dot (.) are hidden. Add the `-a` (all) flag: type `ls -a`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/tmp/drops",
+      "file_system_b64": "eyIuc2VjcmV0X3BheWxvYWQuc2giOiJlY2hvICdTeXN0ZW0gQ29tcHJvbWlzZWQnIn0="
+    }
+  },
+  {
+    "id": "recon_17",
+    "name": "Query: Sort it Out",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "sql",
+    "problem_statement": "Directive: Query the `agents` table. Who is the agent that appears at the very top of the list when sorted alphabetically by `last_name`?",
+    "flag": "Batra",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "You need to order the results. Add `ORDER BY last_name ASC` to your SELECT statement."
+      }
+    ],
+    "workspace": {
+      "default_query": "SELECT * FROM agents;",
+      "database_schema_b64": "eyJhZ2VudHMiOlt7ImZpcnN0X25hbWUiOiJWaWtyYW0iLCJsYXN0X25hbWUiOiJTaW5naCJ9LHsiZmlyc3RfbmFtZSI6Ik5laGEiLCJsYXN0X25hbWUiOiJCYXRyYSJ9LHsiZmlyc3RfbmFtZSI6IlJvaGFuIiwibGFzdF9uYW1lIjoiRGVzaG11a2gifV19"
+    }
+  },
+  {
+    "id": "recon_18",
+    "name": "Forensics: Searching Inside",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "bash",
+    "problem_statement": "Directive: The `server.log` file has 10,000 lines. Find the exact 4-digit code attached to the phrase 'CRITICAL_FAIL:'.",
+    "flag": "9012",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "You don't need to read the whole file. Use the grep command to search inside it: `grep \"CRITICAL_FAIL\" server.log`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/var/log",
+      "file_system_b64": "eyJzZXJ2ZXIubG9nIjoiSU5GTzogQm9vdCBzZXF1ZW5jZSBpbml0aWF0ZWRcbldBUk46IE1lbW9yeSBIaWdoXG5DUklUSUNBTF9GQUlMOiA5MDEyXG5JTkZPOiBSZXN0YXJ0aW5nIn0="
+    }
+  },
+  {
+    "id": "recon_19",
+    "name": "Query: Combine Two Tables",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "sql",
+    "problem_statement": "Directive: `employees` has names. `access_logs` has entry times. Find the name of the employee who entered at '03:00:00'.",
+    "flag": "Rahul",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Combine them using JOIN! `SELECT name FROM employees JOIN access_logs ON employees.id = access_logs.emp_id WHERE time = '03:00:00'`."
+      }
+    ],
+    "workspace": {
+      "default_query": "SELECT * FROM employees;",
+      "database_schema_b64": "eyJlbXBsb3llZXMiOlt7ImlkIjoxMDEsIm5hbWUiOiJBZGl0aSJ9LHsiaWQiOjEwMiwibmFtZSI6IlJhaHVsIn1dLCJhY2Nlc3NfbG9ncyI6W3siZW1wX2lkIjoxMDEsInRpbWUiOiIwODoxNTowMCJ9LHsiZW1wX2lkIjoxMDIsInRpbWUiOiIwMzowMDowMCJ9XX0="
+    }
+  },
+  {
+    "id": "recon_20",
+    "name": "OSINT: Hex Editor",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "osint",
+    "problem_statement": "Directive: We ran a file through a Hexadecimal reader. It reveals a hidden text string appended at the very end of the file. Find it.",
+    "flag": "BACKDOOR",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Scroll to the absolute bottom of the text-based Hex dump on the right pane. Look at the readable ASCII letters on the far right column."
+      }
+    ],
+    "workspace": {
+      "evidence_board": {
+        "type": "text",
+        "content": "000000D0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|\n000000E0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|\n000000F0  FF D9 00 00 00 00 00 00  42 41 43 4B 44 4F 4F 52  |........BACKDOOR|"
+      }
+    }
+  },
+  {
+    "id": "recon_21",
+    "name": "Forensics: The Tail End",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "bash",
+    "problem_statement": "Directive: The system is actively writing to `stream.log`. Read only the very last line of the file to get the flag.",
+    "flag": "SYSTEM_HALT",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "The `tail` command outputs the end of a file. Try `tail -n 1 stream.log`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/var/log",
+      "file_system_b64": "eyJzdHJlYW0ubG9nIjoiUGluZyByZXNwb25zZSBPS1xuUGluZyByZXNwb25zZSBPS1xuRGF0YSB0cmFuc2ZlciBjb21wbGV0ZVxuU1lTVEVNX0hBTFQifQ=="
+    }
+  },
+  {
+    "id": "recon_22",
+    "name": "Query: Unique Values",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "sql",
+    "problem_statement": "Directive: There are duplicate entries. Find the total number of completely *unique* `city` names in the `safehouses` table.",
+    "flag": "2",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Use the `DISTINCT` keyword right after SELECT to ignore duplicates. `SELECT COUNT(DISTINCT city) FROM safehouses;`"
+      }
+    ],
+    "workspace": {
+      "default_query": "SELECT city FROM safehouses;",
+      "database_schema_b64": "eyJzYWZlaG91c2VzIjpbeyJpZCI6MSwiY2l0eSI6IkluZG9yZSJ9LHsiaWQiOjIsImNpdHkiOiJCaG9wYWwifSx7ImlkIjozLCJjaXR5IjoiSW5kb3JlIn1dfQ=="
+    }
+  },
+  {
+    "id": "recon_23",
+    "name": "OSINT: The Network Hop",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "osint",
+    "problem_statement": "Directive: We ran a `traceroute` to find where the signal is bouncing. Look at the terminal output on the right. What is the IP address of the 4th hop?",
+    "flag": "192.168.1.104",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Find line number 4 in the text output. The IP address looks like `192.168.x.x`."
+      }
+    ],
+    "workspace": {
+      "evidence_board": {
+        "type": "text",
+        "content": "traceroute to secure.server (10.0.0.5), 30 hops max\n 1  192.168.1.1 (192.168.1.1)  1.123 ms\n 2  10.14.0.1 (10.14.0.1)  4.231 ms\n 3  10.14.10.5 (10.14.10.5)  5.432 ms\n 4  192.168.1.104 (192.168.1.104)  8.765 ms\n 5  10.0.0.5 (10.0.0.5)  10.123 ms"
+      }
+    }
+  },
+  {
+    "id": "recon_24",
+    "name": "Forensics: The Symbolic Link",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "bash",
+    "problem_statement": "Directive: The file `shortcut.lnk` is pointing to another location. Find the absolute path of the original file it points to.",
+    "flag": "/etc/shadow",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Use `ls -l`. The output will show an arrow `->` pointing to the real file path."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/home/agent",
+      "file_system_b64": "eyJzaG9ydGN1dC5sbmsiOiJzeW1saW5rIC0+IC9ldGMvc2hhZG93In0="
+    }
+  },
+  {
+    "id": "recon_25",
+    "name": "Query: The Null Protocol",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "sql",
+    "problem_statement": "Directive: The database crashed. Find the `badge_id` in the `access_logs` table where the `timestamp` is exactly NULL.",
+    "flag": "B-99",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "You cannot use `=` for NULL in SQL. You must use `WHERE timestamp IS NULL`."
+      }
+    ],
+    "workspace": {
+      "default_query": "SELECT * FROM access_logs;",
+      "database_schema_b64": "eyJhY2Nlc3NfbG9ncyI6W3siYmFkZ2VfaWQiOiJCLTEyIiwidGltZXN0YW1wIjoiMjAyNC0xMC0wMSAwODozMCJ9LHsiYmFkZ2VfaWQiOiJCLTk5IiwidGltZXN0YW1wIjpudWxsfV19"
+    }
+  },
+  {
+    "id": "recon_26",
+    "name": "Query: The Grand Heist (Triple Join)",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "sql",
+    "problem_statement": "Directive: `suspects` has IDs. `vehicles` links IDs to plates. `toll_booths` links plates to cities. Find the `city` of the suspect named 'Kabir'.",
+    "flag": "Ujjain",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Double JOIN required. Join suspects to vehicles on `suspect_id`. Then join toll_booths on `license_plate`. Filter `WHERE name = 'Kabir'`."
+      }
+    ],
+    "workspace": {
+      "default_query": "SELECT * FROM suspects;",
+      "database_schema_b64": "eyJzdXNwZWN0cyI6W3siaWQiOjk5LCJuYW1lIjoiS2FiaXIifSx7ImlkIjo0NSwibmFtZSI6IkFyanVuIn1dLCJ2ZWhpY2xlcyI6W3sic3VzcGVjdF9pZCI6OTksImxpY2Vuc2VfcGxhdGUiOiJNUDA5LTEyMzQifSx7InN1c3BlY3RfaWQiOjQ1LCJsaWNlbnNlX3BsYXRlIjoiTVAwNC01NTU1In1dLCJ0b2xsX2Jvb3RocyI6W3sibGljZW5zZV9wbGF0ZSI6Ik1QMDktMTIzNCIsImNpdHkiOiJVamphaW4ifSx7ImxpY2Vuc2VfcGxhdGUiOiJNUDA0LTU1NTUiLCJjaXR5IjoiQmhvcGFsIn1dfQ=="
+    }
+  },
+  {
+    "id": "recon_27",
+    "name": "Forensics: Piped Count",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "bash",
+    "problem_statement": "Directive: The `auth.log` file tracks all logins. Write a command chain to count exactly how many times the word 'Failed' appears.",
+    "flag": "3",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "You can pipe (`|`) commands into each other! Read the file, filter for the specific word, and count the lines: `cat auth.log | grep \"Failed\" | wc -l`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/var/log",
+      "file_system_b64": "eyJhdXRoLmxvZyI6IlN1Y2Nlc3M6IHJvb3RcbkZhaWxlZDogYWRtaW5cblN1Y2Nlc3M6IHVzZXIxXG5GYWlsZWQ6IHJvb3RcbkZhaWxlZDogYWRtaW4ifQ=="
+    }
+  },
+  {
+    "id": "recon_28",
+    "name": "Query: Above Average",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "sql",
+    "problem_statement": "Directive: Query the `salaries` table. Find the `name` of the operative who earns strictly more than the overall average salary of the entire organization.",
+    "flag": "Meera",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "You need a subquery! First find the average `(SELECT AVG(salary) FROM salaries)`, then use that in your main WHERE clause."
+      }
+    ],
+    "workspace": {
+      "default_query": "SELECT * FROM salaries;",
+      "database_schema_b64": "eyJzYWxhcmllcyI6W3sibmFtZSI6IlJhaiIsInNhbGFyeSI6NDAwMDB9LHsibmFtZSI6IlNpbXJhbiIsInNhbGFyeSI6NTAwMDB9LHsibmFtZSI6Ik1lZXJhIiwic2FsYXJ5Ijo5MDAwMH1dfQ=="
+    }
+  },
+  {
+    "id": "recon_29",
+    "name": "OSINT: Wireshark Packet Dump",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "osint",
+    "problem_statement": "Directive: Analyze the raw HTTP PCAP (packet capture) text dump. An operative logged into an unsecured HTTP site. Extract their plaintext password.",
+    "flag": "Hunter2",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Search the raw text block on the right for `POST` requests. Look for the payload body containing `password=`."
+      }
+    ],
+    "workspace": {
+      "evidence_board": {
+        "type": "text",
+        "content": "GET /index.html HTTP/1.1\nHost: secure.local\n\nPOST /login.php HTTP/1.1\nHost: secure.local\nContent-Type: application/x-www-form-urlencoded\n\nuser=admin&password=Hunter2"
+      }
+    }
+  },
+  {
+    "id": "recon_30",
+    "name": "Forensics: Base64 Decode",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "bash",
+    "problem_statement": "Directive: The file `encoded_flag.txt` contains a Base64 string. Decode it directly in the terminal to reveal the plaintext flag.",
+    "flag": "TERMINAL_WIN",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Pipe the `cat` command into the base64 decoding tool: `cat encoded_flag.txt | base64 -d`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/home/agent",
+      "file_system_b64": "eyJlbmNvZGVkX2ZsYWcudHh0IjoiVkVWU1RVbE9RVXhmVjBsTyJ9"
+    }
+  },
+  {
+    "id": "recon_31",
+    "name": "Forensics: Hidden History",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "bash",
+    "problem_statement": "Directive: An operator executed a critical command and cleared their terminal, but bash records prior keystrokes in a hidden dotfile. Inspect the bash history file to recover the authorization flag.",
+    "flag": "RECON_HIST_FOUND_31",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Inspect the hidden bash history file using `cat ~/.bash_history` or `cat .bash_history`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/home/analyst",
+      "initial_command": "ls -a",
+      "file_system_b64": "eyJyZWFkbWUudHh0IjogIlRlcm1pbmFsIHNlc3Npb24gcmVjb3JkZWQuIiwgIi5iYXNoX2hpc3RvcnkiOiAiY2QgL3Zhci9iYWNrdXBzXG5leHBvcnQgQVVUSF9UT0tFTj1SRUNPTl9ISVNUX0ZPVU5EXzMxXG5leGl0In0="
+    }
+  },
+  {
+    "id": "recon_32",
+    "name": "Network: HTTP Header Snooping",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "network",
+    "problem_statement": "Directive: A staging web service on `http://127.0.0.1:8080/health` returns custom telemetry headers. Use curl to inspect the response headers and find the value of `X-Service-Flag`.",
+    "flag": "RECON_CURL_HDR_32",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use the `-I` or `-i` flag with curl to dump response headers: `curl -I http://127.0.0.1:8080/health`."
+      }
+    ],
+    "workspace": {
+      "initial_command": "curl -I http://127.0.0.1:8080/health",
+      "file_system_b64": "eyJtb2NrX3Jlc3BvbnNlLnR4dCI6ICJIVFRQLzEuMSAyMDAgT0tcclxuU2VydmVyOiBTdGFnaW5nR1cvMS40XHJcblgtU2VydmljZS1GbGFnOiBSRUNPTl9DVVJMX0hEUl8zMlxyXG5Db250ZW50LUxlbmd0aDogMTVcclxuXHJcblNlcnZpY2UgaGVhbHRoeSJ9"
+    }
+  },
+  {
+    "id": "recon_33",
+    "name": "Forensics: Secret in the Subdir",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "bash",
+    "problem_statement": "Directive: A nested configuration directory exists under `/var/configs`. Find all files ending in `.conf` recursively and locate the token stored in the `auth.conf` file.",
+    "flag": "RECON_FIND_CONF_33",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use `find /var/configs -name \"*.conf\"` to locate the configuration files, then `cat` the file."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/var/configs",
+      "file_system_b64": "eyJjb3JlL2FwcC5jb25mIjogImRlYnVnPWZhbHNlXG5wb3J0PTgwODAiLCAic2VjdXJpdHkvYXV0aC5jb25mIjogInRva2VuPVJFQ09OX0ZJTkRfQ09ORl8zM1xucmVhbG09aW50ZXJuYWwifQ=="
+    }
+  },
+  {
+    "id": "recon_34",
+    "name": "Forensics: Pattern Harvester",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "bash",
+    "problem_statement": "Directive: The file `system_events.log` contains thousands of lines. Search for lines containing the keyword 'FLAG:' to extract the security token.",
+    "flag": "RECON_GREP_LOG_34",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use `grep \"FLAG:\" system_events.log` to isolate the line containing the token."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/var/log",
+      "file_system_b64": "eyJzeXN0ZW1fZXZlbnRzLmxvZyI6ICJJTkZPIDEwOjAwOjAxIEJvb3Qgc2VxdWVuY2Ugb2tcbklORk8gMTA6MDA6MDUgRGFlbW9uIHJ1bm5pbmdcbldBUk4gMTA6MDE6MjIgQnVmZmVyIGxvd1xuTk9USUNFIDEwOjAyOjQ0IEZMQUc6IFJFQ09OX0dSRVBfTE9HXzM0XG5JTkZPIDEwOjAzOjAwIElkbGUifQ=="
+    }
+  },
+  {
+    "id": "recon_35",
+    "name": "Forensics: Modified in the Shadows",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "forensic",
+    "problem_statement": "Directive: An adversary altered a file in `/opt/data` today. List the files sorted by modification time to identify the most recently updated file.",
+    "flag": "RECON_MTIME_NEW_35",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use `ls -lt` to sort directory contents by modification time descending."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/opt/data",
+      "file_system_b64": "eyJhcmNoaXZlXzIwMjIudGFyIjogImxlZ2FjeSIsICJiYWNrdXAuYmFrIjogIm9sZCBkYXRhIiwgInBhdGNoX3JlY2VudC50eHQiOiAiUkVDT05fTVRJTUVfTkVXXzM1In0="
+    }
+  },
+  {
+    "id": "recon_36",
+    "name": "Forensics: Hidden Under the Dot",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "bash",
+    "problem_statement": "Directive: A covert operative hid a file whose name begins with a dot in `/tmp/staging`. Discover the hidden filename and view its content.",
+    "flag": "RECON_DOT_STAGED_36",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "List hidden files with `ls -la /tmp/staging`, then read the dotfile with `cat`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/tmp/staging",
+      "file_system_b64": "eyJub3Rlcy50eHQiOiAiTm90aGluZyBzdXNwaWNpb3VzLiIsICIuY292ZXJ0X2NoYW5uZWwiOiAiUkVDT05fRE9UX1NUQUdFRF8zNiJ9"
+    }
+  },
+  {
+    "id": "recon_37",
+    "name": "Network: Hostname Resolution",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "network",
+    "problem_statement": "Directive: Inspect `/etc/hosts` to find the static IP address mapped to the internal host `telemetry.internal.corp`.",
+    "flag": "RECON_HOSTS_IP_37",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Print the contents of the hosts resolution file with `cat /etc/hosts`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/etc",
+      "file_system_b64": "eyJob3N0cyI6ICIxMjcuMC4wLjEgbG9jYWxob3N0XG4xMC4yMDAuNC4xOCB0ZWxlbWV0cnkuaW50ZXJuYWwuY29ycCAjIFJFQ09OX0hPU1RTX0lQXzM3XG46OjEgaXA2LWxvY2FsaG9zdCJ9"
+    }
+  },
+  {
+    "id": "recon_38",
+    "name": "Forensics: Counting Lines",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "bash",
+    "problem_statement": "Directive: The audit file `audit.csv` lists detected security alerts. Count how many total lines are in `audit.csv`.",
+    "flag": "RECON_LINE_COUNT_38",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use `wc -l audit.csv` to count the lines in the file."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/var/audit",
+      "file_system_b64": "eyJhdWRpdC5jc3YiOiAiaWQsYWxlcnQsc2V2ZXJpdHlcbjEsYXV0aF9mYWlsLGhpZ2hcbjIscG9ydF9zY2FuLG1lZGl1bVxuMyxkb3NfYXR0ZW1wdCxjcml0aWNhbFxuNCxmbGFnX21hcmtlcixSRUNPTl9MSU5FX0NPVU5UXzM4In0="
+    }
+  },
+  {
+    "id": "recon_39",
+    "name": "Forensics: Environment Variable Peek",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "bash",
+    "problem_statement": "Directive: The container runtime passed an operational secret in an environment variable named `MISSION_TOKEN`. Print its value.",
+    "flag": "RECON_ENV_SECRET_39",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Print an environment variable using `echo $MISSION_TOKEN` or `env | grep MISSION_TOKEN`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/root",
+      "initial_command": "env | grep MISSION",
+      "file_system_b64": "eyJlbnZfZHVtcC50eHQiOiAiTUlTU0lPTl9UT0tFTj1SRUNPTl9FTlZfU0VDUkVUXzM5XG5QQVRIPS91c3IvbG9jYWwvYmluOi91c3IvYmluIn0="
+    }
+  },
+  {
+    "id": "recon_40",
+    "name": "Forensics: File Size Triage",
+    "difficulty": "easy",
+    "base_coins": 150,
+    "type": "forensic",
+    "problem_statement": "Directive: Several dump files were created in `/var/dumps`. Locate the only dump file that is not 0 bytes and read the string within.",
+    "flag": "RECON_NONZERO_DUMP_40",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 25,
+        "text": "Use `find /var/dumps -size +0c` or `ls -lh /var/dumps` to spot the non-empty file."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/var/dumps",
+      "file_system_b64": "eyJjb3JlLjAiOiAiIiwgImNvcmUuMSI6ICIiLCAiY29yZS50YXJnZXQiOiAiUkVDT05fTk9OWkVST19EVU1QXzQwIiwgImNvcmUuMiI6ICIifQ=="
+    }
+  },
+  {
+    "id": "recon_41",
+    "name": "Forensics: SUID Binary Hunt",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "forensic",
+    "problem_statement": "Directive: An attacker planted an executable binary with SUID bit (permissions 4755) in `/usr/local/bin`. Find the name of the SUID binary.",
+    "flag": "RECON_SUID_ROOT_41",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Use `find /usr/local/bin -perm -4000` to enumerate binaries with the SUID bit set."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/usr/local/bin",
+      "file_system_b64": "eyJub3JtYWxfdG9vbCI6ICItcnd4ci14ci14IiwgInN5c3RlbV9zdGF0dXMiOiAiLXJ3eHIteHIteCIsICJlbGV2YXRlX3Jvb3QiOiAiLXJ3c3IteHIteCBSRUNPTl9TVUlEX1JPT1RfNDEifQ=="
+    }
+  },
+  {
+    "id": "recon_42",
+    "name": "Forensics: Access Log 404 Hunter",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "bash",
+    "problem_statement": "Directive: Analyze `access.log` to find the URI path that returned HTTP status code 404 during an automated scanning probe.",
+    "flag": "RECON_LOG_URI_42",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Filter lines containing ' 404 ' using grep or awk: `grep \" 404 \" access.log`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/var/log/nginx",
+      "file_system_b64": "eyJhY2Nlc3MubG9nIjogIjE5Mi4xNjguMS41IC0gLSBbMTAvT2N0LzIwMjY6MTM6NTU6MzZdIFwiR0VUIC9pbmRleC5odG1sIEhUVFAvMS4xXCIgMjAwIDEwMjRcbjE5Mi4xNjguMS41IC0gLSBbMTAvT2N0LzIwMjY6MTM6NTU6NDBdIFwiR0VUIC9hcGkvdjEvc3RhdHVzIEhUVFAvMS4xXCIgMjAwIDEyOFxuMTAuMC4wLjk5IC0gLSBbMTAvT2N0LzIwMjY6MTM6NTY6MDFdIFwiR0VUIC9hZG1pbi9zZWNyZXRfZW5kcG9pbnQgSFRUUC8xLjFcIiA0MDQgMjMyICMgUkVDT05fTE9HX1VSSV80MlxuMTkyLjE2OC4xLjEwIC0gLSBbMTAvT2N0LzIwMjY6MTM6NTY6MTVdIFwiR0VUIC9mYXZpY29uLmljbyBIVFRQLzEuMVwiIDIwMCA0NSJ9"
+    }
+  },
+  {
+    "id": "recon_43",
+    "name": "Forensics: Scheduled Cron Job",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "bash",
+    "problem_statement": "Directive: Examine system scheduled tasks in `/etc/crontab` and `/etc/cron.d/` to find the script executed every 5 minutes by the root user.",
+    "flag": "RECON_CRON_ROOT_43",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "View `/etc/crontab` and check the cron expression `*/5 * * * *`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/etc",
+      "file_system_b64": "eyJjcm9udGFiIjogIiMgU3lzdGVtIGNyb250YWJcblNIRUxMPS9iaW4vc2hcblBBVEg9L3Vzci9sb2NhbC9zYmluOi91c3IvbG9jYWwvYmluOi9zYmluOi9iaW5cbjAgMCAqICogKiByb290IC91c3Ivc2Jpbi9sb2dyb3RhdGVcbiovNSAqICogKiAqIHJvb3QgL29wdC9zY3JpcHRzL2hlYWx0aGNoZWNrLnNoICMgUkVDT05fQ1JPTl9ST09UXzQzXG4ifQ=="
+    }
+  },
+  {
+    "id": "recon_44",
+    "name": "Query: Schema Table Discovery",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "sql",
+    "problem_statement": "Directive: Query `sqlite_master` in the database to discover the name of the hidden audit table that begins with `shadow_`.",
+    "flag": "RECON_SQLITE_TBL_44",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Execute `SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'shadow_%';`."
+      }
+    ],
+    "workspace": {
+      "default_query": "SELECT name FROM sqlite_master WHERE type='table';",
+      "database_schema_b64": "eyJzcWxpdGVfbWFzdGVyIjogW3sidHlwZSI6ICJ0YWJsZSIsICJuYW1lIjogInVzZXJzIn0sIHsidHlwZSI6ICJ0YWJsZSIsICJuYW1lIjogInNlc3Npb25zIn0sIHsidHlwZSI6ICJ0YWJsZSIsICJuYW1lIjogInNoYWRvd192YXVsdF9zZWMifV0sICJzaGFkb3dfdmF1bHRfc2VjIjogW3siaWQiOiAxLCAiZmxhZyI6ICJSRUNPTl9TUUxJVEVfVEJMXzQ0In1dfQ=="
+    }
+  },
+  {
+    "id": "recon_45",
+    "name": "Forensics: Grep Regex IP Extraction",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "bash",
+    "problem_statement": "Directive: A rogue server transmitted connection attempts logged in `firewall.log`. Use extended grep with regex to extract IPv4 addresses matching subnet `10.50.X.X`.",
+    "flag": "RECON_REGEX_IP_45",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Use `grep -E \"10\\.50\\.[0-9]+\\.[0-9]+\" firewall.log` or `grep \"10.50.\" firewall.log`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/var/log",
+      "file_system_b64": "eyJmaXJld2FsbC5sb2ciOiAiRFJPUCBJTj1ldGgwIFNSQz0xOTIuMTY4LjEuMTAwIERTVD0xOTIuMTY4LjEuMVxuRFJPUCBJTj1ldGgwIFNSQz0xNzIuMTYuMC40IERTVD0xNzIuMTYuMC4xXG5BQ0NFUFQgSU49ZXRoMSBTUkM9MTAuNTAuOTkuMjMgRFNUPTEwLjUwLjAuMSBUT0tFTj1SRUNPTl9SRUdFWF9JUF80NVxuRFJPUCBJTj1ldGgwIFNSQz0xOTIuMTY4LjEuMTAxIERTVD0xOTIuMTY4LjEuMSJ9"
+    }
+  },
+  {
+    "id": "recon_46",
+    "name": "Forensics: World-Writable Audit",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "forensic",
+    "problem_statement": "Directive: Audit permissions in `/opt/services` to find the world-writable file (permission mode 777 or o+w) that represents a privilege escalation hazard.",
+    "flag": "RECON_WRITABLE_777_46",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Use `find /opt/services -perm -0002` or `ls -l` and look for `rwxrwxrwx`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/opt/services",
+      "file_system_b64": "eyJzZXJ2aWNlLmNmZyI6ICItcnctci0tci0tIiwgImxhdW5jaGVyLnNoIjogIi1yd3hyLXhyLXgiLCAiYmFja3VwX2hvb2suc2giOiAiLXJ3eHJ3eHJ3eCBSRUNPTl9XUklUQUJMRV83NzdfNDYifQ=="
+    }
+  },
+  {
+    "id": "recon_47",
+    "name": "Network: Listening Socket Audit",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "network",
+    "problem_statement": "Directive: Inspect the system socket status output from `ss -tulpn` or `netstat -tlpn` to find the unauthenticated service listening on port 9090.",
+    "flag": "RECON_SOCK_PORT_47",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Search for `:9090` in the socket listing output to identify the program name."
+      }
+    ],
+    "workspace": {
+      "initial_command": "cat /proc/net/tcp_summary",
+      "file_system_b64": "eyJ0Y3Bfc3VtbWFyeSI6ICJQcm90byBSZWN2LVEgU2VuZC1RIExvY2FsIEFkZHJlc3MgRm9yZWlnbiBBZGRyZXNzIFN0YXRlIFBJRC9Qcm9ncmFtXG50Y3AgMCAwIDEyNy4wLjAuMToyMiAwLjAuMC4wOiogTElTVEVOIDQ1Mi9zc2hkXG50Y3AgMCAwIDAuMC4wLjA6ODAgMC4wLjAuMDoqIExJU1RFTiA4OTAvbmdpbnhcbnRjcCAwIDAgMC4wLjAuMDo5MDkwIDAuMC4wLjA6KiBMSVNURU4gMTMzNy9iYWNrZG9vcl9tb24gIyBSRUNPTl9TT0NLX1BPUlRfNDcifQ=="
+    }
+  },
+  {
+    "id": "recon_48",
+    "name": "Query: SQL Injection Probe",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "sql",
+    "problem_statement": "Directive: In the `audit_trail` table, multiple suspicious SQL injection payloads were logged. Query the payload that successfully extracted admin credentials.",
+    "flag": "RECON_SQLI_PROBE_48",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Use `SELECT * FROM audit_trail WHERE payload LIKE '%UNION%' OR status = 'EXPLOITED';`."
+      }
+    ],
+    "workspace": {
+      "default_query": "SELECT * FROM audit_trail;",
+      "database_schema_b64": "eyJhdWRpdF90cmFpbCI6IFt7ImlkIjogMSwgImlwIjogIjEwLjAuMC40IiwgInBheWxvYWQiOiAiJyBPUiAxPTEgLS0iLCAic3RhdHVzIjogIkJMT0NLRUQifSwgeyJpZCI6IDIsICJpcCI6ICIxMC4wLjAuOCIsICJwYXlsb2FkIjogIicgVU5JT04gU0VMRUNUIHVzZXJuYW1lLHBhc3N3b3JkIEZST00gdXNlcnMgLS0iLCAic3RhdHVzIjogIkVYUExPSVRFRCIsICJ0b2tlbiI6ICJSRUNPTl9TUUxJX1BST0JFXzQ4In1dfQ=="
+    }
+  },
+  {
+    "id": "recon_49",
+    "name": "Forensics: SSH Authorized Keys Audit",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "forensic",
+    "problem_statement": "Directive: Investigate `/home/deploy/.ssh/authorized_keys` to identify the rogue public key comment appended by an unauthorized actor.",
+    "flag": "RECON_SSH_KEY_49",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Read the authorized_keys file: `cat /home/deploy/.ssh/authorized_keys` and examine the trailing comment."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/home/deploy/.ssh",
+      "file_system_b64": "eyJhdXRob3JpemVkX2tleXMiOiAic3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSS4uLiBkZXBsb3lAaW50ZXJuYWwtY2lcbnNzaC1yc2EgQUFBQUIzTnphQzF5YzJFQUFBQURBUUFCQUFBQkFRQy4uLiBhZHZlcnNhcnlAY292ZXJ0LWJveCAjIFJFQ09OX1NTSF9LRVlfNDkifQ=="
+    }
+  },
+  {
+    "id": "recon_50",
+    "name": "Forensics: Defective Systemd Unit",
+    "difficulty": "medium",
+    "base_coins": 400,
+    "type": "bash",
+    "problem_statement": "Directive: A persistent service was installed in `/etc/systemd/system/malware.service`. Inspect the `ExecStart` directive to discover what binary is executed.",
+    "flag": "RECON_SYSTEMD_EXEC_50",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 50,
+        "text": "Print the unit file with `cat /etc/systemd/system/malware.service` and read `ExecStart=`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/etc/systemd/system",
+      "file_system_b64": "eyJtYWx3YXJlLnNlcnZpY2UiOiAiW1VuaXRdXG5EZXNjcmlwdGlvbj1UZWxlbWV0cnkgU3luY1xuQWZ0ZXI9bmV0d29yay50YXJnZXRcblxuW1NlcnZpY2VdXG5UeXBlPXNpbXBsZVxuRXhlY1N0YXJ0PS91c3IvbG9jYWwvYmluL3N5bmNfYWdlbnQgLS1rZXkgUkVDT05fU1lTVEVNRF9FWEVDXzUwXG5SZXN0YXJ0PWFsd2F5c1xuXG5bSW5zdGFsbF1cbldhbnRlZEJ5PW11bHRpLXVzZXIudGFyZ2V0In0="
+    }
+  },
+  {
+    "id": "recon_51",
+    "name": "Forensics: Pipeline Awk Aggregator",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "bash",
+    "problem_statement": "Directive: A high-volume access log `web_traffic.csv` records IP addresses in column 1 and bytes in column 4. Write an awk command to sum total bytes for IP `192.168.1.50`.",
+    "flag": "RECON_AWK_BYTES_51",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Chain awk with pattern match and accumulator: `awk -F',' '$1==\"192.168.1.50\"{sum+=$4} END{print sum}' web_traffic.csv`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/var/data",
+      "file_system_b64": "eyJ3ZWJfdHJhZmZpYy5jc3YiOiAiMTkyLjE2OC4xLjEwLEdFVCwvaG9tZSw1MDBcbjE5Mi4xNjguMS41MCxQT1NULC91cGxvYWQsMTIwMFxuMTkyLjE2OC4xLjIwLEdFVCwvc3R5bGUuY3NzLDMwMFxuMTkyLjE2OC4xLjUwLEdFVCwvZG93bmxvYWQsMzgwMFxuIyBUb3RhbCBieXRlcyBmb3IgMTkyLjE2OC4xLjUwID0gNTAwMCAtPiBSRUNPTl9BV0tfQllURVNfNTEifQ=="
+    }
+  },
+  {
+    "id": "recon_52",
+    "name": "Network: DNS Tunneling Exfiltration",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "network",
+    "problem_statement": "Directive: An adversary exfiltrated base64 data chunks encoded in DNS query subdomains in `dns_queries.log`. Concatenate the subdomains for domain `corp-exfil.xyz` and decode them.",
+    "flag": "RECON_DNS_TUNNEL_52",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Extract subdomain prefixes using `awk` or `cut`, strip `.corp-exfil.xyz`, concatenate, and pipe through `base64 -d`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/var/log/dns",
+      "file_system_b64": "eyJkbnNfcXVlcmllcy5sb2ciOiAicXVlcnlbQV0gVWxWRFQwNWZSRTVUWDFSVi5jb3JwLWV4ZmlsLnh5elxucXVlcnlbQV0gVGs1RlRGODFNZz09LmNvcnAtZXhmaWwueHl6XG4jIENvbmNhdDogVWxWRFQwNWZSRTVUWDFSVlRrNUZURjgxTWc9PSAtPiBSRUNPTl9ETlNfVFVOTkVMXzUyIn0="
+    }
+  },
+  {
+    "id": "recon_53",
+    "name": "Forensics: Memory String Carving",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "forensic",
+    "problem_statement": "Directive: Carve ASCII strings from a raw physical memory dump `memdump.raw` looking for decrypted cryptographic master keys prefixed with `MASTER_KEY:`.",
+    "flag": "RECON_MEM_CARVE_53",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Extract printable strings using `strings memdump.raw | grep \"MASTER_KEY:\"`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/analysis/memory",
+      "file_system_b64": "eyJtZW1kdW1wLnJhdyI6ICJcdTAwMDBcdTAwMDBcdTAwZmZcdTAwZWVFTEZcdTAwMDJNQVNURVJfS0VZOlJFQ09OX01FTV9DQVJWRV81M1x1MDAwMFx1MDBhYVx1MDBiYlx1MDBjY1x1MDBkZERFQURCRUVGIn0="
+    }
+  },
+  {
+    "id": "recon_54",
+    "name": "Network: PCAP TLS Handshake SNI",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "network",
+    "problem_statement": "Directive: Analyze the captured TLS Client Hello packets in `traffic_capture.pcap.txt` to find the Server Name Indication (SNI) hostname used by the covert command-and-control server.",
+    "flag": "RECON_TLS_SNI_54",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Search packet dissections for `Server Name:` or `Handshake: Client Hello` with `grep -A 2 \"Server Name\"`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/captures",
+      "file_system_b64": "eyJ0cmFmZmljX2NhcHR1cmUucGNhcC50eHQiOiAiRnJhbWUgMTogVExTdjEuMiBSZWNvcmQgTGF5ZXI6IEhhbmRzaGFrZSBQcm90b2NvbDogQ2xpZW50IEhlbGxvXG4gIEhhbmRzaGFrZSBQcm90b2NvbDogQ2xpZW50IEhlbGxvXG4gICAgRXh0ZW5zaW9uOiBzZXJ2ZXJfbmFtZSAobGVuPTI0KVxuICAgICAgU2VydmVyIE5hbWUgSW5kaWNhdGlvbiBleHRlbnNpb25cbiAgICAgICAgU2VydmVyIE5hbWU6IGMyLWJlYWNvbi5kYXJrb3BzLm5ldCAjIFJFQ09OX1RMU19TTklfNTRcbkZyYW1lIDI6IFRMU3YxLjIgUmVjb3JkIExheWVyOiBIYW5kc2hha2UgUHJvdG9jb2w6IFNlcnZlciBIZWxsbyJ9"
+    }
+  },
+  {
+    "id": "recon_55",
+    "name": "Forensics: Chained Sed and Xargs",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "bash",
+    "problem_statement": "Directive: A list of candidate artifact file paths is stored in `file_manifest.txt`. Strip leading whitespace with sed, and pass existing paths via xargs to grep for `FLAG_SIG`.",
+    "flag": "RECON_SED_XARGS_55",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Use `sed 's/^[ \t]*//' file_manifest.txt | xargs grep \"FLAG_SIG\"`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/opt/triage",
+      "file_system_b64": "eyJmaWxlX21hbmlmZXN0LnR4dCI6ICIgIHRhcmdldF9hLmxvZ1xuICB0YXJnZXRfYi5sb2dcbiIsICJ0YXJnZXRfYS5sb2ciOiAiY2xlYW4iLCAidGFyZ2V0X2IubG9nIjogIkZMQUdfU0lHPVJFQ09OX1NFRF9YQVJHU181NSJ9"
+    }
+  },
+  {
+    "id": "recon_56",
+    "name": "Network: Topology Reconstruction",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "network",
+    "problem_statement": "Directive: A multi-hop routing table `routing_table.txt` defines network gateways. Trace the next-hop router gateway IP for destination subnet `172.28.0.0/16`.",
+    "flag": "RECON_ROUTE_HOP_56",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Search routing table for destination `172.28.0.0` and identify the Gateway column."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/etc/network",
+      "file_system_b64": "eyJyb3V0aW5nX3RhYmxlLnR4dCI6ICJEZXN0aW5hdGlvbiAgICAgR2F0ZXdheSAgICAgICAgIEdlbm1hc2sgICAgICAgICBGbGFncyBNZXRyaWMgUmVmICAgIFVzZSBJZmFjZVxuMC4wLjAuMCAgICAgICAgIDE5Mi4xNjguMS4xICAgICAwLjAuMC4wICAgICAgICAgVUcgICAgMTAwICAgIDAgICAgICAgIDAgZXRoMFxuMTAuMC4wLjAgICAgICAgIDEwLjAuMC4xICAgICAgICAyNTUuMC4wLjAgICAgICAgVUcgICAgMjAwICAgIDAgICAgICAgIDAgZXRoMVxuMTcyLjI4LjAuMCAgICAgIDEwLjI1NC4xMi4xICAgICAyNTUuMjU1LjAuMCAgICAgVUcgICAgMTUwICAgIDAgICAgICAgIDAgZXRoMiAjIFJFQ09OX1JPVVRFX0hPUF81NlxuMTkyLjE2OC4xLjAgICAgIDAuMC4wLjAgICAgICAgICAyNTUuMjU1LjI1NS4wICAgVSAgICAgMTAwICAgIDAgICAgICAgIDAgZXRoMCJ9"
+    }
+  },
+  {
+    "id": "recon_57",
+    "name": "Forensics: Multi-Stage Hex Carving",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "forensic",
+    "problem_statement": "Directive: An obfuscated shell payload in `corrupt_firmware.bin` contains an embedded tar archive offset starting at magic bytes `75 73 74 61 72` (ustar). Extract the header token.",
+    "flag": "RECON_HEX_USTAR_57",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Use `xxd` or `hexdump -C corrupt_firmware.bin | grep -C 2 \"ustar\"` to locate the offset and token."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/firmware",
+      "file_system_b64": "eyJjb3JydXB0X2Zpcm13YXJlLmJpbiI6ICJIRUFERVJfUEFERElOR18wMDAwMDAwMDAwMDAwMDAwdXN0YXIgIDAwcm9vdFx1MDAwMFJFQ09OX0hFWF9VU1RBUl81N1x1MDAwMFRSQUlMRVJfUEFERElORyJ9"
+    }
+  },
+  {
+    "id": "recon_58",
+    "name": "Forensics: Inode Link Investigation",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "bash",
+    "problem_statement": "Directive: An operative hardlinked a sensitive file to disguise it. Find all file paths sharing inode number `849201` in directory `/var/vault`.",
+    "flag": "RECON_INODE_LINK_58",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Use `find /var/vault -inum 849201` to find all directory entries linking to the same inode."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/var/vault",
+      "file_system_b64": "eyJpbm9kZV9tYXAudHh0IjogImlub2RlIDg0OTIwMTogL3Zhci92YXVsdC8uaGlkZGVuX2FuY2hvciBhbmQgL3Zhci92YXVsdC9wdWJsaWNfYWxpYXMudHh0XG5Db250ZW50OiBSRUNPTl9JTk9ERV9MSU5LXzU4In0="
+    }
+  },
+  {
+    "id": "recon_59",
+    "name": "Network: TCP Session Stream Assembly",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "network",
+    "problem_statement": "Directive: A fragmented Telnet session was captured in `telnet_stream.dump`. Assemble the sequence of retransmitted characters to reconstruct the administrator authentication command.",
+    "flag": "RECON_STREAM_TELNET_59",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Sort the stream packets by sequence number: `sort -k2,2n telnet_stream.dump | awk '{print $4}' | tr -d '\\n'`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/network/dumps",
+      "file_system_b64": "eyJ0ZWxuZXRfc3RyZWFtLmR1bXAiOiAiU0VRIDEgREFUQSBBVVRIXG5TRVEgMiBEQVRBIF9BRE1JTlxuU0VRIDMgREFUQSBfUkVDT05fU1RSRUFNX1RFTE5FVF81OVxuIn0="
+    }
+  },
+  {
+    "id": "recon_60",
+    "name": "Forensics: Multi-Stage Forensic Vault",
+    "difficulty": "hard",
+    "base_coins": 750,
+    "type": "forensic",
+    "problem_statement": "Directive: A multi-layered artifact `vault_stage1.txt` contains a base64 encoded string, which decodes to a reverse-rot13 command. Execute the pipeline to unlock the master flag.",
+    "flag": "RECON_STAGE_SOLVE_60",
+    "hints": [
+      {
+        "level": 1,
+        "cost": 100,
+        "text": "Decode base64 first (`base64 -d vault_stage1.txt`), then pipe through rot13 with `tr 'A-Za-z' 'N-ZA-Mn-za-m'`."
+      }
+    ],
+    "workspace": {
+      "current_directory": "/vault",
+      "file_system_b64": "eyJ2YXVsdF9zdGFnZTEudHh0IjogIlJWSlBUa0ZmUmxSQlIxUmZSazlaU1Y5Mk1BPT0ifQ=="
+    }
+  }
+]

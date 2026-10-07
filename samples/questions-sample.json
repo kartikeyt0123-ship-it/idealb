@@ -2,7 +2,7 @@
   "questions": [
     {
       "key": "sample-misc-hex-beacon",
-      "domain": "misc",
+      "domain": "cryptography",
       "pool": "REGULAR",
       "title": "Hex beacon",
       "difficulty": "EASY",
@@ -18,7 +18,7 @@
     },
     {
       "key": "sample-basic-fuel-sum",
-      "domain": "basic",
+      "domain": "core_compute",
       "pool": "REGULAR",
       "title": "Fuel gauge off-by-one",
       "difficulty": "MEDIUM",

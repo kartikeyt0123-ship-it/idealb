@@ -59,6 +59,9 @@ export function monacoLanguage(file: Pick<TaskFile, 'name' | 'language'>): strin
   if (l === 'python' || l === 'py' || ext === 'py') return 'python';
   if (l === 'html' || ext === 'html' || ext === 'htm') return 'html';
   if (l === 'css' || ext === 'css') return 'css';
+  if (l === 'json' || ext === 'json') return 'json';
+  if (l === 'sql' || ext === 'sql') return 'sql';
+  if (l === 'markdown' || ext === 'md') return 'markdown';
   return 'plaintext';
 }
 
@@ -69,13 +72,17 @@ export const isHtml = (f: Pick<TaskFile, 'name'>) => /\.html?$/i.test(f.name);
 // Workspace kind
 // ---------------------------------------------------------------------------
 
-export type RightKind = 'WEB' | 'DATA' | 'RUN' | 'EVIDENCE';
+export type RightKind = 'WEB' | 'DATA' | 'RUN' | 'EVIDENCE' | 'SHELL' | 'SQL' | 'JSON';
 
-export function rightKind(d: Pick<QuestionDetail, 'workspace' | 'runLanguage' | 'files'>): RightKind {
+export function rightKind(d: Pick<QuestionDetail, 'workspace' | 'runLanguage' | 'files' | 'runtimeKind'>): RightKind {
   const hasIndex = d.files.some((f) => f.name.toLowerCase() === 'index.html');
+  if (d.workspace === 'SHELL' || d.runtimeKind === 'shell') return 'SHELL';
+  if (d.workspace === 'SQL' || d.runtimeKind === 'sql') return 'SQL';
+  if (d.workspace === 'JSON' || d.runtimeKind === 'json') return 'JSON';
+  if (d.workspace === 'EVIDENCE') return 'EVIDENCE';
   if (d.workspace === 'WEB' || (d.workspace === 'DESIGN' && hasIndex)) return 'WEB';
   if (d.workspace === 'DATA') return 'DATA';
-  if (d.runLanguage) return 'RUN';
+  if (d.runLanguage || d.runtimeKind === 'python' || d.runtimeKind === 'code') return 'RUN';
   if (hasIndex) return 'WEB';
   return 'EVIDENCE';
 }
@@ -108,16 +115,20 @@ export function buildPreviewDoc(files: TaskFile[], contents: Record<string, stri
   let html = byName.get(index.name.toLowerCase()) ?? '';
   const deferred: string[] = [];
 
+  const used = new Set<string>([index.name.toLowerCase()]);
   html = html.replace(/<link\b[^>]*>/gi, (tag) => {
     const rel = (attr(tag, 'rel') ?? '').toLowerCase();
     const css = lookup(attr(tag, 'href'));
     if (!rel.split(/\s+/).includes('stylesheet') || css === undefined) return tag;
+    used.add(normalizeRef(attr(tag, 'href') ?? '').toLowerCase());
     return `<style data-file="${normalizeRef(attr(tag, 'href') ?? '').replace(/"/g, '')}">\n${css.replace(/<\/style/gi, '<\\/style')}\n</style>`;
   });
 
   html = html.replace(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi, (whole, attrs: string) => {
-    const js = lookup(attr(`<script ${attrs}>`, 'src'));
+    const src = attr(`<script ${attrs}>`, 'src');
+    const js = lookup(src);
     if (js === undefined) return whole;
+    used.add(normalizeRef(src ?? '').toLowerCase());
     const keep = attrs.replace(/\s(?:src|defer|async)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/gi, '');
     const inline = `<script${keep}>\n${js.replace(/<\/script/gi, '<\\/script')}\n</script>`;
     if (/\bdefer\b/i.test(attrs) || /type\s*=\s*["']?module/i.test(attrs)) {
@@ -132,6 +143,25 @@ export function buildPreviewDoc(files: TaskFile[], contents: Record<string, stri
     const svg = /\.svg$/i.test(normalizeRef(ref)) ? lookup(ref) : undefined;
     return svg === undefined ? whole : `${pre}${q}data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}${q}`;
   });
+
+  // Many puzzle pages never link their stylesheet / script. Inject every local
+  // .css file not already linked into <head>, and every .js file not already
+  // included at the end of <body> (file order), so the preview behaves as intended.
+  const extraCss: string[] = [];
+  for (const f of files) {
+    const key = f.name.toLowerCase();
+    if (used.has(key)) continue;
+    const body = byName.get(key) ?? '';
+    const tagName = f.name.replace(/"/g, '');
+    if (/\.css$/i.test(f.name)) extraCss.push(`<style data-file="${tagName}">\n${body.replace(/<\/style/gi, '<\\/style')}\n</style>`);
+    else if (/\.m?js$/i.test(f.name)) deferred.push(`<script data-file="${tagName}">\n${body.replace(/<\/script/gi, '<\\/script')}\n</script>`);
+  }
+  if (extraCss.length) {
+    const css = extraCss.join('\n');
+    if (/<\/head\s*>/i.test(html)) html = html.replace(/<\/head\s*>/i, () => `${css}\n</head>`);
+    else if (/<body\b[^>]*>/i.test(html)) html = html.replace(/<body\b[^>]*>/i, (m) => `${css}\n${m}`);
+    else html = css + html;
+  }
 
   if (deferred.length) {
     const tail = deferred.join('\n');

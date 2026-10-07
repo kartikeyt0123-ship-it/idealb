@@ -35,6 +35,8 @@ export function VerifyPanel({
 }) {
   const v = detail.validation;
   const code = v.mode === 'CODE_TESTS';
+  // IDEALab problems are all flag-based (EXACT_TEXT with FLAG:/flag{} wrappers accepted server-side).
+  const isFlag = v.mode === 'EXACT_TEXT' && (/flag/i.test(detail.answerFormat ?? '') || !!detail.board || (!!detail.runtimeKind && detail.runtimeKind !== 'code'));
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<SubmitResult | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -48,7 +50,7 @@ export function VerifyPanel({
     e?.preventDefault();
     if (disabled || busy) return;
     if (!code && !answer.trim()) {
-      setMessage('Enter the final system output first.');
+      setMessage(isFlag ? 'Enter the flag first.' : 'Enter the final system output first.');
       return;
     }
     const body = code ? { generation: detail.generation, files: getFiles() } : { generation: detail.generation, answer };
@@ -83,7 +85,7 @@ export function VerifyPanel({
 
   return (
     <section aria-label="Final system output" className={`flex h-full flex-col rounded-xl border-2 p-4 ${imposter ? 'border-[#c67c6b] bg-[#392e3c]' : 'border-[#4e6b79] bg-[#15303c]'}`}>
-      <Label className={imposter ? '!text-[#f0b8a2]' : '!text-primary'}>FINAL SYSTEM OUTPUT</Label>
+      <Label className={imposter ? '!text-[#f0b8a2]' : '!text-primary'}>{isFlag ? 'SUBMIT FLAG' : 'FINAL SYSTEM OUTPUT'}</Label>
       {solvedByYou ? (
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm text-primary" role="status">
           <CheckCircle2 size={16} /> System restored by your crew. Reward banked.
@@ -101,14 +103,20 @@ export function VerifyPanel({
         </>
       ) : (
         <form onSubmit={(e) => void submit(e)} className="mt-2">
-          <p className="text-[12px] leading-5 text-muted">{detail.answerFormat || 'Submit the output of your repaired program.'}</p>
-          {rule && <p className="mt-1 font-mono text-[10px] text-[#9fb8bf]">{rule}</p>}
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <p className="text-[12px] leading-5 text-muted">{detail.answerFormat || (isFlag ? 'Submit the flag exactly as revealed.' : 'Submit the output of your repaired program.')}</p>
+          {rule && !isFlag && <p className="mt-1 font-mono text-[10px] text-[#9fb8bf]">{rule}</p>}
+          {isFlag && (
+            <label htmlFor={`flag-${detail.id}`} className="mt-3 block font-mono text-[10px] font-semibold tracking-[.2em] text-[#cadbd7]">
+              FLAG
+            </label>
+          )}
+          <div className={`${isFlag ? 'mt-1' : 'mt-3'} flex flex-col gap-2 sm:flex-row`}>
             <input
+              id={`flag-${detail.id}`}
               value={answer}
               onChange={(e) => onAnswer(e.target.value)}
-              aria-label="Final system output"
-              placeholder="Enter answer"
+              aria-label={isFlag ? 'Flag' : 'Final system output'}
+              placeholder={isFlag ? 'e.g. EXAMPLE_FLAG_42' : 'Enter answer'}
               maxLength={500}
               inputMode={v.mode === 'NUMERIC' ? 'decimal' : 'text'}
               autoComplete="off"
@@ -118,7 +126,7 @@ export function VerifyPanel({
             />
             <Button type="submit" className="shrink-0 !px-4" disabled={disabled || busy}>
               {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              Verify repair
+              {isFlag ? 'Submit flag' : 'Verify repair'}
             </Button>
           </div>
         </form>

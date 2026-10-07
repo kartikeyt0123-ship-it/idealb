@@ -12,8 +12,15 @@ export function normalizeOutput(s: string): string {
 }
 
 /** Typed text answers: trim; optionally collapse internal whitespace and fold case. */
-export function normalizeTextAnswer(s: string, opts: { caseSensitive: boolean; collapseWhitespace: boolean }): string {
+export function normalizeTextAnswer(s: string, opts: { caseSensitive: boolean; collapseWhitespace: boolean; flag?: boolean }): string {
   let out = s.normalize('NFKC').replace(/\r\n?/g, '\n').trim();
+  if (opts.flag) {
+    // CTF flags: "FLAG: X", "flag = X", "FLAG{X}", "`X`", "'X'" are all accepted as X.
+    out = out.replace(/^[`'"]+|[`'"]+$/g, '').trim();
+    out = out.replace(/^flag\s*[:=]\s*/i, '').trim();
+    const braced = /^(?:flag|idealab)?\{([\s\S]*)\}$/i.exec(out);
+    if (braced) out = braced[1].trim();
+  }
   if (opts.collapseWhitespace) out = out.replace(/\s+/g, ' ');
   if (!opts.caseSensitive) out = out.toLowerCase();
   return out;

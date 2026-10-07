@@ -29,8 +29,8 @@ until you use **Send credentials**. In demo mode the mail is captured in Console
 | Event | AMONG BUG · IDEALab.h · AAROHAN 2026 · SGSITS Indore (demo) — every rule **UNCONFIRMED** |
 | Days | Day 1 = 2026-10-08 (Slot 1 at 10:00, Slot 2 at 14:30), Day 2 = 2026-10-09 (Slot 3, Slot 4). Times are informational only. |
 | Sprints | 4 per slot, 30 active minutes (STANDARD); switch to REHEARSAL (120 s) in Rules review |
-| Question bank | 1,296 PUBLISHED demo questions from 34 seedable templates (30 regular, 4 bonus) |
-| Release plans | per slot: 4 × 60 initial (fresh per sprint) + a 20-question reserve pool + a 10-question bonus pool = **270 instances**. 4 slots = 960 initial + 120 extras = **1,080 instances**, no question version shared between slots |
+| Question bank | The IDEALab.dev snapshot (commit `f406d64`): 360 PUBLISHED flag problems in 6 domains (demo-labelled) |
+| Initial sets | per slot: 15 per domain (7 easy, 5 medium, 3 hard) = **90 questions**, released when that slot's Sprint 1 starts; editable in Releases before then |
 | Prizes | 3 placeholder labels (no amounts invented) |
 
 ## Quick rehearsal
@@ -42,8 +42,9 @@ until you use **Send credentials**. In demo mode the mail is captured in Console
 5. Slot 1 → **Start sprint 1** (your approval; the preflight must be green).
 6. In another browser (or a private window) sign in as Nexora. Solve, buy a hint, and watch the
    HUD (sprint score, cumulative, wallet, sprint rank, slot rank).
-7. Releases (or the slot card): **Refill** tops up domains emptied by solves from the 20-question
-   reserve pool; **Release bonus** sends the next of 10 bonus questions.
+7. Releases → question control: watch the stock (domain × easy / medium / hard). **Top up** brings
+   low cells back to 7 / 5 / 3, **Pick & release** sends chosen bank questions (regular or bonus).
+   Questions stay active for the whole slot.
 8. Displays: create a projector link and open it on a second screen.
 9. Let the sprint expire (the worker closes it at the deadline), start sprints 2–4, then
    **Finalize slot**. Repeat for Slots 2–4 (only one slot may run at a time), then

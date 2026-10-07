@@ -49,6 +49,7 @@ export function CommandConsole({ refreshKey, me, onSignOut }: { refreshKey: numb
     }
   });
   const [confirm, confirmNode] = useConfirmHost();
+  const [focusSlot, setFocusSlot] = useState<string | null>(null);
   const ctrl = useRef<AbortController | null>(null);
 
   const reloadOverview = useCallback(async () => {
@@ -89,18 +90,24 @@ export function CommandConsole({ refreshKey, me, onSignOut }: { refreshKey: numb
   const can = useCallback((p: Permission) => perms.includes(p), [perms]);
   const visibleTabs = useMemo(() => TABS.filter((t) => !t.needs || can(t.needs)), [can]);
   const activeTab = visibleTabs.some((t) => t.id === tab) ? tab : visibleTabs[0]?.id ?? 'slots';
-  const pick = (id: TabId) => {
+  const pick = useCallback((id: TabId) => {
     setTab(id);
     try {
       sessionStorage.setItem('cmd-tab', id);
     } catch {
       /* storage unavailable */
     }
-  };
+  }, []);
+  const goTo = useCallback((id: string, slotId?: string) => {
+    if (!TABS.some((t) => t.id === id)) return;
+    setFocusSlot(slotId ?? null);
+    pick(id as TabId);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [pick]);
 
   const ctx = useMemo<ConsoleCtxValue | null>(
-    () => (overview ? { overview, me, refreshKey, can, reloadOverview, confirm } : null),
-    [overview, me, refreshKey, can, reloadOverview, confirm],
+    () => (overview ? { overview, me, refreshKey, can, reloadOverview, confirm, goTo, focusSlot } : null),
+    [overview, me, refreshKey, can, reloadOverview, confirm, goTo, focusSlot],
   );
 
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});

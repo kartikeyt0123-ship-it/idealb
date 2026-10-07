@@ -19,12 +19,13 @@ export const ROOM_LINES = [
 
 /** Static fallbacks so the ship renders before the first snapshot. */
 export const DEFAULT_DOMAINS: DomainDto[] = [
-  { slug: 'web', name: 'Web Development', room: 'COMMUNICATIONS', color: '#b5a2ec', symbol: '</>', prefix: 'WEB', workspace: 'WEB' },
-  { slug: 'data', name: 'Data', room: 'DATABASE CORE', color: '#87b6e5', symbol: '≡', prefix: 'DATA', workspace: 'DATA' },
-  { slug: 'ds', name: 'Data Structures', room: 'NAVIGATION', color: '#e1b775', symbol: '⌘', prefix: 'DS', workspace: 'DS' },
-  { slug: 'basic', name: 'Basic Programming', room: 'REACTOR', color: '#8ae4bf', symbol: '>_', prefix: 'REACTOR', workspace: 'BASIC' },
-  { slug: 'design', name: 'Designing', room: 'DESIGN LAB', color: '#dea4ca', symbol: '✧', prefix: 'DESIGN', workspace: 'DESIGN' },
-  { slug: 'misc', name: 'Miscellaneous', room: 'STORAGE', color: '#e3a178', symbol: '{}', prefix: 'MISC', workspace: 'MISC' },
+  // Mirrors the IDEALab.dev stations (server/src/content/idealab.ts); the live list always comes from state.domains.
+  { slug: 'core_compute', name: 'Core Compute', room: 'REACTOR CORE', color: '#8ae4bf', symbol: '>_', prefix: 'CORE', workspace: 'BASIC' },
+  { slug: 'cryptography', name: 'Cryptography', room: 'COMMS ARRAY', color: '#b5a2ec', symbol: '#', prefix: 'CRYPTO', workspace: 'EVIDENCE' },
+  { slug: 'data_decypher', name: 'Data Decypher', room: 'DATABASE CORE', color: '#87b6e5', symbol: '≡', prefix: 'DATA', workspace: 'DATA' },
+  { slug: 'maker', name: 'Maker Sandbox', room: 'ENGINEERING BAY', color: '#e1b775', symbol: '⚙', prefix: 'MAKER', workspace: 'JSON' },
+  { slug: 'recon', name: 'Reconnaissance', room: 'SECURITY', color: '#e3a178', symbol: '⌕', prefix: 'RECON', workspace: 'SHELL' },
+  { slug: 'web', name: 'Web Exploitation', room: 'COMMUNICATIONS', color: '#dea4ca', symbol: '</>', prefix: 'WEB', workspace: 'WEB' },
 ].map((d) => ({ ...d, counts: { total: 0, available: 0, solvedByYou: 0, solvedByOthers: 0, expired: 0 } }));
 
 export interface Interactable {
